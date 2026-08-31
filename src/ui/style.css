@@ -1,0 +1,16 @@
+/* OWNER: E (UI & Audio) */
+:root {
+  --ink-blue: #2f6fe0;
+  --ink-red: #e03b3b;
+  --ink-green: #3fbf5f;
+  --ink-grey: #9a9a9f;
+  --bg: #0e0e11;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); overflow: hidden; font-family: system-ui, sans-serif; }
+#game-canvas { display: block; width: 100vw; height: 100vh; }
+#hud { position: fixed; inset: 0; pointer-events: none; color: #fff; }
+#minimap-canvas { position: fixed; top: 16px; right: 16px; width: 180px; height: 180px; border-radius: 4px; }
+#loading-screen { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); color: #fff; z-index: 10; }
+.bar { width: 260px; height: 4px; background: #26262c; margin: 16px 0 8px; }
+#loading-bar { height: 100%; width: 0%; background: var(--ink-green); transition: width .2s; }
