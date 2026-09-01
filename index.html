@@ -4,15 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Inkbound</title>
-    <style>
-      html, body { margin: 0; height: 100%; overflow: hidden; background: #14141a; }
-      canvas { display: block; }
-      #loading { position: fixed; inset: 0; display: grid; place-items: center;
-                 color: #e8e8ef; font: 600 18px system-ui, sans-serif; }
-    </style>
+    <link rel="stylesheet" href="./src/ui/style.css" />
   </head>
   <body>
     <div id="loading">Loading…</div>
+    <div id="hud"></div>
+    <!-- relative path, not /src/main.js -->
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
