@@ -30,6 +30,7 @@ export const PLAYER = {
   gravity: -26,
   climbSpeed: 4.5,
   eyeHeight: 1.5,
+  minBounce: 7.5,    // red is a trampoline: standing on it launches you
 };
 
 export const PAINT_GUN = {

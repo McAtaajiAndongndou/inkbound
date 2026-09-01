@@ -204,10 +204,13 @@ export class Player {
       this.position.y = feetY;
 
       const impact = this.velocity.y;
-      if (rules && rules.restitution > 0 && impact < -1.5) {
-        // red paint: bounce back up instead of stopping.
+      if (rules && rules.restitution > 0) {
+        // Red paint is a TRAMPOLINE, not just a bouncy landing.
+        // Falling harder throws you higher, but simply standing on it
+        // still launches you at minBounce — otherwise walking onto red
+        // does nothing, because a grounded player has ~zero fall speed.
         // do NOT set onGround, or friction would eat the bounce.
-        this.velocity.y = -impact * rules.restitution;
+        this.velocity.y = Math.max(-impact * rules.restitution, PLAYER.minBounce);
         this.position.y = feetY + 0.05;   // clear the surface so we do not re-hit
       } else {
         this.velocity.y = 0;
