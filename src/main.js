@@ -1,10 +1,10 @@
-import * as THREE from 'three';
-import { Input } from './core/input.js';
-import { Player } from './core/player.js';
-import { CameraRig } from './core/camera-rig.js';
-import { PaintGun } from './paint/paint-gun.js';
-import { buildLevel1 } from './levels/level-01.js';
-import { Hud } from './ui/hud.js';
+import * as THREE from "three";
+import { Input } from "./core/input.js";
+import { Player } from "./core/player.js";
+import { CameraRig } from "./core/camera-rig.js";
+import { PaintGun } from "./paint/paint-gun.js";
+import { buildLevel1 } from "./levels/level-01.js";
+import { Hud } from "./ui/hud.js";
 
 // ---------------------------------------------------------------------------
 // Renderer + scene
@@ -42,14 +42,14 @@ let gun = null;
 
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
 const input = new Input(renderer.domElement);
-const hud = new Hud(document.getElementById('hud'));
+const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
 
 function loadLevel() {
   if (level) {
     scene.remove(level.group);
     scene.remove(player.mesh);
-    level.dispose();     // .dispose() on every geometry, material and texture
+    level.dispose(); // .dispose() on every geometry, material and texture
     player.dispose();
   }
 
@@ -64,7 +64,7 @@ function loadLevel() {
 }
 
 loadLevel();
-document.getElementById('loading').remove();
+document.getElementById("loading").remove();
 
 // ---------------------------------------------------------------------------
 // Loop
@@ -94,7 +94,12 @@ function animate() {
   rig.update(player);
   player.mesh.visible = !rig.firstPerson;
 
-  hud.update(dt, { gun, player, surfaces: level.surfaces, locked: input.locked });
+  hud.update(dt, {
+    gun,
+    player,
+    surfaces: level.surfaces,
+    locked: input.locked,
+  });
 
   // --- main view ---
   const w = window.innerWidth;
@@ -115,7 +120,7 @@ function animate() {
 
 animate();
 
-window.addEventListener('resize', () => {
+window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   rig.resize(window.innerWidth / window.innerHeight);
 });

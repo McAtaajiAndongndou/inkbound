@@ -1,9 +1,9 @@
-import * as THREE from 'three';
-import { ENEMY } from '../config.js';
-import { createToonMaterial, addOutline } from './toon/toon-material.js';
+import * as THREE from "three";
+import { ENEMY } from "../config.js";
+import { createToonMaterial, addOutline } from "./toon/toon-material.js";
 
 export class Enemy {
-  constructor(scene, spawnPos = new THREE.Vector3(), type = 'sprayer') {
+  constructor(scene, spawnPos = new THREE.Vector3(), type = "sprayer") {
     const cfg = ENEMY[type];
 
     this.type = type;
@@ -41,6 +41,8 @@ export class Enemy {
     eyeR.position.set(0.2, 0.55, 0.41);
     group.add(eyeR);
 
+    group.userData.enemy = this;
+
     return group;
   }
 
@@ -57,13 +59,12 @@ export class Enemy {
       this.mesh.lookAt(
         this.mesh.position.x + this._toPlayer.x,
         this.mesh.position.y,
-        this.mesh.position.z + this._toPlayer.z
+        this.mesh.position.z + this._toPlayer.z,
       );
     }
   }
 
-  takeColourHit(colour) {
-  }
+  takeColourHit(colour) {}
 
   dispose() {
     this.mesh.traverse((obj) => {

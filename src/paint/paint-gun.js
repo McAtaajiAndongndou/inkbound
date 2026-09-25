@@ -51,16 +51,21 @@ export class PaintGun {
     this._raycaster.setFromCamera(this._centre, camera);
     this._raycaster.far = PAINT_GUN.range;
 
-    const hits = this._raycaster.intersectObjects(this._meshes, false);
+    const hits = this._raycaster.intersectObjects(this._meshes, true);
     if (hits.length === 0) return false;
 
     const hit = hits[0];
 
-    const enemy = hit.object.userData.enemy;
+    let enemy = hit.object;
+    while (enemy && !enemy.userData.enemy) {
+      enemy = enemy.parent;
+    }
+
+    enemy = enemy?.userData.enemy;
 
     if (enemy) {
       const colourId = this.current + 1;
-      enemy.takePaint(colourId);
+      enemy.takeColourHit(colorId);
 
       this.ammo -= PAINT_GUN.cost;
       this.cooldown = PAINT_GUN.fireDelay;
