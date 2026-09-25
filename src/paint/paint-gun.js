@@ -90,9 +90,13 @@ export class PaintGun {
     return true;
   }
 
+  refillAmmo(dt) {
+    this.ammo = Math.min(this.maxAmmo, this.ammo + this.refillRate * dt);
+  }
+
   update(dt) {
     if (this.cooldown > 0) this.cooldown -= dt;
-    this.ammo = Math.min(this.maxAmmo, this.ammo + this.refillRate * dt);
+    this.refillAmmo(dt);
     if (this.lastSplat) this.lastSplat.age += dt;
   }
 }
