@@ -72,7 +72,12 @@ export class PaintGun {
       return true;
     }
 
-    const surface = hit.object.userData.paintSurface;
+    let surfaceObject = hit.object;
+    while (surfaceObject && !surfaceObject.userData.paintSurface) {
+      surfaceObject = surfaceObject.parent;
+    }
+
+    const surface = surfaceObject?.userData.paintSurface;
     if (!surface) {
       return false;
     }
