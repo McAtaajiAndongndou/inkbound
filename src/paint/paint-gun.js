@@ -65,7 +65,7 @@ export class PaintGun {
 
     if (enemy) {
       const colourId = this.current + 1;
-      enemy.takeColourHit(colorId);
+      enemy.takeColourHit(colourId);
 
       this.ammo -= PAINT_GUN.cost;
       this.cooldown = PAINT_GUN.fireDelay;
