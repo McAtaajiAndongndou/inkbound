@@ -1,10 +1,10 @@
-import * as THREE from 'three';
-import { Input } from './core/input.js';
-import { Player } from './core/player.js';
-import { CameraRig } from './core/camera-rig.js';
-import { PaintGun } from './paint/paint-gun.js';
-import { Level01 } from './levels/level-01-mission.js';
-import { Hud } from './ui/hud.js';
+import * as THREE from "three";
+import { Input } from "./core/input.js";
+import { Player } from "./core/player.js";
+import { CameraRig } from "./core/camera-rig.js";
+import { PaintGun } from "./paint/paint-gun.js";
+import { Level01 } from "./levels/level-01-mission.js";
+import { Hud } from "./ui/hud.js";
 
 // ---------------------------------------------------------------------------
 // Renderer + scene
@@ -41,22 +41,29 @@ let player = null;
 let gun = null;
 
 // Win overlay — inline here (decision #15), hidden until the level reports a win.
-const winOverlay = document.createElement('div');
+const winOverlay = document.createElement("div");
 winOverlay.style.cssText = [
-  'position: fixed; inset: 0; display: none;',
-  'align-items: center; justify-content: center;',
-  'background: rgba(15,15,22,.72); color: #e8e8ef;',
-  'font: 700 2rem/1.2 ui-sans-serif, system-ui, sans-serif;',
-  'text-align: center; z-index: 30; cursor: pointer;',
-].join(' ');
+  "position: fixed; inset: 0; display: none;",
+  "align-items: center; justify-content: center;",
+  "background: rgba(15,15,22,.72); color: #e8e8ef;",
+  "font: 700 2rem/1.2 ui-sans-serif, system-ui, sans-serif;",
+  "text-align: center; z-index: 30; cursor: pointer;",
+].join(" ");
 winOverlay.innerHTML =
   '<div>EXTRACTED<span style="display:block;font-size:.9rem;font-weight:600;opacity:.6;margin-top:.6rem">press R to redeploy</span></div>';
-winOverlay.addEventListener('click', () => { winOverlay.style.display = 'none'; });
+winOverlay.addEventListener("click", () => {
+  winOverlay.style.display = "none";
+});
 document.body.appendChild(winOverlay);
 
 // Levels read the scene and report a win back through this object.
 // `game` stays the integration point until core swaps in game.js.
-const game = { scene, onWin: () => { winOverlay.style.display = 'flex'; } };
+const game = {
+  scene,
+  onWin: () => {
+    winOverlay.style.display = "flex";
+  },
+};
 
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
 const input = new Input(renderer.domElement);
@@ -65,19 +72,15 @@ hud.onColourClick((i) => gun && gun.selectColour(i));
 
 function loadLevel() {
   if (level) {
-    level.dispose();     // removes root from scene + frees every GPU resource
+    level.dispose(); // removes root from scene + frees every GPU resource
     scene.remove(player.mesh);
-<<<<<<< HEAD
-    level.dispose(); // .dispose() on every geometry, material and texture
-=======
->>>>>>> main
     player.dispose();
   }
 
-  winOverlay.style.display = 'none';
+  winOverlay.style.display = "none";
 
   level = new Level01(game);
-  level.load();          // no awaits inside yet — main.js does not await it
+  level.load(); // no awaits inside yet — main.js does not await it
   scene.add(level.root);
 
   player = new Player(level.surfaces);

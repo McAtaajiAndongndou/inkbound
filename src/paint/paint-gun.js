@@ -18,8 +18,12 @@ export class PaintGun {
 
     const ammo = AMMO[level];
     this.maxAmmo = ammo.tank;
-    this.ammo = ammo.tank;
-    this.refillRate = ammo.refillRate;
+
+    this.ammo = {
+      blue: ammo.tank,
+      red: ammo.tank,
+      green: ammo.tank,
+    };
 
     this.cooldown = 0;
     this.lastSplat = null; // for the hit marker
@@ -46,7 +50,7 @@ export class PaintGun {
   }
 
   tryFire(camera) {
-    if (this.cooldown > 0 || this.ammo < PAINT_GUN.cost) return false;
+    if (this.cooldown > 0 || this.ammo[this.colour] < PAINT_GUN.cost) return false;
 
     this._raycaster.setFromCamera(this._centre, camera);
     this._raycaster.far = PAINT_GUN.range;
@@ -67,7 +71,7 @@ export class PaintGun {
       const colourId = this.current + 1;
       enemy.takeColourHit(colourId);
 
-      this.ammo -= PAINT_GUN.cost;
+      this.ammo[this.colour] -= PAINT_GUN.cost;
       this.cooldown = PAINT_GUN.fireDelay;
       return true;
     }
@@ -84,7 +88,7 @@ export class PaintGun {
     const ok = surface.splat(hit.point, this.colour, PAINT_GUN.radius);
     if (!ok) return false;
 
-    this.ammo -= PAINT_GUN.cost;
+    this.ammo[this.colour] -= PAINT_GUN.cost;
     this.cooldown = PAINT_GUN.fireDelay;
     this.lastSplat = { point: hit.point.clone(), colour: this.colour, age: 0 };
     return true;
@@ -96,7 +100,6 @@ export class PaintGun {
 
   update(dt) {
     if (this.cooldown > 0) this.cooldown -= dt;
-    this.refillAmmo(dt);
     if (this.lastSplat) this.lastSplat.age += dt;
   }
 }
