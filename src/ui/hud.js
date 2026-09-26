@@ -27,7 +27,7 @@ export class Hud {
       </div>
       <div id="controls">
         <b>WASD</b> move &nbsp; <b>Space</b> jump &nbsp; <b>Mouse</b> look &nbsp;
-        <b>Click</b> paint &nbsp; <b>1/2/3</b> colour &nbsp; <b>V</b> view &nbsp; <b>R</b> restart
+        <b>Click</b> paint &nbsp; <b>1/2/3</b> colour &nbsp;<span id="refill-warning"><b>F</b> refill ammo</span> &nbsp; <b>V</b> view &nbsp; <b>R</b> restart
       </div>
       <div id="click-prompt">Click to play</div>
     `;
@@ -37,6 +37,7 @@ export class Hud {
     this.standing = root.querySelector('#standing b');
     this.coverage = root.querySelector('#coverage');
     this.prompt = root.querySelector('#click-prompt');
+    this.refillWarning = root.querySelector('#refill-warning');
     this.swatches = [...root.querySelectorAll('.swatch')];
 
     this._coverageTimer = 0;
@@ -54,6 +55,7 @@ export class Hud {
     this.ammoFill.style.width = `${pct * 100}%`;
     this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;
     this.ammoText.textContent = Math.floor(gun.ammo[gun.colour]);
+    this.refillWarning.classList.toggle('critical', pct <= 0.25);
 
     this.standing.textContent = PAINT[player.currentColour].name;
     this.standing.style.color = `#${PAINT[player.currentColour].hex.toString(16).padStart(6, '0')}`;
