@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "serve:dist": "npx serve dist"
+    "serve:dist": "npx serve dist",
+    "test": "node --test \"tests/*.test.js\""
   },
   "dependencies": {
     "three": "^0.169.0"
