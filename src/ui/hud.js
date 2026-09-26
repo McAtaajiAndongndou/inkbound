@@ -50,10 +50,10 @@ export class Hud {
   }
 
   update(dt, { gun, player, surfaces, locked }) {
-    const pct = gun.ammo / gun.maxAmmo;
+    const pct = gun.ammo[gun.colour] / gun.maxAmmo;
     this.ammoFill.style.width = `${pct * 100}%`;
     this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;
-    this.ammoText.textContent = Math.floor(gun.ammo);
+    this.ammoText.textContent = Math.floor(gun.ammo[gun.colour]);
 
     this.standing.textContent = PAINT[player.currentColour].name;
     this.standing.style.color = `#${PAINT[player.currentColour].hex.toString(16).padStart(6, '0')}`;
