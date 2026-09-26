@@ -46,9 +46,9 @@ export const PAINT_GRID = {
 
 // Level 1 plentiful, level 2 starved, level 3 contested.
 export const AMMO = {
-  1: { tank: 100, refillRate: 14 },
-  2: { tank: 60, refillRate: 2 },
-  3: { tank: 80, refillRate: 6 },
+  1: { tank: 100 },
+  2: { tank: 60 },
+  3: { tank: 80 },
 };
 
 // One enemy class, five configs. Not five systems. (Week 2.)

@@ -19,7 +19,6 @@ test('colour -> physics is the whole game: friction / restitution / climbable', 
 
 test('ammo tanks are ordered by level pressure (L1 plentiful, L2 starved)', () => {
   assert.equal(AMMO[1].tank > AMMO[2].tank, true);
-  assert.equal(AMMO[2].refillRate < AMMO[1].refillRate, true);
 });
 
 test('one enemy class, five configs — not five systems', () => {
