@@ -13,7 +13,7 @@ export class PaintGun {
     this.surfaces = surfaces; // array of PaintSurface
     this.enemies = enemies;
 
-    this.colours = ["blue", "red", "green"];
+    this.colours = ["blue", "red", "green", "grey"];
     this.current = 0;
 
     const ammo = AMMO[level];
@@ -50,7 +50,7 @@ export class PaintGun {
   }
 
   tryFire(camera) {
-    if (this.cooldown > 0 || this.ammo[this.colour] < PAINT_GUN.cost) return false;
+    if (this.cooldown > 0 || (this.colour !== "grey" && this.ammo[this.colour] < PAINT_GUN.cost)) return false;
 
     this._raycaster.setFromCamera(this._centre, camera);
     this._raycaster.far = PAINT_GUN.range;
@@ -67,7 +67,7 @@ export class PaintGun {
 
     enemy = enemy?.userData.enemy;
 
-    if (enemy) {
+    if (enemy && this.colour !== "grey") {
       const colourId = this.current + 1;
       enemy.takeColourHit(colourId);
 
@@ -88,13 +88,16 @@ export class PaintGun {
     const ok = surface.splat(hit.point, this.colour, PAINT_GUN.radius);
     if (!ok) return false;
 
-    this.ammo[this.colour] -= PAINT_GUN.cost;
+    if (this.colour !== "grey") {
+      this.ammo[this.colour] -= PAINT_GUN.cost;
+    }
     this.cooldown = PAINT_GUN.fireDelay;
     this.lastSplat = { point: hit.point.clone(), colour: this.colour, age: 0 };
     return true;
   }
 
-  refillAmmo(dt) {
+  refillAmmo() {
+    if (this.colour === "grey") return;
     this.ammo[this.colour] = this.maxAmmo;
   }
 
