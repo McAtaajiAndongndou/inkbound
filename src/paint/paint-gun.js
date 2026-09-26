@@ -95,7 +95,7 @@ export class PaintGun {
   }
 
   refillAmmo(dt) {
-    this.ammo = Math.min(this.maxAmmo, this.ammo + this.refillRate * dt);
+    this.ammo[this.colour] = this.maxAmmo;
   }
 
   update(dt) {

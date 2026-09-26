@@ -13,7 +13,7 @@ export class Input {
     this.locked = false;
 
     // one-shot actions consumed by the game each frame
-    this.pending = { jump: false, toggleView: false, colour: null, restart: false };
+    this.pending = { jump: false, toggleView: false, colour: null, restart: false, refill: false, };
 
     this._onKeyDown = (e) => {
       this.keys.add(e.code);
@@ -23,6 +23,7 @@ export class Input {
       if (e.code === 'Digit1') this.pending.colour = 0;
       if (e.code === 'Digit2') this.pending.colour = 1;
       if (e.code === 'Digit3') this.pending.colour = 2;
+      if (e.code === 'KeyF') this.pending.refill = true;
       if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
     };
 
@@ -74,6 +75,7 @@ export class Input {
     this.pending.toggleView = false;
     this.pending.colour = null;
     this.pending.restart = false;
+    this.pending.refill = false;
     return p;
   }
 

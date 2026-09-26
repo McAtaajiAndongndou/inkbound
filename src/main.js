@@ -108,6 +108,7 @@ function animate() {
   if (actions.restart) loadLevel();
   if (actions.toggleView) rig.toggle();
   if (actions.colour !== null) gun.selectColour(actions.colour);
+  if (actions.refill) gun.refillAmmo();
 
   const mouse = input.consumeMouse();
   player.look(mouse.x, mouse.y);
