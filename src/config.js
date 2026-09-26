@@ -16,7 +16,7 @@ export const PAINT = {
 export const SURFACE = {
   grey: { friction: 10.0, restitution: 0.0, climbable: false },
   blue: { friction: 0.4, restitution: 0.0, climbable: false }, // ice: barely slows you
-  red: { friction: 10.0, restitution: 0.85, climbable: false }, // bounce
+  red: { friction: 10.0, restitution: 0.9, climbable: false }, // bounce
   green: { friction: 14.0, restitution: 0.0, climbable: true }, // grip + climb
 };
 
@@ -30,7 +30,7 @@ export const PLAYER = {
   gravity: -26,
   climbSpeed: 4.5,
   eyeHeight: 1.5,
-  minBounce: 7.5, // red is a trampoline: standing on it launches you
+  minBounce: 15, // red is a trampoline: standing on it launches you (~4.3m)
 };
 
 export const PAINT_GUN = {
