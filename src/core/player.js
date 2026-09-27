@@ -17,13 +17,18 @@ const ID_TO_NAME = ['grey', 'blue', 'red', 'green'];
  * demonstrates the mechanic today. Rapier replaces it in week 2.
  */
 export class Player {
-  constructor(surfaces) {
+  /**
+   * @param {PaintSurface[]} surfaces the level's surfaces
+   * @param {THREE.Vector3} spawn     the level's spawn point — start and respawn here
+   */
+  constructor(surfaces, spawn = new THREE.Vector3()) {
     this.surfaces = surfaces;
     this.floors = surfaces.filter((s) => s.isFloor);
     this.walls = surfaces.filter((s) => !s.isFloor);
     this.floorMeshes = this.floors.map((s) => s.mesh);
 
-    this.position = new THREE.Vector3(0, 4, 8);
+    this.spawn = spawn.clone();
+    this.position = spawn.clone();
     this.velocity = new THREE.Vector3();
     this.yaw = 0;
     this.pitch = 0;
@@ -226,7 +231,7 @@ export class Player {
   }
 
   respawn() {
-    this.position.set(0, 4, 8);
+    this.position.copy(this.spawn);
     this.velocity.set(0, 0, 0);
   }
 
