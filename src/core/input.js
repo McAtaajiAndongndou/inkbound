@@ -15,10 +15,6 @@ export class Input {
     // one-shot actions consumed by the game each frame
     this.pending = { jump: false, toggleView: false, colour: null, restart: false, refill: false };
 
-    // what consume*() hand out — reused every frame, valid until the next call
-    this._actions = { jump: false, toggleView: false, colour: null, restart: false };
-    this._mouse = { x: 0, y: 0 };
-
     this._onKeyDown = (e) => {
       this.keys.add(e.code);
       if (e.code === 'Space') this.pending.jump = true;
@@ -27,7 +23,7 @@ export class Input {
       if (e.code === 'Digit1') this.pending.colour = 0;
       if (e.code === 'Digit2') this.pending.colour = 1;
       if (e.code === 'Digit3') this.pending.colour = 2;
-      if(e.code === 'Digit4') this.pending.colour = 3;
+      if (e.code === 'Digit4') this.pending.colour = 3;
       if (e.code === 'KeyF') this.pending.refill = true;
       if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
     };
@@ -67,9 +63,7 @@ export class Input {
 
   /** Read and clear the mouse delta for this frame. */
   consumeMouse() {
-    const d = this._mouse;
-    d.x = this.mouseDelta.x;
-    d.y = this.mouseDelta.y;
+    const d = { x: this.mouseDelta.x, y: this.mouseDelta.y };
     this.mouseDelta.x = 0;
     this.mouseDelta.y = 0;
     return d;
@@ -77,11 +71,7 @@ export class Input {
 
   /** Read and clear one-shot actions. */
   consumeActions() {
-    const p = this._actions;
-    p.jump = this.pending.jump;
-    p.toggleView = this.pending.toggleView;
-    p.colour = this.pending.colour;
-    p.restart = this.pending.restart;
+    const p = { ...this.pending };
     this.pending.jump = false;
     this.pending.toggleView = false;
     this.pending.colour = null;
