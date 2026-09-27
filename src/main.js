@@ -83,8 +83,7 @@ function loadLevel() {
   level.load(); // no awaits inside yet — main.js does not await it
   scene.add(level.root);
 
-  player = new Player(level.surfaces);
-  player.position.copy(level.spawn);
+  player = new Player(level.surfaces, level.spawn);
   scene.add(player.mesh);
 
   gun = new PaintGun(level.surfaces, 1);
