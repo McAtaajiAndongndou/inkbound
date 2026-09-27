@@ -27,6 +27,7 @@ export class PaintGun {
 
     this.cooldown = 0;
     this.lastSplat = null; // for the hit marker
+    this.dryFire = false;
 
     this._raycaster = new THREE.Raycaster();
     this._centre = new THREE.Vector2(0, 0); // always fire from screen centre
@@ -50,7 +51,12 @@ export class PaintGun {
   }
 
   tryFire(camera) {
-    if (this.cooldown > 0 || (this.colour !== "grey" && this.ammo[this.colour] < PAINT_GUN.cost)) return false;
+    if (this.cooldown > 0) return false;
+
+    if (this.colour !== "grey" && this.ammo[this.colour] < PAINT_GUN.cost) {
+      this.dryFire = true;
+      return false;
+    }
 
     this._raycaster.setFromCamera(this._centre, camera);
     this._raycaster.far = PAINT_GUN.range;
@@ -104,5 +110,6 @@ export class PaintGun {
   update(dt) {
     if (this.cooldown > 0) this.cooldown -= dt;
     if (this.lastSplat) this.lastSplat.age += dt;
+    this.dryFire = false;
   }
 }

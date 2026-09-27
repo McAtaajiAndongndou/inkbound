@@ -79,6 +79,7 @@ canvas {
 }
 
 #ammo-bar {
+  position: relative;
   width: 180px;
   height: 10px;
   border-radius: 5px;
@@ -96,6 +97,20 @@ canvas {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   font-size: 15px;
+}
+
+#dry-fire {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  color: #ff4d5a;
+  font-weight: 800;
+  font-size: 9px;
+  letter-spacing: .08em;
+  white-space: nowrap;
 }
 
 #colours {

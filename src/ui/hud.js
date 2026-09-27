@@ -12,7 +12,10 @@ export class Hud {
       <div id="crosshair"></div>
       <div id="hud-bottom">
         <div id="ammo-wrap">
-          <div id="ammo-bar"><div id="ammo-fill"></div></div>
+          <div id="ammo-bar">
+            <div id="ammo-fill"></div>
+            <div id="dry-fire">EMPTY</div>
+          </div>
           <div id="ammo-text">100</div>
         </div>
         <div id="colours">
@@ -39,6 +42,7 @@ export class Hud {
     this.coverage = root.querySelector('#coverage');
     this.prompt = root.querySelector('#click-prompt');
     this.refillWarning = root.querySelector('#refill-warning');
+    this.dryFire = root.querySelector('#dry-fire');
     this.swatches = [...root.querySelectorAll('.swatch')];
 
     this._coverageTimer = 0;
@@ -79,5 +83,6 @@ export class Hud {
       this._coverageValue = total;
       this.coverage.textContent = `Coverage: ${Math.round(total * 100)}%`;
     }
+    this.dryFire.style.display = gun.dryFire ? 'flex' : 'none';
   }
 }
