@@ -37,9 +37,13 @@ export class PaintSurface {
 
     // reused every frame / every shot — never allocate in a loop
     this._local = new THREE.Vector3();
+    this._cell = { col: 0, row: 0 };
   }
 
-  /** Convert a world point to grid coordinates. Returns null if off the surface. */
+  /**
+   * Convert a world point to grid coordinates. Returns null if off the surface.
+   * The returned object is reused on the next call — read it, do not keep it.
+   */
   worldToCell(worldPoint) {
     this._local.copy(worldPoint);
     this.mesh.worldToLocal(this._local);
@@ -48,10 +52,9 @@ export class PaintSurface {
     const v = (this._local.y / this.height) + 0.5;
     if (u < 0 || u > 1 || v < 0 || v > 1) return null;
 
-    return {
-      col: Math.min(this.map.cols - 1, Math.floor(u * this.map.cols)),
-      row: Math.min(this.map.rows - 1, Math.floor(v * this.map.rows)),
-    };
+    this._cell.col = Math.min(this.map.cols - 1, Math.floor(u * this.map.cols));
+    this._cell.row = Math.min(this.map.rows - 1, Math.floor(v * this.map.rows));
+    return this._cell;
   }
 
   /** Paint id at a world point. Returns 0 (grey) if off the surface. */
