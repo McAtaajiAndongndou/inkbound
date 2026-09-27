@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER } from '../config.js';
+import { PLAYER, HEALTH } from '../config.js';
 
 const ID_TO_NAME = ['grey', 'blue', 'red', 'green'];
 
@@ -37,6 +37,13 @@ export class Player {
     this.touchingWall = null;   // { surface, point, normal, rules }
     this.currentColour = 'grey';
 
+    // health — read by the HUD (health, maxHealth, dead)
+    this.maxHealth = HEALTH.max;
+    this.health = HEALTH.max;
+    this.dead = false;
+    this.hurtTimer = 0;         // > 0 means recently hit, cannot be hit again yet
+    this.onDeath = null;        // optional callback, fired once when health hits 0
+
     // visible avatar for third-person
     const geometry = new THREE.CapsuleGeometry(
       PLAYER.radius, PLAYER.height - PLAYER.radius * 2, 4, 12,
@@ -62,7 +69,45 @@ export class Player {
     this._normal = new THREE.Vector3();
   }
 
+  /**
+   * Lose `n` health. Ignored while dead or inside the post-hit cooldown.
+   * Returns true if the hit landed.
+   */
+  takeDamage(n) {
+    if (this.dead || this.hurtTimer > 0 || n <= 0) return false;
+
+    this.health = Math.max(0, this.health - n);
+    this.hurtTimer = HEALTH.hurtCooldown;
+
+    if (this.health === 0) {
+      this.dead = true;
+      this.velocity.set(0, 0, 0);
+      this.onDeath?.();
+    }
+    return true;
+  }
+
+  /**
+   * Contact damage by proximity: any enemy whose centre is within
+   * HEALTH.contactRange (horizontally) and HEALTH.contactHeight (vertically)
+   * of the player hurts for its config.contactDamage.
+   * Expects each enemy to expose `position` (Vector3) and `config` (an ENEMY entry).
+   */
+  checkEnemyContact(enemies) {
+    if (this.dead) return;
+    for (const enemy of enemies) {
+      if (!enemy.position || !enemy.config) continue;
+      const dx = enemy.position.x - this.position.x;
+      const dz = enemy.position.z - this.position.z;
+      const dy = enemy.position.y - this.position.y;
+      if (dx * dx + dz * dz > HEALTH.contactRange * HEALTH.contactRange) continue;
+      if (Math.abs(dy) > HEALTH.contactHeight) continue;
+      if (this.takeDamage(enemy.config.contactDamage ?? 0)) return; // one hit per frame
+    }
+  }
+
   look(dx, dy, sensitivity = 0.0022) {
+    if (this.dead) return;
     this.yaw -= dx * sensitivity;
     this.pitch -= dy * sensitivity;
     const limit = Math.PI / 2 - 0.05;
@@ -179,6 +224,9 @@ export class Player {
   }
 
   update(dt, input, actions) {
+    if (this.hurtTimer > 0) this.hurtTimer -= dt;
+    if (this.dead) return;     // dead: frozen in place until the level restarts
+
     // ---- movement intent, relative to where we are looking ---------------
     this._fwd.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     this._right.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));

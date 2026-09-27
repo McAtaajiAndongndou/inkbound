@@ -33,6 +33,14 @@ export const PLAYER = {
   minBounce: 15, // red is a trampoline: standing on it launches you (~4.3m)
 };
 
+// Player health. Enemies deal their ENEMY.*.contactDamage on touch.
+export const HEALTH = {
+  max: 100,
+  hurtCooldown: 0.8,  // seconds of invulnerability after a hit, so contact is not 60 hits/sec
+  contactRange: 1.0,  // enemy centre within this (horizontal) distance of the player = touching
+  contactHeight: 1.7, // ...and within this vertical distance
+};
+
 export const PAINT_GUN = {
   range: 30,
   radius: 1.4, // splat radius in world units
@@ -60,6 +68,7 @@ export const ENEMY = {
     canMove: true,
     climbsGreen: false,
     drainsPaint: false,
+    contactDamage: 10,
   },
   charger: {
     hp: 30,
@@ -68,6 +77,7 @@ export const ENEMY = {
     canMove: true,
     climbsGreen: false,
     drainsPaint: false,
+    contactDamage: 25,
   },
   wallCrawler: {
     hp: 45,
@@ -76,6 +86,7 @@ export const ENEMY = {
     canMove: true,
     climbsGreen: true,
     drainsPaint: false,
+    contactDamage: 10,
   },
   turret: {
     hp: 70,
@@ -84,6 +95,7 @@ export const ENEMY = {
     canMove: false,
     climbsGreen: false,
     drainsPaint: false,
+    contactDamage: 0,
   },
   drainer: {
     hp: 20,
@@ -92,6 +104,7 @@ export const ENEMY = {
     canMove: true,
     climbsGreen: false,
     drainsPaint: true,
+    contactDamage: 5,
   },
 };
 
