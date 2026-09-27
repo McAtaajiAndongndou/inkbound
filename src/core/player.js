@@ -21,7 +21,6 @@ export class Player {
     this.surfaces = surfaces;
     this.floors = surfaces.filter((s) => s.isFloor);
     this.walls = surfaces.filter((s) => !s.isFloor);
-    this.floorMeshes = this.floors.map((s) => s.mesh);
 
     this.position = new THREE.Vector3(0, 4, 8);
     this.velocity = new THREE.Vector3();
@@ -44,7 +43,11 @@ export class Player {
     this.mesh.castShadow = true;
 
     // reused every frame — allocate nothing in the loop
-    this._down = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 6);
+    this._probeRange = 6;       // how far below the probe origin we look for ground
+    this._dirLocal = new THREE.Vector3();
+    this._inv = new THREE.Matrix4();
+    this._ground = { y: 0, surface: null, point: new THREE.Vector3() };
+    this._wallContact = { surface: null, rules: null, normal: new THREE.Vector3(), contactZ: 0 };
     this._wish = new THREE.Vector3();
     this._fwd = new THREE.Vector3();
     this._right = new THREE.Vector3();
@@ -61,16 +64,53 @@ export class Player {
     this.pitch = Math.max(-limit, Math.min(limit, this.pitch));
   }
 
+  /**
+   * Straight-down ground probe. Returns the nearest floor below the player,
+   * or null. The result object is reused every frame — do not hold onto it.
+   *
+   * Not a THREE.Raycaster: that allocates a hit object (plus point, uv,
+   * normal, face) per hit, every frame. Every floor is a single flat
+   * PaintSurface plane, so we intersect the ray with each plane in its local
+   * space instead — same trick as _resolveWalls, and allocation-free.
+   */
   _probeGround() {
     this._probe.copy(this.position);
     this._probe.y += 0.5;
-    this._down.ray.origin.copy(this._probe);
 
-    const hits = this._down.intersectObjects(this.floorMeshes, false);
-    if (hits.length === 0) return null;
+    let best = null;
+    let bestDist = this._probeRange;
 
-    const hit = hits[0];
-    return { y: hit.point.y, surface: hit.object.userData.paintSurface, point: hit.point };
+    for (const floor of this.floors) {
+      // ray origin and direction (world 0,-1,0) in the floor's local space.
+      // One matrix inverse per floor: the direction is just minus the
+      // inverse's Y column, so we do not need a second worldToLocal.
+      floor.mesh.updateWorldMatrix(true, false);
+      this._inv.copy(floor.mesh.matrixWorld).invert();
+      this._local.copy(this._probe).applyMatrix4(this._inv);
+      const e = this._inv.elements;
+      this._dirLocal.set(-e[4], -e[5], -e[6]);
+
+      // the plane faces local +Z; only hit it from the front, like the raycast did
+      if (this._dirLocal.z >= 0) continue;
+
+      const dist = -this._local.z / this._dirLocal.z;   // world units along the ray
+      if (dist < 0 || dist > bestDist) continue;
+
+      const hx = this._local.x + this._dirLocal.x * dist;
+      const hy = this._local.y + this._dirLocal.y * dist;
+      if (Math.abs(hx) > floor.width * 0.5 || Math.abs(hy) > floor.height * 0.5) continue;
+
+      best = floor;
+      bestDist = dist;
+    }
+
+    if (!best) return null;
+
+    const ground = this._ground;
+    ground.surface = best;
+    ground.y = this._probe.y - bestDist;
+    ground.point.set(this._probe.x, ground.y, this._probe.z);
+    return ground;
   }
 
   /**
@@ -119,12 +159,13 @@ export class Player {
 
       this._normal.set(0, 0, side).applyQuaternion(wall.mesh.quaternion).normalize();
 
-      this.touchingWall = {
-        surface: wall,
-        rules: wall.surfaceAtWorld(this._local),
-        normal: this._normal.clone(),
-        contactZ,
-      };
+      // reuse one contact object rather than allocating one per frame
+      const contact = this._wallContact;
+      contact.surface = wall;
+      contact.rules = wall.surfaceAtWorld(this._local);
+      contact.normal.copy(this._normal);
+      contact.contactZ = contactZ;
+      this.touchingWall = contact;
 
       // kill velocity heading into the wall so we do not grind through it
       const into = this.velocity.dot(this._normal);
@@ -176,7 +217,10 @@ export class Player {
     }
 
     const speedCap = rules && rules.friction < 1 ? PLAYER.maxSpeed * 1.6 : PLAYER.maxSpeed;
-    const planar = Math.hypot(this.velocity.x, this.velocity.z);
+    // not Math.hypot — V8 allocates on every hypot call
+    const vx = this.velocity.x;
+    const vz = this.velocity.z;
+    const planar = Math.sqrt(vx * vx + vz * vz);
     if (planar > speedCap) {
       this.velocity.x *= speedCap / planar;
       this.velocity.z *= speedCap / planar;
