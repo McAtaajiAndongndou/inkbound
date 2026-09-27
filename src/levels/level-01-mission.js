@@ -23,7 +23,7 @@ const L1 = {
   spawn: { x: 0, y: 2, z: 13 },
 
   islands: {
-    A: { zMin: 8,   zMax: 18  },  // start — covers (0,4,8) for hardcoded respawn
+    A: { zMin: 8,   zMax: 18  },  // start — spawn + fall respawn land here
     B: { zMin: -4,  zMax: 3.5 },  // middle — enemy spawns + blue run-up
     C: { zMin: -19, zMax: -11 },  // red pad → platform
   },
