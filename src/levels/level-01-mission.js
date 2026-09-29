@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
-import { PAINT, ENEMY } from '../config.js';
+import { PAINT, ENEMY, PAINT_GRID } from '../config.js';
 import { Enemy } from '../enemies/enemy.js';
 
 /**
@@ -19,7 +19,7 @@ import { Enemy } from '../enemies/enemy.js';
  */
 const L1 = {
   corridorHalf: 8,            // full width 16
-  cells: 3,
+  cells: PAINT_GRID.level1Cells,
   spawn: { x: 0, y: 2, z: 13 },
 
   islands: {

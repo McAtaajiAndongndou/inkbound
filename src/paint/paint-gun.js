@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { PAINT_GUN, AMMO } from '../config.js';
+import * as THREE from "three";
+import { PAINT_GUN, AMMO } from "../config.js";
 
 /**
  * Fires paint. Raycasts from the camera into the scene, finds the first
@@ -9,22 +9,32 @@ import { PAINT_GUN, AMMO } from '../config.js';
  * a different game from Level 1 without changing any other rule.
  */
 export class PaintGun {
-  constructor(surfaces, level = 1) {
-    this.surfaces = surfaces;              // array of PaintSurface
-    this.colours = ['blue', 'red', 'green'];
+  constructor(surfaces, level = 1, enemies = []) {
+    this.surfaces = surfaces; // array of PaintSurface
+    this.enemies = enemies;
+
+    this.colours = ["blue", "red", "green", "grey"];
     this.current = 0;
 
     const ammo = AMMO[level];
     this.maxAmmo = ammo.tank;
-    this.ammo = ammo.tank;
-    this.refillRate = ammo.refillRate;
+
+    this.ammo = {
+      blue: ammo.tank,
+      red: ammo.tank,
+      green: ammo.tank,
+    };
 
     this.cooldown = 0;
-    this.lastSplat = null;                 // for the hit marker
+    this.lastSplat = null; // for the hit marker
+    this.dryFire = false;
 
     this._raycaster = new THREE.Raycaster();
     this._centre = new THREE.Vector2(0, 0); // always fire from screen centre
-    this._meshes = surfaces.map((s) => s.mesh);
+    this._meshes = [
+      ...surfaces.map((s) => s.mesh),
+      ...enemies.map((enemy) => enemy.mesh).filter(Boolean),
+    ];
   }
 
   get colour() {
@@ -36,34 +46,70 @@ export class PaintGun {
   }
 
   cycleColour(dir = 1) {
-    this.current = (this.current + dir + this.colours.length) % this.colours.length;
+    this.current =
+      (this.current + dir + this.colours.length) % this.colours.length;
   }
 
   tryFire(camera) {
-    if (this.cooldown > 0 || this.ammo < PAINT_GUN.cost) return false;
+    if (this.cooldown > 0) return false;
+
+    if (this.colour !== "grey" && this.ammo[this.colour] < PAINT_GUN.cost) {
+      this.dryFire = true;
+      return false;
+    }
 
     this._raycaster.setFromCamera(this._centre, camera);
     this._raycaster.far = PAINT_GUN.range;
 
-    const hits = this._raycaster.intersectObjects(this._meshes, false);
+    const hits = this._raycaster.intersectObjects(this._meshes, true);
     if (hits.length === 0) return false;
 
     const hit = hits[0];
-    const surface = hit.object.userData.paintSurface;
-    if (!surface) return false;
 
+    let enemy = hit.object;
+    while (enemy && !enemy.userData.enemy) {
+      enemy = enemy.parent;
+    }
+
+    enemy = enemy?.userData.enemy;
+
+    if (enemy && this.colour !== "grey") {
+      const colourId = this.current + 1;
+      enemy.takeColourHit(colourId);
+
+      this.ammo[this.colour] -= PAINT_GUN.cost;
+      this.cooldown = PAINT_GUN.fireDelay;
+      return true;
+    }
+
+    let surfaceObject = hit.object;
+    while (surfaceObject && !surfaceObject.userData.paintSurface) {
+      surfaceObject = surfaceObject.parent;
+    }
+
+    const surface = surfaceObject?.userData.paintSurface;
+    if (!surface) {
+      return false;
+    }
     const ok = surface.splat(hit.point, this.colour, PAINT_GUN.radius);
     if (!ok) return false;
 
-    this.ammo -= PAINT_GUN.cost;
+    if (this.colour !== "grey") {
+      this.ammo[this.colour] -= PAINT_GUN.cost;
+    }
     this.cooldown = PAINT_GUN.fireDelay;
     this.lastSplat = { point: hit.point.clone(), colour: this.colour, age: 0 };
     return true;
   }
 
+  refillAmmo() {
+    if (this.colour === "grey") return;
+    this.ammo[this.colour] = this.maxAmmo;
+  }
+
   update(dt) {
     if (this.cooldown > 0) this.cooldown -= dt;
-    this.ammo = Math.min(this.maxAmmo, this.ammo + this.refillRate * dt);
     if (this.lastSplat) this.lastSplat.age += dt;
+    this.dryFire = false;
   }
 }
