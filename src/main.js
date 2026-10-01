@@ -40,21 +40,26 @@ let level = null;
 let player = null;
 let gun = null;
 
-// Win overlay — inline here (decision #15), hidden until the level reports a win.
-const winOverlay = document.createElement("div");
-winOverlay.style.cssText = [
-  "position: fixed; inset: 0; display: none;",
-  "align-items: center; justify-content: center;",
-  "background: rgba(15,15,22,.72); color: #e8e8ef;",
-  "font: 700 2rem/1.2 ui-sans-serif, system-ui, sans-serif;",
-  "text-align: center; z-index: 30; cursor: pointer;",
-].join(" ");
-winOverlay.innerHTML =
-  '<div>EXTRACTED<span style="display:block;font-size:.9rem;font-weight:600;opacity:.6;margin-top:.6rem">press R to redeploy</span></div>';
-winOverlay.addEventListener("click", () => {
-  winOverlay.style.display = "none";
-});
-document.body.appendChild(winOverlay);
+// Win / death overlays — inline here (decision #15), hidden until needed.
+// Placeholder until the win/lose screens (#21) land.
+function makeOverlay(title) {
+  const el = document.createElement("div");
+  el.style.cssText = [
+    "position: fixed; inset: 0; display: none;",
+    "align-items: center; justify-content: center;",
+    "background: rgba(15,15,22,.72); color: #e8e8ef;",
+    "font: 700 2rem/1.2 ui-sans-serif, system-ui, sans-serif;",
+    "text-align: center; z-index: 30; cursor: pointer;",
+  ].join(" ");
+  el.innerHTML = `<div>${title}<span style="display:block;font-size:.9rem;font-weight:600;opacity:.6;margin-top:.6rem">press R to redeploy</span></div>`;
+  el.addEventListener("click", () => {
+    el.style.display = "none";
+  });
+  document.body.appendChild(el);
+  return el;
+}
+const winOverlay = makeOverlay("EXTRACTED");
+const deathOverlay = makeOverlay("DOWN");
 
 // Levels read the scene and report a win back through this object.
 // `game` stays the integration point until core swaps in game.js.
@@ -78,12 +83,16 @@ function loadLevel() {
   }
 
   winOverlay.style.display = "none";
+  deathOverlay.style.display = "none";
 
   level = new Level01(game);
   level.load(); // no awaits inside yet — main.js does not await it
   scene.add(level.root);
 
   player = new Player(level.surfaces, level.spawn);
+  player.onDeath = () => {
+    deathOverlay.style.display = "flex";
+  };
   scene.add(player.mesh);
 
   gun = new PaintGun(level.surfaces, 1);
@@ -114,9 +123,10 @@ function animate() {
   player.update(dt, input, actions);
 
   level.update(dt, player);
+  player.checkEnemyContact(level.enemies);
 
   gun.update(dt);
-  if (input.firing && input.locked) gun.tryFire(rig.camera);
+  if (input.firing && input.locked && !player.dead) gun.tryFire(rig.camera);
 
   for (const s of level.surfaces) s.update(elapsed);
 
