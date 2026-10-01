@@ -5,3 +5,6 @@ dist/
 .vscode/
 .idea/
 *.log
+
+# Local-only working plans and design decisions (not shipped, not shared)
+plans/

@@ -12,13 +12,17 @@ export class Hud {
       <div id="crosshair"></div>
       <div id="hud-bottom">
         <div id="ammo-wrap">
-          <div id="ammo-bar"><div id="ammo-fill"></div></div>
+          <div id="ammo-bar">
+            <div id="ammo-fill"></div>
+            <div id="dry-fire">EMPTY</div>
+          </div>
           <div id="ammo-text">100</div>
         </div>
         <div id="colours">
           <button class="swatch" data-i="0" style="--c:#3aa7ff"><span>1</span>Ice</button>
           <button class="swatch" data-i="1" style="--c:#ff4d5a"><span>2</span>Bounce</button>
           <button class="swatch" data-i="2" style="--c:#4ee08a"><span>3</span>Grip</button>
+          <button class="swatch" data-i="3" style="--c:#5a5a66"><span>4</span>Neutral</button>
         </div>
       </div>
       <div id="hud-top">
@@ -27,7 +31,7 @@ export class Hud {
       </div>
       <div id="controls">
         <b>WASD</b> move &nbsp; <b>Space</b> jump &nbsp; <b>Mouse</b> look &nbsp;
-        <b>Click</b> paint &nbsp; <b>1/2/3</b> colour &nbsp; <b>V</b> view &nbsp; <b>R</b> restart
+        <b>Click</b> paint &nbsp; <b>1/2/3/4</b> colour &nbsp;<span id="refill-warning"><b>F</b> refill ammo</span> &nbsp; <b>V</b> view &nbsp; <b>R</b> restart
       </div>
       <div id="click-prompt">Click to play</div>
     `;
@@ -37,6 +41,8 @@ export class Hud {
     this.standing = root.querySelector('#standing b');
     this.coverage = root.querySelector('#coverage');
     this.prompt = root.querySelector('#click-prompt');
+    this.refillWarning = root.querySelector('#refill-warning');
+    this.dryFire = root.querySelector('#dry-fire');
     this.swatches = [...root.querySelectorAll('.swatch')];
 
     this._coverageTimer = 0;
@@ -50,11 +56,19 @@ export class Hud {
   }
 
   update(dt, { gun, player, surfaces, locked }) {
-    const pct = gun.ammo / gun.maxAmmo;
-    this.ammoFill.style.width = `${pct * 100}%`;
-    this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;
-    this.ammoText.textContent = Math.floor(gun.ammo);
-
+    if (gun.colour === "grey"){
+      this.ammoFill.style.width = "100%";
+      this.ammoFill.style.background = `#${PAINT.grey.hex.toString(16).padStart(6, "0")}`;
+      this.ammoText.textContent = "∞";
+      this.refillWarning.classList.remove("critical");
+    } else {
+      const pct = gun.ammo[gun.colour] / gun.maxAmmo;
+      this.ammoFill.style.width = `${pct * 100}%`;
+      this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;
+      this.ammoText.textContent = Math.floor(gun.ammo[gun.colour]);
+      this.refillWarning.classList.toggle('critical', pct <= 0.25);
+    }
+  
     this.standing.textContent = PAINT[player.currentColour].name;
     this.standing.style.color = `#${PAINT[player.currentColour].hex.toString(16).padStart(6, '0')}`;
 
@@ -69,5 +83,6 @@ export class Hud {
       this._coverageValue = total;
       this.coverage.textContent = `Coverage: ${Math.round(total * 100)}%`;
     }
+    this.dryFire.style.display = gun.dryFire ? 'flex' : 'none';
   }
 }
