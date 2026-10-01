@@ -39,41 +39,22 @@ scene.add(new THREE.HemisphereLight(0x8899bb, 0x22222a, 0.5));
 let level = null;
 let player = null;
 let gun = null;
+const hud = new Hud(document.getElementById("hud"));
+hud.onColourClick((i) => gun && gun.selectColour(i));
+
 
 // Win / death overlays — inline here (decision #15), hidden until needed.
 // Placeholder until the win/lose screens (#21) land.
-function makeOverlay(title) {
-  const el = document.createElement("div");
-  el.style.cssText = [
-    "position: fixed; inset: 0; display: none;",
-    "align-items: center; justify-content: center;",
-    "background: rgba(15,15,22,.72); color: #e8e8ef;",
-    "font: 700 2rem/1.2 ui-sans-serif, system-ui, sans-serif;",
-    "text-align: center; z-index: 30; cursor: pointer;",
-  ].join(" ");
-  el.innerHTML = `<div>${title}<span style="display:block;font-size:.9rem;font-weight:600;opacity:.6;margin-top:.6rem">press R to redeploy</span></div>`;
-  el.addEventListener("click", () => {
-    el.style.display = "none";
-  });
-  document.body.appendChild(el);
-  return el;
-}
-const winOverlay = makeOverlay("EXTRACTED");
-const deathOverlay = makeOverlay("DOWN");
 
 // Levels read the scene and report a win back through this object.
 // `game` stays the integration point until core swaps in game.js.
 const game = {
   scene,
-  onWin: () => {
-    winOverlay.style.display = "flex";
-  },
+  onWin: () => hud.showEnd("win"),
 };
 
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
 const input = new Input(renderer.domElement);
-const hud = new Hud(document.getElementById("hud"));
-hud.onColourClick((i) => gun && gun.selectColour(i));
 
 function loadLevel() {
   if (level) {
@@ -82,17 +63,14 @@ function loadLevel() {
     player.dispose();
   }
 
-  winOverlay.style.display = "none";
-  deathOverlay.style.display = "none";
+  hud.hideEnd();
 
   level = new Level01(game);
   level.load(); // no awaits inside yet — main.js does not await it
   scene.add(level.root);
 
   player = new Player(level.surfaces, level.spawn);
-  player.onDeath = () => {
-    deathOverlay.style.display = "flex";
-  };
+  player.onDeath = () => hud.showEnd("lose");
   scene.add(player.mesh);
 
   gun = new PaintGun(level.surfaces, 1);
