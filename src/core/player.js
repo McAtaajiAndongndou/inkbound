@@ -55,7 +55,6 @@ export class Player {
     this.mesh.castShadow = true;
 
     // reused every frame — allocate nothing in the loop
-    this._probeRange = 6;       // how far below the probe origin we look for ground
     this._dirLocal = new THREE.Vector3();
     this._inv = new THREE.Matrix4();
     this._ground = { y: 0, surface: null, point: new THREE.Vector3() };
@@ -106,7 +105,7 @@ export class Player {
     }
   }
 
-  look(dx, dy, sensitivity = 0.0022) {
+  look(dx, dy, sensitivity = PLAYER.lookSensitivity) {
     if (this.dead) return;
     this.yaw -= dx * sensitivity;
     this.pitch -= dy * sensitivity;
@@ -125,10 +124,10 @@ export class Player {
    */
   _probeGround() {
     this._probe.copy(this.position);
-    this._probe.y += 0.5;
+    this._probe.y += PLAYER.groundProbeLift;
 
     let best = null;
-    let bestDist = this._probeRange;
+    let bestDist = PLAYER.groundProbeRange;
 
     for (const floor of this.floors) {
       // ray origin and direction (world 0,-1,0) in the floor's local space.
@@ -248,7 +247,7 @@ export class Player {
 
     // ---- climbing: touching a GREEN wall and pushing into it -------------
     const wall = this.touchingWall;
-    const pushingIntoWall = wall && this._wish.dot(wall.normal) < -0.25;
+    const pushingIntoWall = wall && this._wish.dot(wall.normal) < -PLAYER.climbPushThreshold;
     this.climbing = !!(wall && wall.rules.climbable && pushingIntoWall);
 
     if (this.climbing) {
@@ -258,18 +257,20 @@ export class Player {
     }
 
     // ---- horizontal acceleration + friction FROM THE PAINT ---------------
-    const accel = this.onGround ? PLAYER.accel : PLAYER.airAccel;
+    const accel = this.onGround
+      ? PLAYER.accel * (rules ? rules.traction : 1)
+      : PLAYER.airAccel;
     this.velocity.x += this._wish.x * accel * dt;
     this.velocity.z += this._wish.z * accel * dt;
 
     if (this.onGround && rules) {
-      // blue paint has friction 0.4 vs grey's 10.0 — that is the ice
+      // low friction (blue) is what makes ice — see SURFACE in config.js
       const damping = Math.max(0, 1 - rules.friction * dt);
       this.velocity.x *= damping;
       this.velocity.z *= damping;
     }
 
-    const speedCap = rules && rules.friction < 1 ? PLAYER.maxSpeed * 1.6 : PLAYER.maxSpeed;
+    const speedCap = PLAYER.maxSpeed * (rules ? rules.speedScale : 1);
     // not Math.hypot — V8 allocates on every hypot call
     const vx = this.velocity.x;
     const vz = this.velocity.z;
@@ -285,7 +286,7 @@ export class Player {
       this.onGround = false;
       if (this.climbing) {
         // hop off the wall so you land on the ledge instead of sticking
-        this.velocity.addScaledVector(wall.normal, 3.5);
+        this.velocity.addScaledVector(wall.normal, PLAYER.wallJumpPush);
       }
     }
 
@@ -297,7 +298,7 @@ export class Player {
 
     // ---- ground collision + BOUNCE FROM THE PAINT ------------------------
     this.onGround = false;
-    if (ground && this.position.y <= feetY + 0.02) {
+    if (ground && this.position.y <= feetY + PLAYER.groundSnap) {
       this.position.y = feetY;
 
       const impact = this.velocity.y;
@@ -308,14 +309,14 @@ export class Player {
         // does nothing, because a grounded player has ~zero fall speed.
         // do NOT set onGround, or friction would eat the bounce.
         this.velocity.y = Math.max(-impact * rules.restitution, PLAYER.minBounce);
-        this.position.y = feetY + 0.05;   // clear the surface so we do not re-hit
+        this.position.y = feetY + PLAYER.bounceClearance;   // clear the surface so we do not re-hit
       } else {
         this.velocity.y = 0;
         this.onGround = true;
       }
     }
 
-    if (this.position.y < -20) this.respawn();
+    if (this.position.y < PLAYER.killY) this.respawn();
 
     this.mesh.position.copy(this.position);
     this.mesh.position.y += PLAYER.height * 0.5;

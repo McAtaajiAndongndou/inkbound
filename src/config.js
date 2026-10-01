@@ -13,11 +13,16 @@ export const PAINT = {
 };
 
 // Colour -> physics. This object IS the game.
+//   friction    how fast ground speed bleeds away (per second)
+//   traction    multiplier on PLAYER.accel while standing here (low = can't turn)
+//   speedScale  multiplier on PLAYER.maxSpeed while standing here
+//   restitution > 0 makes the surface a trampoline (see PLAYER.minBounce)
+//   climbable   walls of this colour can be climbed
 export const SURFACE = {
-  grey: { friction: 10.0, restitution: 0.0, climbable: false },
-  blue: { friction: 0.4, restitution: 0.0, climbable: false }, // ice: barely slows you
-  red: { friction: 10.0, restitution: 0.9, climbable: false }, // bounce
-  green: { friction: 14.0, restitution: 0.0, climbable: true }, // grip + climb
+  grey: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: false },
+  blue: { friction: 0.4, traction: 0.5, speedScale: 1.6, restitution: 0.0, climbable: false }, // ice: slide, hard to steer
+  red: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.9, climbable: false }, // bounce
+  green: { friction: 14.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: true }, // grip + climb
 };
 
 export const PLAYER = {
@@ -29,8 +34,18 @@ export const PLAYER = {
   jumpSpeed: 8.5,
   gravity: -26,
   climbSpeed: 4.5,
+  climbPushThreshold: 0.25, // how directly you must push into a green wall to climb (0..1)
+  wallJumpPush: 3.5, // jumping off a climb pushes you this fast away from the wall
   eyeHeight: 1.5,
   minBounce: 15, // red is a trampoline: standing on it launches you (~4.3m)
+  lookSensitivity: 0.0022,
+  killY: -20, // fall below this and you respawn
+
+  // collision tolerances
+  groundProbeLift: 0.5, // ground probe starts this far above the feet
+  groundProbeRange: 6, // how far below that it looks for a floor
+  groundSnap: 0.02, // within this of the floor counts as landed
+  bounceClearance: 0.05, // lift off red by this so the bounce does not re-hit
 };
 
 // Player health. Enemies deal their ENEMY.*.contactDamage on touch.

@@ -45,3 +45,24 @@ test('config still exposes the numbers the level tuning depends on', () => {
   assert.equal(typeof PLAYER.gravity, 'number');
   assert.equal(typeof PAINT_GUN.radius, 'number');
 });
+
+test('every colour carries the same feel knobs, so the player never special-cases one', () => {
+  for (const [name, rules] of Object.entries(SURFACE)) {
+    for (const key of ['friction', 'traction', 'speedScale', 'restitution', 'climbable']) {
+      assert.ok(key in rules, `SURFACE.${name} is missing ${key}`);
+    }
+  }
+});
+
+test('the three colours feel distinct from grey', () => {
+  const { grey, blue, red, green } = SURFACE;
+  // blue: slides further, steers worse, goes faster
+  assert.ok(blue.friction < grey.friction);
+  assert.ok(blue.traction < grey.traction);
+  assert.ok(blue.speedScale > grey.speedScale);
+  // red: the only bouncy one
+  assert.ok(red.restitution > 0 && grey.restitution === 0);
+  // green: the only climbable one, and grippier than grey
+  assert.ok(green.climbable && !grey.climbable);
+  assert.ok(green.friction > grey.friction);
+});
