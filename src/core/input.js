@@ -4,6 +4,11 @@
  * Pointer lock gives us proper mouse look. Click the canvas to engage,
  * Escape to release.
  */
+
+// Every one-shot action and its "nothing pressed" value. The single list:
+// add a new action here and pending, reset and consumeActions() all get it.
+const NO_ACTIONS = { jump: false, toggleView: false, colour: null, restart: false, refill: false };
+
 export class Input {
   constructor(domElement) {
     this.dom = domElement;
@@ -13,7 +18,12 @@ export class Input {
     this.locked = false;
 
     // one-shot actions consumed by the game each frame
-    this.pending = { jump: false, toggleView: false, colour: null, restart: false, refill: false };
+    this.pending = { ...NO_ACTIONS };
+
+    // what consume*() hand out — reused every frame so input never allocates.
+    // Valid until the next call: read it, do not keep it.
+    this._actions = { ...NO_ACTIONS };
+    this._mouse = { x: 0, y: 0 };
 
     this._onKeyDown = (e) => {
       this.keys.add(e.code);
@@ -63,7 +73,9 @@ export class Input {
 
   /** Read and clear the mouse delta for this frame. */
   consumeMouse() {
-    const d = { x: this.mouseDelta.x, y: this.mouseDelta.y };
+    const d = this._mouse;
+    d.x = this.mouseDelta.x;
+    d.y = this.mouseDelta.y;
     this.mouseDelta.x = 0;
     this.mouseDelta.y = 0;
     return d;
@@ -71,13 +83,9 @@ export class Input {
 
   /** Read and clear one-shot actions. */
   consumeActions() {
-    const p = { ...this.pending };
-    this.pending.jump = false;
-    this.pending.toggleView = false;
-    this.pending.colour = null;
-    this.pending.restart = false;
-    this.pending.refill = false;
-    return p;
+    Object.assign(this._actions, this.pending);
+    Object.assign(this.pending, NO_ACTIONS);
+    return this._actions;
   }
 
   dispose() {
