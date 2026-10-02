@@ -73,7 +73,7 @@ function loadLevel() {
   player.onDeath = () => hud.showEnd("lose");
   scene.add(player.mesh);
 
-  gun = new PaintGun(level.surfaces, 1);
+  gun = new PaintGun(level.surfaces, 1, level.enemies);
 }
 
 loadLevel();

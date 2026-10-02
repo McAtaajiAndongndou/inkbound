@@ -39,9 +39,16 @@ const L1 = {
     green: { x: 0, y: 10.5, z: -19 },    // wall
   },
 
-  spawns: [                  // two Sprayer spawn points on the middle island (B)
-    { x: 4,  y: 0, z: 2 },
-    { x: -4, y: 0, z: -1 },
+  // DESIGN.md teaching beats, not just spawn points:
+  //   Charger  — island B. Charges at 5 m/s for 25 contact damage. The only
+  //              answer on the island is paint BLUE: it slides straight past
+  //              instead of steering. That same blue patch is the run-up for
+  //              Gap 2, so one decision pays off twice.
+  //   Sprayer  — island C. Slower (10 damage) pressure while you paint the red
+  //              pad that launches you to the platform.
+  spawns: [
+    { x: 4,  y: 0, z: 2,   type: 'charger' },
+    { x: -4, y: 0, z: -14, type: 'sprayer' },
   ],
 };
 
@@ -64,9 +71,9 @@ export class Level01 extends LevelBase {
   }
 
   update(dt, player) {
-    // Enemy API (constructor/update) is still being defined by Person D; the
-    // stub throws, so `enemies` is empty and this loop is a no-op until then.
-    for (const enemy of this.enemies) enemy.update(dt, player);
+    // Pass the position, not the player: Enemy.update does arithmetic on what
+    // it receives, and a Player object has no x/y/z.
+    for (const enemy of this.enemies) enemy.update(dt, player.position);
 
     // Extraction fires the win exactly once, guarded by `_complete`.
     if (!this._complete && this.extraction && this.extraction.containsPoint(player.position)) {
@@ -75,14 +82,24 @@ export class Level01 extends LevelBase {
     }
   }
 
-  /** Guarded on decision #7: the Enemy stub throws until Person D lands it. */
+  /**
+   * Attach enemies under `this.root`, not `game.scene`, so the base traverse
+   * in dispose() frees them along with everything else.
+   *
+   * Still guarded: a throw here would silently produce an empty `enemies`
+   * array, which looks exactly like "the enemies are just not there yet".
+   */
   _spawnEnemies() {
     try {
-      for (const point of this.spawnPoints) {
-        this.enemies.push(new Enemy({ position: point, config: ENEMY.sprayer }));
+      for (const { x, y, z, type } of L1.spawns) {
+        const config = ENEMY[type] ?? ENEMY.sprayer;
+        this.enemies.push(
+          new Enemy({ position: new THREE.Vector3(x, y, z), config, parent: this.root }),
+        );
       }
-    } catch {
-      this.enemies = [];  // stub present — level still loads and can be won
+    } catch (err) {
+      console.error('[Level01] enemy spawn failed, running without enemies:', err);
+      this.enemies = [];
     }
   }
 
