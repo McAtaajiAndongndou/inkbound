@@ -1,6 +1,6 @@
-import * as THREE from "three";
-import { ENEMY } from "../config.js";
-import { createToonMaterial, addOutline } from "./toon/toon-material.js";
+import * as THREE from 'three';
+import { ENEMY, PAINT_IDS } from '../config.js';
+import { createToonMaterial, addOutline } from './toon/toon-material.js';
 
 export class Enemy {
   constructor(scene, spawnPos = new THREE.Vector3(), type = "sprayer") {
@@ -12,6 +12,9 @@ export class Enemy {
     this.alive = true;
 
     this._toPlayer = new THREE.Vector3();
+    this._knockback = new THREE.Vector3();
+    this._pinnedTimer = 0;
+    this._slipTimer = 0;
 
     this.mesh = this._buildMesh();
     this.mesh.position.copy(spawnPos);
@@ -49,22 +52,62 @@ export class Enemy {
   update(dt, playerPos) {
     if (!this.alive) return;
 
+    if (this._pinnedTimer > 0) {
+      this._pinnedTimer -= dt;
+      return;
+    }
+
     this._toPlayer.copy(playerPos).sub(this.mesh.position);
     this._toPlayer.y = 0;
     const dist = this._toPlayer.length();
 
+    let speed = this.speed;
+    if (this._slipTimer > 0) {
+      this._slipTimer -= dt;
+      speed *= 0.3;
+    }
+
     if (dist > 0.001) {
       this._toPlayer.normalize();
-      this.mesh.position.addScaledVector(this._toPlayer, this.speed * dt);
+      this.mesh.position.addScaledVector(this._toPlayer, speed * dt);
       this.mesh.lookAt(
         this.mesh.position.x + this._toPlayer.x,
         this.mesh.position.y,
         this.mesh.position.z + this._toPlayer.z,
       );
     }
+
+    if (this._knockback.lengthSq() > 0.0001) {
+      this.mesh.position.addScaledVector(this._knockback, dt);
+      this._knockback.multiplyScalar(Math.max(0, 1 - dt * 6));
+    }
   }
 
-  takeColourHit(colour) {}
+  takeColourHit(colour, damage = 10, sourcePos = null) {
+    if (!this.alive) return;
+
+    this.hp -= damage;
+
+    if (colour === PAINT_IDS.blue) {
+      this._slipTimer = 1.5;
+    } else if (colour === PAINT_IDS.red) {
+      this._knockback.copy(this.mesh.position);
+      if (sourcePos) {
+        this._knockback.sub(sourcePos);
+      } else {
+        this._knockback.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+      }
+      this._knockback.y = 0;
+      this._knockback.normalize().multiplyScalar(6);
+    } else if (colour === PAINT_IDS.green) {
+      this._pinnedTimer = 1.5;
+    }
+
+    if (this.hp <= 0) {
+      this.alive = false;
+      this.dispose();
+    }
+  }
 
   dispose() {
     this.mesh.traverse((obj) => {
