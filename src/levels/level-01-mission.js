@@ -91,10 +91,19 @@ export class Level01 extends LevelBase {
    */
   _spawnEnemies() {
     try {
+      // Only walkable surfaces — the probe treats every entry as a floor to
+      // stand on, and a wall in that list would be a floor you stand on top of.
+      const floors = this.surfaces.filter((s) => s.isFloor);
+
       for (const { x, y, z, type } of L1.spawns) {
         const config = ENEMY[type] ?? ENEMY.sprayer;
         this.enemies.push(
-          new Enemy({ position: new THREE.Vector3(x, y, z), config, parent: this.root }),
+          new Enemy({
+            position: new THREE.Vector3(x, y, z),
+            config,
+            parent: this.root,
+            floors,
+          }),
         );
       }
     } catch (err) {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { Level01 } from '../src/levels/level-01-mission.js';
-import { ENEMY } from '../src/config.js';
+import { ENEMY, SURFACE } from '../src/config.js';
 
 function makeGame() {
   return { scene: new THREE.Scene(), onWin: null };
@@ -208,7 +208,12 @@ test('update() with a non-Vector3 leaves the enemy finite rather than NaN', asyn
   for (const axis of ['x', 'y', 'z']) {
     assert.ok(Number.isFinite(enemy.position[axis]), `position.${axis} went non-finite`);
   }
-  assert.deepEqual(enemy.position.toArray(), before.toArray());
+  // Tolerance, not exact equality: y is recomputed as `origin.y - dist`, so
+  // floating-point rounding leaves an ~1e-16 wobble that is not a regression.
+  for (const axis of ['x', 'y', 'z']) {
+    assert.ok(Math.abs(enemy.position[axis] - before[axis]) < 1e-9,
+      `position.${axis} drifted from ${before[axis]} to ${enemy.position[axis]}`);
+  }
 });
 
 test('update() with a real position moves the enemy toward the player', async () => {
@@ -221,6 +226,125 @@ test('update() with a real position moves the enemy toward the player', async ()
   assert.notDeepEqual(enemy.position.toArray(), before.toArray(),
     'a Vector3 argument must actually produce movement');
   assert.ok(enemy.position.z < before.z, 'the Sprayer on island C walks toward -z');
+});
+
+// --- ground probe: the fix for enemies gliding across the void ---------------
+
+test('an enemy stops at the island edge instead of walking into the gap', async () => {
+  const { level } = await buildLevel();
+  const charger = level.enemies[0];          // island B, zMin -4
+  const islandB = level.surfaces.find((s) => s.isFloor
+    && s.mesh.position.z < 0 && s.mesh.position.z > -5);
+
+  // Put it hard against the front lip of island B and aim it straight off the
+  // edge, at a player standing on island A across Gap 1.
+  charger.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z
+    + islandB.height / 2 - 0.3);
+
+  for (let i = 0; i < 600; i++) charger.update(1 / 60, new THREE.Vector3(0, 2, 13));
+
+  assert.ok(Number.isFinite(charger.position.y), 'never go NaN or fall');
+  assert.ok(charger.position.z <= islandB.mesh.position.z + islandB.height / 2 + 1e-6,
+    `charger walked off island B: z=${charger.position.z}`);
+
+  // and it must still be standing on something real
+  const ground = charger._probe.down(charger.position);
+  assert.ok(ground, 'charger should still be over a floor, not hanging in the air');
+});
+
+test('an enemy on a floor it has left stops moving rather than drifting', async () => {
+  const { level } = await buildLevel();
+  const enemy = level.enemies[0];
+
+  // Park it in the middle of Gap 1, where there is no floor at all.
+  enemy.position.set(0, 0, 6);
+  const before = enemy.position.clone();
+
+  for (let i = 0; i < 60; i++) enemy.update(1 / 60, new THREE.Vector3(0, 2, 13));
+
+  assert.ok(Math.abs(enemy.position.z - before.z) < 1e-9,
+    'no floor means no path, so it should hold position');
+});
+
+// --- the DESIGN.md Charger lesson: paint blue, it slides past ---------------
+
+test('paint rules reach the enemy: blue means less traction, more speed, less braking', async () => {
+  const { level } = await buildLevel();
+  const [charger] = level.enemies;
+
+  const blue = SURFACE.blue;
+  const grey = SURFACE.grey;
+
+  assert.ok(blue.traction < grey.traction, 'blue must weaken grip');
+  assert.ok(blue.friction < grey.friction, 'blue must weaken braking');
+  assert.ok(blue.speedScale > grey.speedScale, 'blue must raise the speed cap');
+});
+
+test('on grey a Charger keeps re-aiming at a sidestepping player', async () => {
+  const { level } = await buildLevel();
+  const [charger] = level.enemies;
+  const islandB = level.surfaces.find((s) => s.isFloor
+    && s.mesh.position.z < 0 && s.mesh.position.z > -5);
+
+  // Get it moving and committed on grey, then sidestep to +x.
+  charger.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 3);
+  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z));
+
+  const before = charger._vel.clone().setY(0).normalize();
+  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(4, islandB.mesh.position.y, islandB.mesh.position.z));
+  const after = charger._vel.clone().setY(0).normalize();
+
+  assert.ok(before.distanceTo(after) > 0.1,
+    'on grippy ground the Charger must visibly turn to follow a sidestep');
+});
+
+test('on blue a Charger commits to its heading and slides past a sidestep', async () => {
+  const { level } = await buildLevel();
+  const [charger] = level.enemies;
+  const islandB = level.surfaces.find((s) => s.isFloor
+    && s.mesh.position.z < 0 && s.mesh.position.z > -5);
+  const midZ = islandB.mesh.position.z;
+  const midY = islandB.mesh.position.y;
+
+  // Same setup as above: committed, moving, aimed down -z at the player.
+  charger.position.set(0, midY, midZ + 3);
+  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(0, midY, midZ));
+
+  const speedBefore = charger._vel.length();
+
+  // The player paints the floor under it, then sidesteps to +x.
+  islandB.splat(new THREE.Vector3(0, midY, midZ + 3), 'blue', 60);
+  const heading = charger._vel.clone().setY(0).normalize();
+  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(4, midY, midZ));
+  const drifted = charger._vel.clone().setY(0).normalize();
+
+  assert.ok(heading.distanceTo(drifted) < 1e-6,
+    `heading should be frozen on ice, but it swung to ${drifted.toArray()}`);
+  assert.ok(charger._vel.length() > speedBefore * 0.8,
+    `momentum should carry across the ice, speed fell ${speedBefore} -> ${charger._vel.length()}`);
+
+  // It carried on past where the player had been standing...
+  assert.ok(charger.position.z < midZ,
+    `charger should have slid past, ended at z=${charger.position.z} (player was at ${midZ})`);
+  // ...without taking the bait. It never turned toward the +x sidestep, which
+  // is the whole difference from the grey case above.
+  assert.ok(Math.abs(charger.position.x) < 0.01,
+    `charger should not have chased the sidestep, x=${charger.position.x}`);
+});
+
+test('the enemy reads the paint grid through the same API the player does', async () => {
+  const { level } = await buildLevel();
+  const [charger] = level.enemies;
+  const islandB = charger._probe.floors.find((s) => s.isFloor
+    && s.mesh.position.z < 0 && s.mesh.position.z > -5);
+
+  const spot = new THREE.Vector3(0, charger.position.y, charger.position.z);
+
+  assert.equal(charger._probe.down(spot).surface.surfaceAtWorld(spot), SURFACE.grey);
+
+  islandB.splat(spot, 'blue', 3);
+  assert.equal(charger._probe.down(spot).surface.surfaceAtWorld(spot), SURFACE.blue,
+    'painting the floor must change the rules the enemy reads');
 });
 
 test('win fires exactly once when the player enters the extraction volume', async () => {
