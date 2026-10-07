@@ -8,3 +8,5 @@ dist/
 
 # Local-only working plans and design decisions (not shipped, not shared)
 plans/
+
+AGENTS.md
