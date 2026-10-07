@@ -25,15 +25,15 @@ npm run serve:dist     # play the BUILD locally — do this before every push
 
 Click the canvas to lock the mouse, then:
 
-| Input | Action |
-|---|---|
-| **WASD** | Move |
-| **Mouse** | Look |
-| **Space** | Jump |
-| **Left click** | Fire paint |
-| **1 / 2 / 3** | Ice / Bounce / Grip |
-| **V** | Toggle third-person ↔ first-person |
-| **R** | Restart the level without refreshing the page |
+| Input          | Action                                        |
+| -------------- | --------------------------------------------- |
+| **WASD**       | Move                                          |
+| **Mouse**      | Look                                          |
+| **Space**      | Jump                                          |
+| **Left click** | Fire paint                                    |
+| **1 / 2 / 3**  | Ice / Bounce / Grip                           |
+| **V**          | Toggle third-person ↔ first-person            |
+| **R**          | Restart the level without refreshing the page |
 
 **Try this in order — it is the demo script for the alpha:**
 
@@ -82,7 +82,7 @@ That one texture is read by **two** things:
 - The **fragment shader**, to decide what colour to draw
 - The **player controller**, to decide friction, restitution and climbability
 
-So paint is not decoration sitting on top of the physics. Paint *is* the physics. Both sides read the same array.
+So paint is not decoration sitting on top of the physics. Paint _is_ the physics. Both sides read the same array.
 
 Because paint lives in a texture rather than in geometry, the entire floor is **one mesh, one material, one draw call** no matter how much you paint. That matters — we are marked on lab hardware, and lag is penalised under both Gameplay and Polish.
 
@@ -92,13 +92,13 @@ Because paint lives in a texture rather than in geometry, the entire floor is **
 
 ## Who owns what
 
-| Person | Folder | Owns the rubric answer for |
-|---|---|---|
-| 1 | `core/` | Viewing, Control & Playability |
-| 2 | `paint/` | The physics model and the core mechanic |
-| 3 | `shaders/` | Shaders (10%), part of 3D Effects. Also enemies. |
-| 4 | `levels/` | 3D Effects, level distinctness |
-| 5 | `ui/` | Polish, **the trailer** (10%), sound |
+| Person | Folder     | Owns the rubric answer for                       |
+| ------ | ---------- | ------------------------------------------------ |
+| 1      | `core/`    | Viewing, Control & Playability                   |
+| 2      | `paint/`   | The physics model and the core mechanic          |
+| 3      | `shaders/` | Shaders (10%), part of 3D Effects. Also enemies. |
+| 4      | `levels/`  | 3D Effects, level distinctness                   |
+| 5      | `ui/`      | Polish, **the trailer** (10%), sound             |
 
 **Shared files:** `main.js` and `config.js`. Say something in the group chat before editing either.
 
@@ -109,13 +109,16 @@ Because paint lives in a texture rather than in geometry, the entire floor is **
 ## Rules that are not optional
 
 **1. Relative paths, always.**
+
 ```js
-loader.load('./assets/models/enemy.glb')   // correct
-loader.load('/assets/models/enemy.glb')    // BREAKS ON THE SERVER
+loader.load("./assets/models/enemy.glb"); // correct
+loader.load("/assets/models/enemy.glb"); // BREAKS ON THE SERVER
 ```
+
 A leading `/` means root of the whole server. Our game lives in a subfolder — it will 404 and you get a blank screen.
 
 **2. Lowercase hyphenated filenames.** The server runs Linux and is case-sensitive. `Rock_Texture.PNG` and `rock-texture.png` are different files. Run once, on every machine:
+
 ```bash
 git config core.ignorecase false
 ```
@@ -142,7 +145,7 @@ git config core.ignorecase false
 ## Git
 
 - One branch per person: `feature/core`, `feature/paint`, `feature/shaders`, `feature/levels`, `feature/ui`
-- Merge to `main` via pull request, never push directly
+- Merge to `main` via pull request, never push diuectly
 - Before you push: `npm run build`, then `npm run serve:dist`, then actually play it
 
 ---
