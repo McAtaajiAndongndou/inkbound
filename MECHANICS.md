@@ -111,18 +111,53 @@ SkinnedMesh) with **one** model before downloading the rest.
 
 ---
 
-## Story
+## Story & lore
 
 > **One-liner (menu):** *The immortal stole the world's colour to buy their endless
 > lives. You have the last paint gun. Give it back.*
 
-- The super-rich cheat death with immortality pills fuelled by siphoning the
-  world's colour and joy.
-- Our futuristic paint gun puts colour back — starving "Corrupt Corp" of fuel.
-- **Zombies = failed immortality trials**, controlled by Corrupt Corp as base
-  foot soldiers. (They consume colour — which is exactly the Drainer behaviour.)
+**The world.** Earth, some decades from now. A corporation (working name **Corrupt
+Corp**) found the secret to immortality. The pills don't run on chemistry — they
+run on **colour**: vibrancy, warmth, joy, the thing that makes a forest green and
+a face human. Colour can be *siphoned*, and the Corp has been draining the planet
+to keep its founders breathing.
 
-**Delivery rule:** environmental + the one menu line. No text walls, no cutscenes.
+That is the whole reason the world is grey. It isn't a style choice first — it's
+the story made visible. Every drained thing is flat and monochrome; everything
+still holding colour blazes.
+
+**The player.** You carry one of the last **paint guns** — a future weapon that
+doesn't destroy, it *restores*. Colour you put back into the world can't be
+siphoned in time, so painting isn't just traversal: it starves the machine that
+keeps Corrupt Corp immortal. The enemy isn't a boss you shoot; it's a fuel supply
+you cut off.
+
+**Why the enemies are grey and why they fight you.** Corrupt Corp's forces are
+colourless for two different reasons. **Soldiers** (the charger and sprayer) are
+Corp enforcers — the immortals' private security, defending the fuel; they gave
+up, or were stripped of, their own colour in exchange for corporate service.
+**Zombies** are the **failed immortality trials**: people who took the pill and
+didn't survive the siphon, kept as disposable foot soldiers. Their bodies still
+*crave* colour — which is why they eat the ground you paint. Their hunger is the
+mechanic's lore: they are literally trying to take back what was meant to save
+them.
+
+**The boss.** "Big arm" is the prototype that worked *too well* — the first
+subject to hold stolen colour in a body. It can siphon on a scale, which is why
+it repaints the arena grey around you. The thesis statement: the thing that stole
+the world is made of the world.
+
+**Level arc.** The colour comes back as you push deeper:
+- **L1 — Mission.** Forest edge into a grey military base. Teaches that colour
+  changes physics.
+- **L2 — Ascent.** Upward through the Corp's infrastructure. Paint is scarce, so
+  every colour must do two jobs.
+- **L3 — Siege.** The horde and the source. Enemies eat your colour; the boss
+  takes the room back; the world you painted is your safety net.
+
+**Delivery rule:** environment first — drained grey against restored colour tells
+the story without a word. The menu one-liner is the only text. No cutscenes, no
+exposition walls.
 
 ---
 
@@ -134,7 +169,7 @@ SkinnedMesh) with **one** model before downloading the rest.
 |---|---|---|
 | **H0 — Feel (now)** | Game stops fighting the player | Coyote time + jump buffering, camera rig fix, L1 layout beats |
 | **H1 — Beta (graded)** | L1 complete start→finish, hosted | Grey-world aesthetic, 1–2 animated GLB models, ammo/reload, ADS, damage/death, restart, credits, **deployed early** |
-| **H2 — Final** | Full three-level experience | L2 + L3, loadout, paintstreaks (Tier 3), boss, minimap, trailer, sound |
+| **H2 — Final** | Full three-level experience | L2 + L3, paintstreaks (Tier 3), boss, minimap, trailer, sound |
 
 **Must exist for beta:** paint changes surface physics · one explainable custom
 shader · L1 playable end-to-end · hosted & playable from the server · restart
@@ -164,14 +199,41 @@ ramps already slide.
 
 ---
 
+## What each lane ships for beta
+
+Plain English, so everyone knows what "done" looks like for their lane this week.
+
+- **Renda — `levels/`.** The playground and the difficulty. You build the *space
+  the fight happens in*, then playtest until it's fun. This week: widen island B
+  so the Charger fight is winnable, make Platform 3 pressure the player, add the
+  encounter gate (a door that won't open until the room is clear), and confirm L1
+  plays start to finish without feeling unfair.
+- **Moses — `ui/`.** Everything the player reads, hears and clicks. You turn
+  invisible systems into feedback: hitmarkers ("that shot landed"), sounds for
+  shooting, painting, hits and telegraphs, the credits list, the menu — plus the
+  10% trailer. This week: hitmarker, SFX, credits, hosting decision, footage.
+- **Ozuko — `core/`.** How the character *feels* to control. You own the body and
+  the eyes. This week: jump fixes (coyote time = a few frames of grace after
+  walking off a ledge; jump buffering = remembering a press made just before
+  landing), the camera rig fix (it drifts, can look under the character and
+  doesn't face the movement direction), and ADS.
+- **Dikeledi — `paint/`.** The core mechanic itself. You own the paint: when it
+  lands, what it costs, and proving colour *changes physics*. Most of it is
+  built; this week is a regression pass showing blue/red/green each do their job
+  on the built build.
+- **Lethabo — `shaders/`.** The look and the enemies. You own "grey world becomes
+  colour" and enemy feedback. This week: the grey-world aesthetic pass (one flat
+  grey treatment so mixed asset families look deliberate), attack telegraphs
+  (a windup flash + sound *before* every attack), and shot-reaction visuals.
+
+---
+
 ## Open decisions (not settled yet)
 
-1. **Loadout.** `DESIGN.md` says pick 2 of 3 colours before a level; Renda argues
-   all three should always be available. Mechanics note: `DESIGN.md`'s L2
-   "green to climb *or* green to pin" tension is an **ammo** problem, not an
-   access problem. **Recommendation (pending team vote):** all 3 colours always,
-   scarcity via the tank, plus a light pre-level "starting ammo split" so the
-   replay/loadout claim and CoD flavour survive without softlock risk.
+1. **Loadout — settled (Oct 2026).** The player always has all 3 colours.
+   Scarcity comes from the per-colour ammo tank, not from gating access.
+   Loadouts are cut; replay variety comes from ammo economy and the three level
+   pressures.
 2. **Boss special attacks** — own design session.
 3. **L2/L3 build timing** — H2, unless the alpha mentor says otherwise.
 4. **Movement overhaul** — formally post-beta.
