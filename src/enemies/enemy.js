@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ENEMY, PAINT } from "../config.js";
+import { ENEMY, PAINT, PAINT_IDS } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline } from "../shaders/toon/toon-material.js";
 
@@ -46,15 +46,19 @@ export class Enemy {
     // `type` and `config` cannot be handed over disagreeing.
     this.type = Object.keys(ENEMY).find((key) => ENEMY[key] === config) ?? "sprayer";
     this.alive = true;
+    this.hp = config.hp;
 
     this._toPlayer = new THREE.Vector3();
     this._vel = new THREE.Vector3();      // own planar velocity — needed to slide
     this._desired = new THREE.Vector3();
     this._next = new THREE.Vector3();
+    this._knockback = new THREE.Vector3(); // red impulse; decays each frame
     this._tintTarget = new THREE.Color();
     this._tintBlend = new THREE.Color();
     this._baseColour = new THREE.Color(BASE_COLOUR);
     this._tintTimer = 0;
+    this._pinnedTimer = 0;                 // green: hard root (movement only)
+    this._slipTimer = 0;                   // blue: direct hit slow
 
     // Without floors we cannot tell ground from void, so the safe fallback is
     // to stand still rather than walk off the edge.
@@ -113,12 +117,27 @@ export class Enemy {
   update(dt, playerPos) {
     if (!this.alive || !this.config.canMove) return;
 
+    // Green pin: movement stops, threat does not (settled rule). The knockback
+    // from a red hit can still carry it while pinned, so apply that first.
+    if (this._pinnedTimer > 0) {
+      this._pinnedTimer -= dt;
+      this._applyKnockback(dt);
+      this._fadeTint(dt);
+      return;
+    }
+    if (this._slipTimer > 0) this._slipTimer -= dt;
+
     const ground = this._probe.down(this.position);
     if (!ground) {                    // over a gap: no pathfinding, so hold
+      this._applyKnockback(dt);
       this._fadeTint(dt);
       return;
     }
     const rules = ground.surface.surfaceAtWorld(ground.point);
+
+    // A direct blue hit slows even on grey ground; on blue ground the grid
+    // friction already handles the slide, so this stacks.
+    const speedMult = this._slipTimer > 0 ? 0.3 : 1;
 
     this._toPlayer.copy(playerPos).sub(this.position);
     this._toPlayer.y = 0;
@@ -144,12 +163,12 @@ export class Enemy {
         if (this._vel.lengthSq() < 1e-4) {
           this._vel
             .set(this._toPlayer.x * inv, 0, this._toPlayer.z * inv)
-            .multiplyScalar(this.config.speed * rules.speedScale);
+            .multiplyScalar(this.config.speed * rules.speedScale * speedMult);
         }
       } else {
         this._desired
           .set(this._toPlayer.x * inv, 0, this._toPlayer.z * inv)
-          .multiplyScalar(this.config.speed * rules.speedScale);
+          .multiplyScalar(this.config.speed * rules.speedScale * speedMult);
         this._vel.lerp(this._desired, Math.min(1, rules.traction));
       }
     }
@@ -190,22 +209,73 @@ export class Enemy {
       this._vel.set(0, 0, 0);   // refused: stop pushing into the void
     }
 
+    this._applyKnockback(dt);
     this._fadeTint(dt);
   }
 
   /**
-   * Paint hit. The gun already charges ammo and checks its own cooldown, so
-   * this only has to produce feedback — the body's toon `uColour` uniform,
-   * faded back to BASE_COLOUR over TINT_FADE seconds.
-   *
-   * Reuses every Color it touches: nothing is allocated per hit.
+   * Red hit impulse. Deliberately bypasses the ground probe: the point of
+   * knockback is to fling an enemy into walls or off a ledge, and refusing the
+   * step here would neuter the environmental kill the design asks for.
+   * No gravity yet (see README known gaps), so a flung enemy holds its height.
    */
-  takeColourHit(colourId) {
-    const name = ID_TO_NAME[colourId];
-    if (!name) return false;
+  _applyKnockback(dt) {
+    if (this._knockback.lengthSq() < 1e-6) return;
+    this.position.addScaledVector(this._knockback, dt);
+    this._knockback.multiplyScalar(Math.max(0, 1 - dt * 6));
+  }
 
+  /**
+   * Paint hit. Two jobs now, matching the "painted enemy = active round" rule:
+   *
+   *   1. Feedback — the body's toon `uColour` uniform tints, then fades back.
+   *   2. Reaction — blue slows, red knocks back, green pins, and enough
+   *      damage kills. This is colour-roles Tier 1 (see MECHANICS.md).
+   *
+   * The gun still charges ammo and checks its own cooldown, so nothing here
+   * touches ammo. Every Color is reused — nothing is allocated per hit.
+   *
+   * @param {number} colourId  PAINT_IDS value (1 blue, 2 red, 3 green)
+   * @param {number} damage    integer; defaults so a plain hit still hurts
+   * @param {THREE.Vector3|null} sourcePos  impact point, so red knocks away
+   *                                        from the shot rather than randomly
+   */
+  takeColourHit(colourId, damage = 10, sourcePos = null) {
+    if (!this.alive) return false;
+
+    const name = ID_TO_NAME[colourId];
+    if (!name || colourId === PAINT_IDS.grey) return false;
+
+    // Feedback first, so a killing hit still reads as coloured.
     this._tintTarget.setHex(PAINT[name].hex);
     this._tintTimer = TINT_FADE;
+
+    this.hp -= damage;
+
+    if (colourId === PAINT_IDS.blue) {
+      // Direct-hit slow; on blue floor the grid friction already slides it.
+      this._slipTimer = 1.5;
+    } else if (colourId === PAINT_IDS.red) {
+      this._knockback.copy(this.position);
+      if (sourcePos) {
+        this._knockback.sub(sourcePos);
+      } else {
+        this._knockback.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+      }
+      this._knockback.y = 0;
+      if (this._knockback.lengthSq() < 1e-6) this._knockback.set(0, 0, 1);
+      this._knockback.normalize().multiplyScalar(6);
+    } else if (colourId === PAINT_IDS.green) {
+      // Hard root: no buildup. Stops movement, not threat.
+      this._pinnedTimer = 1.5;
+      this._vel.set(0, 0, 0);
+    }
+
+    if (this.hp <= 0) {
+      this.alive = false;
+      this.dispose();
+    }
+
     return true;
   }
 
