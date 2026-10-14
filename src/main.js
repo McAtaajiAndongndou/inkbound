@@ -5,6 +5,7 @@ import { CameraRig } from "./core/camera-rig.js";
 import { PaintGun } from "./paint/paint-gun.js";
 import { Level01 } from "./levels/level-01-mission.js";
 import { Hud } from "./ui/hud.js";
+import { PaintGunModel } from "./paint/paint-gun-model.js";
 
 // ---------------------------------------------------------------------------
 // Renderer + scene
@@ -39,6 +40,7 @@ scene.add(new THREE.HemisphereLight(0x8899bb, 0x22222a, 0.5));
 let level = null;
 let player = null;
 let gun = null;
+let gunModel = null;
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
 
@@ -54,9 +56,14 @@ const game = {
 };
 
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
+scene.add(rig.camera);
 const input = new Input(renderer.domElement);
 
 function loadLevel() {
+  if (gunModel){
+    gunModel.dispose();
+    gunModel = null;
+  }
   if (level) {
     level.dispose(); // removes root from scene + frees every GPU resource
     scene.remove(player.mesh);
@@ -74,6 +81,7 @@ function loadLevel() {
   scene.add(player.mesh);
 
   gun = new PaintGun(level.surfaces, 1, level.enemies);
+  gunModel = new PaintGunModel(rig.camera, player);
 }
 
 loadLevel();
@@ -110,6 +118,10 @@ function animate() {
 
   rig.update(player);
   player.mesh.visible = !rig.firstPerson;
+
+  if (gunModel){
+    gunModel.update(rig.firstPerson);
+  }
 
   hud.update(dt, {
     gun,
