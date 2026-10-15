@@ -56,18 +56,17 @@ Two halves:
 
 ---
 
-## Decide these first
+## Decide these first — all four now settled
 
-These are open. They change the plan.
-
-| # | Question | Why it matters |
+| # | Question | Status |
 |---|---|---|
-| 1 | Is L1 forest only, or forest **then** a grey military base? | `MECHANICS.md:105` and `:151` say forest into a grey military base. Renda says forest only for now. |
-| 2 | **Who owns the GLB loader?** | `MECHANICS.md:196` gives the GLB/animation pipeline to **Lethabo**. But `src/levels/loader.js` says `OWNER: E (Levels)` and is still a stub that throws. Also PR **#51** (open) already has a loader + one Quaternius soldier. |
-| 3 | Who owns "grey world becomes colour"? | `MECHANICS.md:224` gives it to **Lethabo**. Issue **#41** is open for it and already lists `level-01-mission.js`. |
-| 4 | May the level set its own fog and dead-grey colour? | `main.js` and `config.js` are **shared files**. `MECHANICS.md:198` says say so in chat before editing. |
+| 1 | Is L1 forest only, or forest **then** a grey military base? | **Still open, and still a design question.** Beta ships forest only. |
+| 2 | **Who owns the GLB loader?** | **SETTLED.** `shaders/` owns it: the pipeline is `src/shaders/avatar.js` (characters) plus `game.loadGLB` in `main.js`, which is the one `GLTFLoader`. `src/levels/loader.js` was a stub that threw and was imported by NOTHING, so it is **deleted** — leaving it was an invitation to build the second loader this question existed to prevent. Levels do not import `GLTFLoader`; a level that wants a model takes the optional `game.loadGLB` and falls back to its own geometry when it is absent. |
+| 3 | Who owns "grey world becomes colour"? | **Settled in practice.** Lethabo shipped it as #41 (`f6f8755`, grey-world pass + toon colour fix). The forest's paint reaction is the L1 slice of it. |
+| 4 | May the level set its own fog and dead-grey colour? | **Yes, and it does** — `Level01._mood()`, `MOOD` at the top of `level-01-mission.js`. `main.js`'s app-wide `Fog(0x0f0f16, 45, 110)` is now the fallback, not the thing L1 uses. Edit `main.js`/`config.js` as normal; say so in chat. |
 
-Do not start step 4 or 5 until #2 is settled. Otherwise two people build one loader.
+The old warning — "do not start step 4 or 5 until #2 is settled" — is discharged: all
+five steps are built, and no second loader was written.
 
 ---
 
@@ -112,10 +111,12 @@ Fix is about 3 lines. That is Lethabo's file.
 | 1 | Mood: light + fog | levels (+ shaders for fog) | no | yes, small |
 | 2 | Fake trees from simple shapes | levels | no | no |
 | 3 | Trees react to paint | levels | no | no |
-| 4 | Loader + one real tree | **unresolved** | yes, 1 file | yes |
-| 5 | Many trees, still fast | levels + shaders | yes, full kit | yes |
+| 4 | Loader + one real tree | levels, via `game.loadGLB` | yes, 1 file | **no** — loader already existed |
+| 5 | Many trees, still fast | levels | yes, 2 packs | **no** — see below |
 
-Steps 1 to 3 need no downloads. Step 1 is the only one that could ship before beta.
+Steps 1 to 3 needed no downloads. All five are now built; step 4 did not need to
+touch `shaders/` after all, because `game.loadGLB` in `main.js` was already the
+single loader.
 
 ---
 
@@ -194,7 +195,8 @@ are lit from the same side.
 
 **Goal:** one real `.glb` tree in the level.
 
-**Where:** unresolved — see decision #2. Read PR **#51** before writing anything.
+**Where:** `src/levels/forest.js` `loadModels()`, called from `_forest()` with the
+`game.loadGLB` that `main.js` owns. No new loader was needed — see decision #2.
 
 **Do this:** load one tree, place it, replace one fake tree. Keep the fake trees.
 
@@ -216,7 +218,7 @@ are lit from the same side.
 
 **Goal:** a real forest without losing frame rate.
 
-**Where:** level file + possibly `shaders/` (Lethabo).
+**Where:** `src/levels/forest.js` — `_buildInstances()`. `shaders/` was not needed.
 
 **Do this:** download the Quaternius Stylized Nature MegaKit (CC0).
 Files go in `public/assets/`. Use `InstancedMesh`: one model, many copies, one draw call.
