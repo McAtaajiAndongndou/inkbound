@@ -11,6 +11,7 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
+import { preloadEnemyModel } from "./enemies/enemy.js";
 import { PLAYER } from "./config.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -114,8 +115,11 @@ function loadLevel() {
   gunModel = new PaintGunModel(rig.camera, player, avatar);
 }
 
-loadLevel();
-document.getElementById("loading").remove();
+preloadEnemyModel().then(() => {
+  loadLevel();
+  document.getElementById("loading").remove();
+  animate();
+});
 
 // Title + pause menu. Open whenever the pointer is unlocked (load, Escape).
 const menu = new Menu(document.body, {
@@ -212,7 +216,7 @@ function animate() {
   renderer.setScissorTest(false);
 }
 
-animate();
+
 
 window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
