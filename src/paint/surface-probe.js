@@ -47,7 +47,10 @@ export class SurfaceProbe {
     let best = null;
     let bestDist = PLAYER.groundProbeRange;
 
-    for (const floor of this.floors) {
+    // indexed loop: `for...of` over an array allocates an iterator object on
+    // every call until V8 optimises it away, and this runs per enemy per frame.
+    for (let i = 0; i < this.floors.length; i++) {
+      const floor = this.floors[i];
       // one matrix inverse per floor: the direction is just minus the
       // inverse's Y column, so no second worldToLocal is needed
       floor.mesh.updateWorldMatrix(true, false);

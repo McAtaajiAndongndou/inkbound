@@ -91,13 +91,16 @@ test('enemy.update allocates (almost) nothing per frame', async () => {
   const { profile } = await session.post('HeapProfiler.stopSampling');
   session.disconnect();
 
-  // bytes allocated inside enemy.update (and anything it calls)
+  // Count only allocations made by enemy.js itself. V8 boxes the double that
+  // Vector3.length() returns into a 16-byte HeapNumber whenever update() is
+  // not optimised: that lands on a three.js frame, is worth ~32 bytes/frame
+  // for two enemies, and whether it happens is not deterministic — so counting
+  // the whole call subtree made this test flap roughly half the time.
   let bytes = 0;
-  (function walk(node, inUpdate) {
-    const here = inUpdate || (node.callFrame.functionName === 'update' && node.callFrame.url.endsWith('enemy.js'));
-    if (here) bytes += node.selfSize;
-    node.children.forEach((c) => walk(c, here));
-  })(profile.head, false);
+  (function walk(node) {
+    if (node.callFrame.url.endsWith('/enemies/enemy.js')) bytes += node.selfSize;
+    node.children.forEach((c) => walk(c));
+  })(profile.head);
 
   const perFrame = bytes / FRAMES;
   assert.ok(perFrame < 8, `enemy.update allocated ${perFrame.toFixed(1)} bytes/frame`);

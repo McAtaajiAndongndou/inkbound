@@ -37,6 +37,9 @@ export class Player {
     this.touchingWall = null;   // { surface, point, normal, rules }
     this.currentColour = 'grey';
 
+    // Speed cap earned from paint, in m/s. See the cap block in update(). (#52)
+    this.speedCap = PLAYER.maxSpeed;
+
     // health — read by the HUD (health, maxHealth, dead)
     this.maxHealth = HEALTH.max;
     this.health = HEALTH.max;
@@ -263,21 +266,31 @@ export class Player {
     this.velocity.x += this._wish.x * accel * dt;
     this.velocity.z += this._wish.z * accel * dt;
 
-    if (this.onGround && rules) {
+    // a trampoline must not slow you down: red flings the speed you arrived with
+    if (this.onGround && rules && rules.restitution === 0) {
       // low friction (blue) is what makes ice — see SURFACE in config.js
       const damping = Math.max(0, 1 - rules.friction * dt);
       this.velocity.x *= damping;
       this.velocity.z *= damping;
     }
 
-    const speedCap = PLAYER.maxSpeed * (rules ? rules.speedScale : 1);
+    // ---- speed cap: momentum you keep, not the tile under you (#52) -------
+    // Surfaces grant a cap; the player keeps what it earned:
+    //   - over a void, keep the last surface's cap (blue survives the lip)
+    //   - a trampoline never lowers it (red flings the speed, not cancels it)
+    //   - landing on a normal surface re-grants its cap (grey = base)
+    const granted = PLAYER.maxSpeed * (rules ? rules.speedScale : 1);
+    const settled = rules && this.onGround && rules.restitution === 0;
+    if (settled) this.speedCap = granted;
+    else if (granted > this.speedCap) this.speedCap = granted;
+
     // not Math.hypot — V8 allocates on every hypot call
     const vx = this.velocity.x;
     const vz = this.velocity.z;
     const planar = Math.sqrt(vx * vx + vz * vz);
-    if (planar > speedCap) {
-      this.velocity.x *= speedCap / planar;
-      this.velocity.z *= speedCap / planar;
+    if (planar > this.speedCap) {
+      this.velocity.x *= this.speedCap / planar;
+      this.velocity.z *= this.speedCap / planar;
     }
 
     // ---- jump ------------------------------------------------------------
@@ -326,6 +339,7 @@ export class Player {
   respawn() {
     this.position.copy(this.spawn);
     this.velocity.set(0, 0, 0);
+    this.speedCap = PLAYER.maxSpeed;   // respawning earns nothing (#52)
   }
 
   dispose() {
