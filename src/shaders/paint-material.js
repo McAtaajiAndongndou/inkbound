@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { PAINT } from '../config.js';
+// Height fog lives in shaders/fog-height.js, shared with the toon and outline
+// materials so the maths is not written out three times.
+import { createFogHeightUniforms, FOG_HEIGHT_PARS, FOG_HEIGHT_FRAGMENT } from './fog-height.js';
 
 /**
  * ONE custom ShaderMaterial for every paintable surface.
@@ -23,6 +26,9 @@ import { PAINT } from '../config.js';
  */
 
 const vertexShader = /* glsl */ `
+  // declares the fog varying (vFogDepth) behind #ifdef USE_FOG
+  #include <fog_pars_vertex>
+
   varying vec2  vUv;
   varying vec3  vWorldPos;
   varying vec3  vNormal;
@@ -32,7 +38,14 @@ const vertexShader = /* glsl */ `
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPos = worldPos.xyz;
     vNormal   = normalize(mat3(modelMatrix) * normal);
-    gl_Position = projectionMatrix * viewMatrix * worldPos;
+
+    // fog measures distance in VIEW space, so the vertex shader has to keep
+    // a mvPosition around for <fog_vertex> to read. This is the one line that
+    // changes: viewMatrix * worldPos, then project that.
+    vec4 mvPosition = viewMatrix * worldPos;
+    gl_Position = projectionMatrix * mvPosition;
+
+    #include <fog_vertex>
   }
 `;
 
@@ -48,6 +61,11 @@ const fragmentShader = /* glsl */ `
   varying vec2 vUv;
   varying vec3 vWorldPos;
   varying vec3 vNormal;
+
+  // declares the fog uniforms + vFogDepth behind #ifdef USE_FOG
+  #include <fog_pars_fragment>
+  // adds uFogFloor / uFogCeil for the height term
+  ${FOG_HEIGHT_PARS}
 
   // read the paint id stored at a given cell
   float paintIdAt(vec2 uv) {
@@ -94,6 +112,18 @@ const fragmentShader = /* glsl */ `
     colour += vec3(edge) * (painted ? 0.35 : 0.12);      // bright wet rim
 
     gl_FragColor = vec4(colour, 1.0);
+
+    // linear -> output colour space, exactly as #41 did for the toon material.
+    // It is not just about matching the enemies: three.js feeds fogColor in
+    // OUTPUT space, so without this the fog below would mix an sRGB value into a
+    // still-linear one and the ground would fade toward the haze at a different
+    // rate than the enemies standing on it. Order matches three.js's own
+    // materials: colorspace_fragment, then fog_fragment.
+    #include <colorspace_fragment>
+
+    // must come last: it mixes gl_FragColor.rgb toward fogColor using
+    // vFogDepth and how high off the floor this pixel is
+    ${FOG_HEIGHT_FRAGMENT}
   }
 `;
 
@@ -111,22 +141,43 @@ export function createPaintMap(cols, rows) {
 }
 
 export function createPaintMaterial(paintMap) {
+  // Fog needs its own uniforms (fogColor / fogNear / fogFar / fogDensity) to
+  // exist ON the material, because three.js writes into them every frame from
+  // scene.fog (refreshFogUniforms). A missing one throws.
+  //
+  // Clone them rather than spreading THREE.UniformsLib.fog directly, so two
+  // surfaces never share one uniform object.
+  //
+  // DO NOT reach for UniformsUtils.merge() to fold our own uniforms in: it
+  // CLONES values, and cloning uPaintMap's texture would leave PaintSurface
+  // flipping needsUpdate on a texture the GPU is no longer reading. Paint
+  // would silently stop appearing. Add ours by hand instead.
+  const uniforms = THREE.UniformsUtils.clone(THREE.UniformsLib.fog);
+
+  uniforms.uPaintMap = { value: paintMap.texture };
+  uniforms.uGridSize = { value: new THREE.Vector2(paintMap.cols, paintMap.rows) };
+  uniforms.uColours  = {
+    value: [
+      new THREE.Color(PAINT.grey.hex),
+      new THREE.Color(PAINT.blue.hex),
+      new THREE.Color(PAINT.red.hex),
+      new THREE.Color(PAINT.green.hex),
+    ],
+  };
+  uniforms.uTime     = { value: 0 };
+  uniforms.uLightDir = { value: new THREE.Vector3(0.5, 1.0, 0.3).normalize() };
+
+  // Height fog uniforms. These are OURS, so they are not in UniformsLib.fog and
+  // have to be added by hand like the others above -- the same rule, for the
+  // same reason: they must exist on this material and must not be shared.
+  Object.assign(uniforms, createFogHeightUniforms());
+
   return new THREE.ShaderMaterial({
     vertexShader,
     fragmentShader,
-    uniforms: {
-      uPaintMap: { value: paintMap.texture },
-      uGridSize: { value: new THREE.Vector2(paintMap.cols, paintMap.rows) },
-      uColours: {
-        value: [
-          new THREE.Color(PAINT.grey.hex),
-          new THREE.Color(PAINT.blue.hex),
-          new THREE.Color(PAINT.red.hex),
-          new THREE.Color(PAINT.green.hex),
-        ],
-      },
-      uTime:     { value: 0 },
-      uLightDir: { value: new THREE.Vector3(0.5, 1.0, 0.3).normalize() },
-    },
+    // `fog: true` is what makes three.js define USE_FOG and feed the uniforms.
+    // Without it the #includes above compile to nothing and nothing changes.
+    fog: true,
+    uniforms,
   });
 }
