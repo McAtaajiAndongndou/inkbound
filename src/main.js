@@ -107,18 +107,19 @@ function animate() {
 
   if (actions.restart) loadLevel();
   if (actions.toggleView) rig.toggle();
+  rig.setAiming(input.aiming);
   if (actions.colour !== null) gun.selectColour(actions.colour);
   if (actions.refill) gun.refillAmmo();
 
   const mouse = input.consumeMouse();
-  player.look(mouse.x, mouse.y);
+  player.look(mouse.x, mouse.y, input.aiming);
   player.update(dt, input, actions);
 
   level.update(dt, player);
   player.checkEnemyContact(level.enemies);
 
   gun.update(dt);
-  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera)) {
+  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera, null, input.aiming)) {
     audio.play("fire");
     if (gun.lastShot === "splat") {
       audio.play("splat");
@@ -130,7 +131,7 @@ function animate() {
 
   for (const s of level.surfaces) s.update(elapsed);
 
-  rig.update(player);
+  rig.update(player,dt);
   player.mesh.visible = !rig.firstPerson;
 
   hud.update(dt, {

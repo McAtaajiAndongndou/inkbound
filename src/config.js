@@ -42,6 +42,8 @@ export const PLAYER = {
   minBounce: 15, // red is a trampoline: standing on it launches you (~4.3m)
   lookSensitivity: 0.0022,
   killY: -20, // fall below this and you respawn
+  adsSensitivityMultiplier: 0.6,
+  adsSpeedMultiplier: 0.5,
 
   // jump feel (#33)
   coyoteTime: 0.1,        // seconds after leaving a ledge you can still jump (~6 frames at 60fps)
@@ -62,6 +64,9 @@ export const CAMERA = {
   minHeightAboveFeet: 0.3, // camera never dips below player.position.y + this
   pitchMin: -0.6,          // how far down the camera can look (radians)
   pitchMax: 1.2,           // how far up
+  adsFov: 45,
+  normalFov: 70,
+  adsTransitionSpeed: 10,
 };
 
 // Player health. Enemies deal their ENEMY.*.contactDamage on touch.

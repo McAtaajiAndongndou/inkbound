@@ -9,7 +9,12 @@ import { PLAYER, CAMERA } from '../config.js';
  */
 export class CameraRig {
   constructor(aspect) {
-    this.camera = new THREE.PerspectiveCamera(70, aspect, 0.1, 400);
+    this.camera = new THREE.PerspectiveCamera(
+      CAMERA.normalFov,
+      aspect,
+      0.1,
+      400
+    );
 
     this.minimap = new THREE.OrthographicCamera(-22, 22, 22, -22, 0.1, 120);
     this.minimap.position.set(0, 60, 0);
@@ -17,6 +22,9 @@ export class CameraRig {
     this.minimap.rotation.z = 0;
 
     this.firstPerson = false;
+    this.freeFirstPerson = false;
+    this.aiming = false;
+
     this.distance = CAMERA.tpvDistance;
     this.shoulder = CAMERA.tpvShoulder;
 
@@ -25,10 +33,27 @@ export class CameraRig {
   }
 
   toggle() {
-    this.firstPerson = !this.firstPerson;
+    this.freeFirstPerson = !this.freeFirstPerson;
+    this.firstPerson = this.freeFirstPerson || this.aiming;
   }
 
-  update(player) {
+  setAiming(aiming){
+    this.aiming = aiming;
+    this.firstPerson = this.freeFirstPerson || this.aiming;
+  }
+
+  updateFov(dt){
+    const targetFov = this.aiming ? CAMERA.adsFov : CAMERA.normalFov;
+    
+    const change = Math.min(1,CAMERA.adsTransitionSpeed*dt);
+
+    this.camera.fov += (targetFov - this.camera.fov) * change;
+    this.camera.updateProjectionMatrix();
+  }
+
+  update(player, dt= 1/60) {
+    this.updateFov(dt);
+
     const { position, yaw, pitch } = player;
 
     if (this.firstPerson) {
