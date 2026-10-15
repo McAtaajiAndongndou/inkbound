@@ -608,6 +608,62 @@ test('a kind that fails to load leaves decor standing, not a hole (#57 step 4)',
 });
 
 /**
+ * THE ONE THAT COST A WHOLE DEBUGGING SESSION, pinned so it cannot come back.
+ *
+ * A custom ShaderMaterial does NOT get the instance transform for free. three.js
+ * applies `instanceMatrix` inside its own <project_vertex> chunk, behind
+ * `#ifdef USE_INSTANCING`. The toon shader builds its own mvPosition — it has to,
+ * so that <fog_vertex> gets view-space depth — and by replacing that chunk it
+ * silently lost the multiply.
+ *
+ * The failure mode is the worst kind: no error, no console warning, the draw
+ * call still issued and every triangle still counted by renderer.info. All 377
+ * decor instances simply rendered on top of each other at their mesh's origin,
+ * so a fully dressed level looked like one tree floating in an empty corridor.
+ *
+ * This is a SOURCE check rather than a render check, and that is a real
+ * limitation worth stating: `node --test` has no GL context, so the only thing
+ * verifiable here is that the shader contains the transform. It is still worth
+ * having, because the bug it catches is invisible to every other test in this
+ * suite — the CPU-side instance matrices were provably correct the whole time.
+ */
+test('every custom shader used on an instanced mesh applies the instance transform', async () => {
+  const level = await buildLevelWithModels();
+  let checked = 0;
+
+  for (const [kind, props] of Object.entries(level.decor)) {
+    for (const mesh of props.models.children) {
+      assert.ok(mesh.isInstancedMesh, `${kind}: model draw calls must be instanced`);
+      const source = mesh.material.vertexShader;
+
+      assert.match(source, /#ifdef USE_INSTANCING/,
+        `${kind}/${mesh.name}: shader never declares the instance branch, so every instance draws at the mesh origin`);
+      assert.match(source, /instanceMatrix \*/,
+        `${kind}/${mesh.name}: shader mentions instancing but never multiplies by instanceMatrix`);
+      assert.match(source, /modelViewMatrix \* localPosition/,
+        `${kind}/${mesh.name}: shader computes mvPosition from the untransformed position`);
+      checked += 1;
+    }
+  }
+
+  assert.ok(checked > 0, 'no instanced meshes to check — the models did not load');
+});
+
+test('the model geometry carries only the attributes the shader uses', async () => {
+  const level = await buildLevelWithModels();
+
+  for (const [kind, props] of Object.entries(level.decor)) {
+    for (const variant of props.variants) {
+      for (const part of [variant.base, variant.tint].filter(Boolean)) {
+        assert.deepEqual(Object.keys(part.attributes).sort(), ['normal', 'position'],
+          `${kind}: the bake should drop UVs and everything else the flat-toon shader ignores — `
+          + 'a matching attribute set is also what lets several primitives merge into one geometry');
+      }
+    }
+  }
+});
+
+/**
  * The "R race" from the plan: pressing R while the models are in flight rebuilds
  * the level, and the load then resolves against a level that no longer exists.
  * Attaching the result there puts props on screen that nothing will ever remove,
