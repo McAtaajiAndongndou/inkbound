@@ -8,6 +8,7 @@ import { Level01 } from "./levels/level-01-mission.js";
 import { Hud } from "./ui/hud.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
+import { preloadEnemyModel } from "./enemies/enemy.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -94,8 +95,11 @@ function loadLevel() {
   gun = new PaintGun(level.surfaces, 1, level.enemies);
 }
 
-loadLevel();
-document.getElementById("loading").remove();
+preloadEnemyModel().then(() => {
+  loadLevel();
+  document.getElementById("loading").remove();
+  animate();
+});
 
 const clock = new THREE.Clock();
 
@@ -164,7 +168,7 @@ function animate() {
   renderer.setScissorTest(false);
 }
 
-animate();
+
 
 window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
