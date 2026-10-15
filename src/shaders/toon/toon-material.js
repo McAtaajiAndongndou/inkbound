@@ -48,6 +48,12 @@ const toonFragmentShader = `
 
     gl_FragColor = vec4(uColour * band, 1.0);
 
+    // From #41: linear -> output colour space. This has to come BEFORE the fog,
+    // which is the order three.js's own materials use (colorspace_fragment,
+    // then fog_fragment). three.js feeds fogColor in OUTPUT space, so mixing it
+    // into a still-linear value would blend two different scales.
+    #include <colorspace_fragment>
+
     // last, so it fades what we already wrote
     ${FOG_HEIGHT_FRAGMENT}
   }
@@ -140,4 +146,10 @@ export function removeOutline(mesh) {
     outline.material.dispose();
     mesh.remove(outline);
   }
+}
+
+export const GREY_TOON = 0x94949c;
+
+export function createGreyToonMaterial() {
+  return createToonMaterial(GREY_TOON);
 }

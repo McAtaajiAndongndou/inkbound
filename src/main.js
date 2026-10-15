@@ -5,6 +5,8 @@ import { CameraRig } from "./core/camera-rig.js";
 import { PaintGun } from "./paint/paint-gun.js";
 import { Level01 } from "./levels/level-01-mission.js";
 import { Hud } from "./ui/hud.js";
+import { Menu } from "./ui/menu.js";
+import { audio } from "./audio/audio-manager.js";
 
 // ---------------------------------------------------------------------------
 // Renderer + scene
@@ -41,6 +43,12 @@ let player = null;
 let gun = null;
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
+new Menu(document.body, audio);
+
+// Browsers keep audio suspended until a user gesture. The first click (the
+// "Click to play" one) or keypress starts it; later calls are no-ops.
+window.addEventListener("pointerdown", () => audio.unlock());
+window.addEventListener("keydown", () => audio.unlock());
 
 
 // Win / death overlays — inline here (decision #15), hidden until needed.
@@ -50,7 +58,10 @@ hud.onColourClick((i) => gun && gun.selectColour(i));
 // `game` stays the integration point until core swaps in game.js.
 const game = {
   scene,
-  onWin: () => hud.showEnd("win"),
+  onWin: () => {
+    hud.showEnd("win");
+    audio.play("win");
+  },
 };
 
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
@@ -70,7 +81,10 @@ function loadLevel() {
   scene.add(level.root);
 
   player = new Player(level.surfaces, level.spawn);
-  player.onDeath = () => hud.showEnd("lose");
+  player.onDeath = () => {
+    hud.showEnd("lose");
+    audio.play("lose");
+  };
   scene.add(player.mesh);
 
   gun = new PaintGun(level.surfaces, 1, level.enemies);
@@ -104,7 +118,15 @@ function animate() {
   player.checkEnemyContact(level.enemies);
 
   gun.update(dt);
-  if (input.firing && input.locked && !player.dead) gun.tryFire(rig.camera);
+  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera)) {
+    audio.play("fire");
+    if (gun.lastShot === "splat") {
+      audio.play("splat");
+    } else {
+      audio.play(gun.lastShot); // "hit" or "kill"
+      hud.showHitmarker(gun.lastShot === "kill");
+    }
+  }
 
   for (const s of level.surfaces) s.update(elapsed);
 

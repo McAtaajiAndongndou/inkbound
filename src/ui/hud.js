@@ -17,6 +17,7 @@ export class Hud {
     this.root = root;
     root.innerHTML = `
       <div id="crosshair"></div>
+      <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
       <div id="hud-bottom">
         <div id="health-wrap" class="hidden">
           <div id="health-bar"><div id="health-fill"></div></div>
@@ -43,7 +44,7 @@ export class Hud {
       </div>
       <div id="controls">
         <b>WASD</b> move &nbsp; <b>Space</b> jump &nbsp; <b>Mouse</b> look &nbsp;
-        <b>Click</b> paint &nbsp; <b>1/2/3/4</b> colour &nbsp;<span id="refill-warning"><b>F</b> refill ammo</span> &nbsp; <b>V</b> view &nbsp; <b>R</b> restart
+        <b>Click</b> paint &nbsp; <b>1/2/3/4</b> colour &nbsp;<span id="refill-warning"><b>F</b> refill ammo</span> &nbsp; <b>V</b> view &nbsp; <b>R</b> restart &nbsp; <b>M</b> mute
       </div>
       <div id="click-prompt">Click to play</div>
       <div id="end-win" class="end hidden"><h1>EXTRACTED</h1><p>Press R to redeploy</p></div>
@@ -64,6 +65,7 @@ export class Hud {
     this.healthText = root.querySelector('#health-text');
     this.endWin = root.querySelector('#end-win');
     this.endLose = root.querySelector('#end-lose');
+    this.hitmarker = root.querySelector('#hitmarker');
 
     this._coverageTimer = 0;
     this._coverageValue = 0;
@@ -73,6 +75,18 @@ export class Hud {
     this.swatches.forEach((el) => {
       el.addEventListener('click', () => handler(Number(el.dataset.i)));
     });
+  }
+
+  /**
+   * Flash the hitmarker. The fade is a CSS animation, so nothing ticks per
+   * frame; dropping and re-adding the class restarts it on rapid hits.
+   */
+  showHitmarker(kill = false) {
+    const el = this.hitmarker;
+    el.classList.remove('show', 'kill');
+    void el.offsetWidth; // force a reflow so the animation restarts
+    el.classList.add('show');
+    el.classList.toggle('kill', kill);
   }
 
   showEnd(kind) {

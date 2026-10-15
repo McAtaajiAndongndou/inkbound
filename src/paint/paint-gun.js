@@ -26,7 +26,8 @@ export class PaintGun {
     };
 
     this.cooldown = 0;
-    this.lastSplat = null; // for the hit marker
+    this.lastSplat = null;
+    this.lastShot = null;  // 'splat' | 'hit' | 'kill' — what the last landed shot did (HUD + SFX)
     this.dryFire = false;
 
     this._raycaster = new THREE.Raycaster();
@@ -64,18 +65,26 @@ export class PaintGun {
     const hits = this._raycaster.intersectObjects(this._meshes, true);
     if (hits.length === 0) return false;
 
-    const hit = hits[0];
-
-    let enemy = hit.object;
-    while (enemy && !enemy.userData.enemy) {
-      enemy = enemy.parent;
+    // A killed enemy's mesh leaves the scene but the raycaster still hits it
+    // (it tests geometry, not scene membership). Look past dead enemies so
+    // they cannot soak up shots — and ammo — as invisible walls.
+    let hit = null;
+    let enemy = null;
+    for (const h of hits) {
+      let obj = h.object;
+      while (obj && !obj.userData.enemy) obj = obj.parent;
+      const e = obj?.userData.enemy ?? null;
+      if (e && !e.alive) continue;
+      hit = h;
+      enemy = e;
+      break;
     }
-
-    enemy = enemy?.userData.enemy;
+    if (!hit) return false;
 
     if (enemy && this.colour !== "grey") {
       const colourId = this.current + 1;
       enemy.takeColourHit(colourId, undefined, hit.point);
+      this.lastShot = enemy.alive ? 'hit' : 'kill';
 
       this.ammo[this.colour] -= PAINT_GUN.cost;
       this.cooldown = PAINT_GUN.fireDelay;
@@ -98,6 +107,7 @@ export class PaintGun {
       this.ammo[this.colour] -= PAINT_GUN.cost;
     }
     this.cooldown = PAINT_GUN.fireDelay;
+    this.lastShot = 'splat';
     this.lastSplat = { point: hit.point.clone(), colour: this.colour, age: 0 };
     return true;
   }

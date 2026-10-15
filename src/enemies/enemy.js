@@ -1,14 +1,14 @@
 import * as THREE from "three";
 import { ENEMY, PAINT, PAINT_IDS } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
-import { createToonMaterial, addOutline } from "../shaders/toon/toon-material.js";
+import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 
 // Paint ids are indices into the grid (see PAINT_IDS in config.js).
 const ID_TO_NAME = ["grey", "blue", "red", "green"];
 
 // The un-hit body colour. Kept as a constant so the tint fade has somewhere
 // to return to, and so _buildMesh and the fade can never disagree.
-const BASE_COLOUR = 0xe0703a;
+const BASE_COLOUR = GREY_TOON;
 
 // How long a colour hit stays fully saturated before fading back, in seconds.
 const TINT_FADE = 1.0;
