@@ -25,7 +25,8 @@ const toonFragmentShader = `
     else if (diffuse > 0.3) band = 0.6;
     else band = 0.35;
 
-    gl_FragColor = vec4(uColour * band, 1.0);
+    gl_FragColor = vec4(uColour * band, 1.0); 
+    #include <colorspace_fragment>
   }
 `;
 
@@ -83,4 +84,10 @@ export function removeOutline(mesh) {
     outline.material.dispose();
     mesh.remove(outline);
   }
+}
+
+export const GREY_TOON = 0x94949c;
+
+export function createGreyToonMaterial() {
+  return createToonMaterial(GREY_TOON);
 }
