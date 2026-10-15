@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { Input } from "./core/input.js";
 import { Player } from "./core/player.js";
+import { Avatar } from "./shaders/avatar.js";
 import { CameraRig } from "./core/camera-rig.js";
 import { PaintGun } from "./paint/paint-gun.js";
 import { Level01 } from "./levels/level-01-mission.js";
@@ -8,12 +9,9 @@ import { Hud } from "./ui/hud.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 
-// ---------------------------------------------------------------------------
-// Renderer + scene
-// ---------------------------------------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // cap for lab hardware
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setScissorTest(false);
@@ -23,7 +21,6 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0f0f16);
 scene.fog = new THREE.Fog(0x0f0f16, 45, 110);
 
-// lights: one directional caster, one ambient fill. Deliberate, not decorative.
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(18, 30, 12);
 sun.castShadow = true;
@@ -35,27 +32,18 @@ sun.shadow.camera.bottom = -30;
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x8899bb, 0x22222a, 0.5));
 
-// ---------------------------------------------------------------------------
-// Game state — everything here is torn down and rebuilt on restart
-// ---------------------------------------------------------------------------
 let level = null;
 let player = null;
 let gun = null;
+let avatar = null;
+const lastPos = new THREE.Vector3();
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
 new Menu(document.body, audio);
 
-// Browsers keep audio suspended until a user gesture. The first click (the
-// "Click to play" one) or keypress starts it; later calls are no-ops.
 window.addEventListener("pointerdown", () => audio.unlock());
 window.addEventListener("keydown", () => audio.unlock());
 
-
-// Win / death overlays — inline here (decision #15), hidden until needed.
-// Placeholder until the win/lose screens (#21) land.
-
-// Levels read the scene and report a win back through this object.
-// `game` stays the integration point until core swaps in game.js.
 const game = {
   scene,
   onWin: () => {
@@ -67,9 +55,17 @@ const game = {
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
 const input = new Input(renderer.domElement);
 
+function hidePlaceholder(p, a) {
+  if (p.mesh.material) p.mesh.material.visible = false;
+  for (const child of p.mesh.children) {
+    if (child !== a.root) child.visible = false;
+  }
+}
+
 function loadLevel() {
   if (level) {
-    level.dispose(); // removes root from scene + frees every GPU resource
+    if (avatar) avatar.dispose();
+    level.dispose();
     scene.remove(player.mesh);
     player.dispose();
   }
@@ -77,15 +73,23 @@ function loadLevel() {
   hud.hideEnd();
 
   level = new Level01(game);
-  level.load(); // no awaits inside yet — main.js does not await it
+  level.load();
   scene.add(level.root);
 
   player = new Player(level.surfaces, level.spawn);
+  scene.add(player.mesh);
+
+  const thisPlayer = player;
+  avatar = new Avatar(player.mesh, () => {
+    if (player === thisPlayer) hidePlaceholder(thisPlayer, avatar);
+  });
+  lastPos.copy(player.mesh.position);
+
   player.onDeath = () => {
+    avatar.die();
     hud.showEnd("lose");
     audio.play("lose");
   };
-  scene.add(player.mesh);
 
   gun = new PaintGun(level.surfaces, 1, level.enemies);
 }
@@ -93,15 +97,12 @@ function loadLevel() {
 loadLevel();
 document.getElementById("loading").remove();
 
-// ---------------------------------------------------------------------------
-// Loop
-// ---------------------------------------------------------------------------
 const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
 
-  const dt = Math.min(clock.getDelta(), 0.05); // clamp so a stall cannot teleport you
+  const dt = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.elapsedTime;
   const actions = input.consumeActions();
 
@@ -114,6 +115,14 @@ function animate() {
   player.look(mouse.x, mouse.y);
   player.update(dt, input, actions);
 
+  const p = player.mesh.position;
+  const dx = p.x - lastPos.x;
+  const dz = p.z - lastPos.z;
+  const speed = dt > 0 ? Math.hypot(dx, dz) / dt : 0;
+  lastPos.copy(p);
+  if (!player.dead) avatar.setMoving(speed > 0.5);
+  avatar.update(dt);
+
   level.update(dt, player);
   player.checkEnemyContact(level.enemies);
 
@@ -123,7 +132,7 @@ function animate() {
     if (gun.lastShot === "splat") {
       audio.play("splat");
     } else {
-      audio.play(gun.lastShot); // "hit" or "kill"
+      audio.play(gun.lastShot);
       hud.showHitmarker(gun.lastShot === "kill");
     }
   }
@@ -140,43 +149,19 @@ function animate() {
     locked: input.locked,
   });
 
-  // --- main view ---
   const w = window.innerWidth;
   const h = window.innerHeight;
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, w, h);
   renderer.render(scene, rig.camera);
 
-  // --- minimap, bottom-right, orthographic (Viewing rubric) ---
-  // Two things have to come off for this pass, and both were needed:
-  //
-  //   1. scene.fog. Fog is scaled for the player's camera, which sits ~6 units
-  //      off the ground, but the minimap camera sits 60 units up -- well past
-  //      fogFar -- so every surface would render 100% fogged.
-  //   2. level.atmosphere. That is the level's "air": the sky dome and the mist
-  //      sheets. Those are real geometry, so turning fog off does not touch
-  //      them; without this the mist sheets draw as a grey wash over the map.
-  //
-  // Restored afterwards rather than rebuilt: the level owns both.
-  //
-  // Deliberate tradeoff on the fog toggle: it flips the USE_FOG define, so
-  // three.js switches to the fog-free variant of each program. Programs are
-  // cached after the first two frames, so this is a per-frame program switch,
-  // not a per-frame recompile. If the minimap ever grows expensive, the clean
-  // fix is a separate scene for it — not worth it at beta.
   const size = Math.round(Math.min(w, h) * 0.2);
   const pad = 16;
-  const fog = scene.fog;
-  const atmosphere = level.atmosphere;
-  scene.fog = null;
-  if (atmosphere) atmosphere.visible = false;
   renderer.setScissorTest(true);
   renderer.setViewport(w - size - pad, h - size - pad, size, size);
   renderer.setScissor(w - size - pad, h - size - pad, size, size);
   renderer.render(scene, rig.minimap);
   renderer.setScissorTest(false);
-  scene.fog = fog;
-  if (atmosphere) atmosphere.visible = true;
 }
 
 animate();
