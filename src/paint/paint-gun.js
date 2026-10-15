@@ -13,24 +13,24 @@ const BURST_PARTICLE_COUNT = 8;
 const BURST_PARTICLE_SPEED = 5;
 const BURST_PARTICLE_LIFETIME = 0.45;
 
+// Pools are sized for the worst case with headroom: at most ~0.5 s of flight
+// (range 30 / speed 60) and ~0.45 s of burst, at one shot per fireDelay.
+const PROJECTILE_POOL = 16;
+const BURST_POOL = BURST_PARTICLE_COUNT * 8;
+
+/**
+ * Fires paint. Raycasts from the camera, then sends a visible projectile to
+ * the hit point; the splat / enemy hit happens when it lands.
+ *
+ * Nothing is allocated per shot (the brief: "create nothing per frame").
+ * Projectile and burst meshes come from fixed pools built once here, each
+ * burst particle owning its material so it can fade on its own.
+ */
 export class PaintGun {
   constructor(surfaces, level = 1, enemies = [], scene = null) {
     this.surfaces = surfaces;
     this.enemies = enemies;
     this.scene = scene;
-    this.projectiles = [];
-    this.burstParticles = [];
-
-    this._burstGeometry = new THREE.SphereGeometry(0.04, 6, 6);
-    this._burstMaterials = {};
-
-    for (const [name, hex] of Object.entries(PROJECTILE_COLOURS)) {
-      this._burstMaterials[name] = new THREE.MeshBasicMaterial({
-        color: hex,
-        transparent: true,
-        opacity: 1,
-      });
-    }
 
     this.colours = ["blue", "red", "green", "grey"];
     this.current = 0;
@@ -45,9 +45,9 @@ export class PaintGun {
     };
 
     this.cooldown = 0;
-    this.lastSplat = null;
-    this.lastShot = null;  // 'splat' | 'hit' | 'kill' — set when the projectile lands
-    this.onImpact = null;  // optional (kind) => {}, fired when a shot lands (HUD + SFX)
+    this.lastSplat = null;  // { point, colour, age } of the latest splat, reused
+    this.lastShot = null;   // 'splat' | 'hit' | 'kill' — set when the projectile lands
+    this.onImpact = null;   // optional (kind) => {}, fired when a shot lands (HUD + SFX)
     this.dryFire = false;
 
     this._raycaster = new THREE.Raycaster();
@@ -56,14 +56,50 @@ export class PaintGun {
       ...enemies.map((enemy) => enemy.mesh).filter(Boolean),
     ];
 
+    // reused every shot
+    this._dir = new THREE.Vector3();
+    this._shotNdc = new THREE.Vector2();
+    this._start = new THREE.Vector3();
+
+    // --- projectile pool: shared geometry, one material per colour ---------
     this._geometry = new THREE.SphereGeometry(0.07, 8, 8);
     this._materials = {};
-
     for (const [name, hex] of Object.entries(PROJECTILE_COLOURS)) {
       this._materials[name] = new THREE.MeshBasicMaterial({ color: hex });
     }
+    this._projectiles = [];
+    for (let i = 0; i < PROJECTILE_POOL; i++) {
+      const mesh = new THREE.Mesh(this._geometry, this._materials.blue);
+      mesh.scale.set(1, 1, 3);
+      mesh.visible = false;
+      this.scene?.add(mesh);
+      this._projectiles.push({
+        mesh,
+        active: false,
+        target: new THREE.Vector3(),
+        normal: new THREE.Vector3(),
+        colour: "blue",
+        colourId: 1,
+        enemy: null,
+        surface: null,
+        miss: false,
+      });
+    }
+    this._nextProjectile = 0;
 
-    this._dir = new THREE.Vector3();
+    // --- burst pool: shared geometry, a material per particle (own opacity) --
+    this._burstGeometry = new THREE.SphereGeometry(0.04, 6, 6);
+    this._bursts = [];
+    for (let i = 0; i < BURST_POOL; i++) {
+      const mesh = new THREE.Mesh(
+        this._burstGeometry,
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 1 }),
+      );
+      mesh.visible = false;
+      this.scene?.add(mesh);
+      this._bursts.push({ mesh, direction: new THREE.Vector3(), age: 0, active: false });
+    }
+    this._nextBurst = 0;
   }
 
   get colour() {
@@ -92,33 +128,35 @@ export class PaintGun {
     this.lastShot = null;
 
     const spread = aiming ? PAINT_GUN.adsSpread : PAINT_GUN.hipSpread;
-
-    const shotPosition = new THREE.Vector2(
+    this._shotNdc.set(
       (Math.random() * 2 - 1) * spread,
-      (Math.random() * 2 - 1) * spread
+      (Math.random() * 2 - 1) * spread,
     );
 
-    this._raycaster.setFromCamera(shotPosition, camera);
+    this._raycaster.setFromCamera(this._shotNdc, camera);
     this._raycaster.far = PAINT_GUN.range;
 
     const hits = this._raycaster.intersectObjects(this._meshes, true);
 
     if (hits.length === 0) {
-      const start = new THREE.Vector3();
-      camera.getWorldPosition(start);
-
-      const direction = this._raycaster.ray.direction.clone();
-      const target = start.addScaledVector(direction, PAINT_GUN.range);
+      // A miss still flies, to max range, and lands on nothing.
+      camera.getWorldPosition(this._start);
+      this._start.addScaledVector(this._raycaster.ray.direction, PAINT_GUN.range);
 
       if (this.colour !== "grey") {
         this.ammo[this.colour] -= PAINT_GUN.cost;
       }
 
       this.cooldown = PAINT_GUN.fireDelay;
-      this._spawnProjectile(camera, muzzle, target, this.colour, () => {});
+      const p = this._takeProjectile();
+      p.miss = true;
+      this._launch(p, camera, muzzle, this._start, this.colour);
       return true;
     }
 
+    // A killed enemy's mesh leaves the scene but the raycaster still hits it
+    // (it tests geometry, not scene membership). Look past dead enemies so
+    // they cannot soak up shots — and ammo — as invisible walls.
     let hit = null;
     let enemy = null;
 
@@ -156,91 +194,114 @@ export class PaintGun {
       if (!surface) return false;
     }
 
-    const colour = this.colour;
-    const colourId = this.current + 1;
-    const point = hit.point.clone();
-
-    const normal = hit.face
-      ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld)
-      : new THREE.Vector3(0, 1, 0);
-
-    if (colour !== "grey") {
-      this.ammo[colour] -= PAINT_GUN.cost;
+    if (this.colour !== "grey") {
+      this.ammo[this.colour] -= PAINT_GUN.cost;
     }
 
     this.cooldown = PAINT_GUN.fireDelay;
 
-    const onImpact = () => {
-      this._spawnImpactBurst(point, colour, normal);
-
-      // What THIS shot did — not this.lastShot, which a later shot may have
-      // reset while the projectile was in flight.
-      let kind = null;
-      if (enemy) {
-        enemy.takeColourHit(colourId, undefined, point);
-        kind = enemy.alive ? "hit" : "kill";
-      } else if (surface.splat(point, colour, PAINT_GUN.radius)) {
-        this.lastSplat = { point: point.clone(), colour, age: 0 };
-        kind = "splat";
-      }
-      if (kind) {
-        this.lastShot = kind;
-        this.onImpact?.(kind);
-      }
-    };
-
-    this._spawnProjectile(camera, muzzle, point, colour, onImpact);
+    const p = this._takeProjectile();
+    p.miss = false;
+    p.enemy = enemy;
+    p.surface = surface;
+    p.colourId = this.current + 1;
+    if (hit.face) {
+      p.normal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
+    } else {
+      p.normal.set(0, 1, 0);
+    }
+    this._launch(p, camera, muzzle, hit.point, this.colour);
     return true;
   }
 
-  _spawnProjectile(camera, muzzle, target, colour, onImpact) {
+  /**
+   * Next pool slot, round-robin. The pool is sized so a slot is free by the
+   * time it comes round again; if one is somehow still in flight, it lands
+   * now rather than being silently dropped.
+   */
+  _takeProjectile() {
+    const p = this._projectiles[this._nextProjectile];
+    this._nextProjectile = (this._nextProjectile + 1) % this._projectiles.length;
+    if (p.active) this._land(p);
+    return p;
+  }
+
+  _launch(p, camera, muzzle, target, colour) {
+    p.target.copy(target);
+    p.colour = colour;
+
+    // No scene (tests, or a gun built without one): land straight away.
     if (!this.scene) {
-      onImpact();
+      this._land(p);
       return;
     }
 
-    const mesh = new THREE.Mesh(this._geometry, this._materials[colour]);
-
+    const mesh = p.mesh;
+    mesh.material = this._materials[colour];
     if (muzzle) {
       mesh.position.copy(muzzle);
     } else {
       camera.getWorldPosition(mesh.position);
     }
+    mesh.lookAt(p.target);
+    mesh.visible = true;
+    p.active = true;
+  }
 
-    mesh.lookAt(target);
-    mesh.scale.set(1, 1, 3);
+  /** The projectile arrived: splat or hit, then report what THIS shot did. */
+  _land(p) {
+    p.active = false;
+    p.mesh.visible = false;
+    if (p.miss) return;
 
-    this.scene.add(mesh);
-    this.projectiles.push({
-      mesh,
-      target: target.clone(),
-      onImpact,
-    });
+    this._spawnImpactBurst(p.target, p.colour, p.normal);
+
+    let kind = null;
+    if (p.enemy) {
+      // false if an earlier shot killed it while this one was in flight
+      if (p.enemy.takeColourHit(p.colourId, undefined, p.target)) {
+        kind = p.enemy.alive ? "hit" : "kill";
+      }
+    } else if (p.surface.splat(p.target, p.colour, PAINT_GUN.radius)) {
+      if (!this.lastSplat) this.lastSplat = { point: new THREE.Vector3(), colour: p.colour, age: 0 };
+      this.lastSplat.point.copy(p.target);
+      this.lastSplat.colour = p.colour;
+      this.lastSplat.age = 0;
+      kind = "splat";
+    }
+    p.enemy = null;
+    p.surface = null;
+
+    if (kind) {
+      this.lastShot = kind;
+      this.onImpact?.(kind);
+    }
   }
 
   _spawnImpactBurst(point, colour, normal) {
     if (!this.scene) return;
 
     for (let i = 0; i < BURST_PARTICLE_COUNT; i++) {
-      const mesh = new THREE.Mesh(
-        this._burstGeometry,
-        this._burstMaterials[colour].clone()
-      );
+      const b = this._bursts[this._nextBurst];
+      this._nextBurst = (this._nextBurst + 1) % this._bursts.length;
 
-      mesh.position.copy(point);
+      b.mesh.material.color.setHex(PROJECTILE_COLOURS[colour]);
+      b.mesh.material.opacity = 1;
+      b.mesh.position.copy(point);
+      b.mesh.visible = true;
 
-      const direction = new THREE.Vector3(
+      b.direction.set(
         Math.random() * 2 - 1,
         Math.random() * 2 - 1,
-        Math.random() * 2 - 1
+        Math.random() * 2 - 1,
       ).normalize();
 
-      if (direction.dot(normal) < 0) {
-        direction.reflect(normal);
+      if (b.direction.dot(normal) < 0) {
+        b.direction.reflect(normal);
       }
 
-      this.scene.add(mesh);
-      this.burstParticles.push({ mesh, direction, age: 0 });
+      b.age = 0;
+      b.active = true;
     }
   }
 
@@ -255,57 +316,47 @@ export class PaintGun {
 
     this.dryFire = false;
 
-    for (let i = this.projectiles.length - 1; i >= 0; i--) {
-      const p = this.projectiles[i];
+    const step = PROJECTILE_SPEED * dt;
+    for (const p of this._projectiles) {
+      if (!p.active) continue;
       const dir = this._dir.subVectors(p.target, p.mesh.position);
       const dist = dir.length();
-      const step = PROJECTILE_SPEED * dt;
 
       if (dist <= step) {
-        this.scene?.remove(p.mesh);
-        this.projectiles.splice(i, 1);
-        p.onImpact();
+        this._land(p);
       } else {
         p.mesh.position.addScaledVector(dir, step / dist);
       }
     }
 
-    for (let i = this.burstParticles.length - 1; i >= 0; i--) {
-      const p = this.burstParticles[i];
+    for (const b of this._bursts) {
+      if (!b.active) continue;
 
-      p.age += dt;
-      p.mesh.position.addScaledVector(p.direction, BURST_PARTICLE_SPEED * dt);
+      b.age += dt;
+      b.mesh.position.addScaledVector(b.direction, BURST_PARTICLE_SPEED * dt);
+      b.mesh.material.opacity = Math.max(0, 1 - b.age / BURST_PARTICLE_LIFETIME);
 
-      const progress = p.age / BURST_PARTICLE_LIFETIME;
-      p.mesh.material.opacity = 1 - progress;
-
-      if (p.age >= BURST_PARTICLE_LIFETIME) {
-        this.scene?.remove(p.mesh);
-        p.mesh.material.dispose();
-        this.burstParticles.splice(i, 1);
+      if (b.age >= BURST_PARTICLE_LIFETIME) {
+        b.active = false;
+        b.mesh.visible = false;
       }
     }
   }
 
   dispose() {
-    for (const p of this.projectiles) {
+    for (const p of this._projectiles) {
       this.scene?.remove(p.mesh);
     }
 
-    for (const p of this.burstParticles) {
-      this.scene?.remove(p.mesh);
-      p.mesh.material.dispose();
+    for (const b of this._bursts) {
+      this.scene?.remove(b.mesh);
+      b.mesh.material.dispose();
     }
 
-    this.projectiles.length = 0;
-    this.burstParticles.length = 0;
+    this._projectiles.length = 0;
+    this._bursts.length = 0;
 
     this._burstGeometry.dispose();
-
-    for (const material of Object.values(this._burstMaterials)) {
-      material.dispose();
-    }
-
     this._geometry.dispose();
 
     for (const material of Object.values(this._materials)) {
