@@ -52,7 +52,7 @@ export class PaintGunModel {
 
                 this.thirdPersonGun = model.clone(true);
                 this.thirdPersonGun.scale.setScalar(0.3);
-                this.thirdPersonGun.position.set(0.6,0.2,-0.4);
+                this.thirdPersonGun.position.set(1.0,0.2,-0.4);
                 this.thirdPersonGun.visible  = false;
                 this.player.mesh.add(this.thirdPersonGun);
 

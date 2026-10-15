@@ -18,7 +18,7 @@ export class CameraRig {
 
     this.firstPerson = false;
     this.distance = 6.5;
-    this.shoulder = 0.9;
+    this.shoulder = 1.2;
 
     this._offset = new THREE.Vector3();
     this._target = new THREE.Vector3();
@@ -47,9 +47,9 @@ export class CameraRig {
     }
 
     this._target.set(
-      position.x - Math.sin(yaw) * 10,
-      position.y + PLAYER.eyeHeight + Math.tan(pitch) * 10,
-      position.z - Math.cos(yaw) * 10,
+      position.x - Math.sin(yaw) * 12,
+      position.y + PLAYER.eyeHeight + Math.tan(pitch) * 12,
+      position.z - Math.cos(yaw) * 12,
     );
     this.camera.lookAt(this._target);
 
