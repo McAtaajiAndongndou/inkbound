@@ -63,17 +63,17 @@ test('the per-frame contact objects are reused, not re-created', async () => {
 
   // walk into the wall twice
   const wall = level.surfaces.find((s) => !s.isFloor);
-  player.position.set(0, 4, -18.7);
+  player.position.set(0, 4, -23.7);
   player.update(1 / 60, input, actions);
   const first = player.touchingWall;
-  player.position.set(0, 4, -18.7);
+  player.position.set(0, 4, -23.7);
   player.update(1 / 60, input, actions);
   assert.ok(first, 'expected to be touching the wall');
   assert.equal(player.touchingWall, first, 'wall contact should be the same object each frame');
   assert.equal(player.touchingWall.surface, wall);
 
-  const cell1 = wall.worldToCell(new THREE.Vector3(0, 6, -19));
-  const cell2 = wall.worldToCell(new THREE.Vector3(1, 6, -19));
+  const cell1 = wall.worldToCell(new THREE.Vector3(0, 6, -24));
+  const cell2 = wall.worldToCell(new THREE.Vector3(1, 6, -24));
   assert.equal(cell1, cell2, 'worldToCell should reuse its result object');
 });
 
@@ -81,12 +81,12 @@ test('player.update allocates (almost) nothing per frame', async () => {
   const { level, player } = await setup();
   const input = { isDown: (c) => c === 'KeyW' };
   const actions = { jump: false, toggleView: false, colour: null, restart: false };
-  level.surfaces.find((s) => !s.isFloor).splat(new THREE.Vector3(0, 6.5, -19), 'green', 50);
+  level.surfaces.find((s) => !s.isFloor).splat(new THREE.Vector3(0, 6.5, -24), 'green', 50);
 
   const run = (n) => {
     for (let i = 0; i < n; i++) {
       // alternate between open floor and pressed against the green wall
-      if (i % 500 === 0) player.position.set(0, 0, i % 1000 === 0 ? 13 : -18.5);
+      if (i % 500 === 0) player.position.set(0, 0, i % 1000 === 0 ? 13 : -23.5);
       player.update(1 / 60, input, actions);
     }
   };

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { Level01 } from '../src/levels/level-01-mission.js';
+import { Player } from '../src/core/player.js';
 import { ENEMY, SURFACE } from '../src/config.js';
 
 function makeGame() {
@@ -14,6 +15,49 @@ async function buildLevel() {
   const level = new Level01(game);
   await level.load();
   return { game, level };
+}
+
+/** World-space z extent of a floor surface. */
+function edgeOf(surface) {
+  return {
+    zMin: surface.mesh.position.z - surface.height / 2,
+    zMax: surface.mesh.position.z + surface.height / 2,
+  };
+}
+
+/**
+ * Play a real gap on the real level: stand on `from`, hold forward, jump at the
+ * lip, and report whether the player ends up standing on `to`.
+ */
+function playGap(level, { from, to, paintBlue = false, pad = false }) {
+  const fromEdge = edgeOf(from);
+  const toEdge = edgeOf(to);
+
+  if (paintBlue) from.splat(new THREE.Vector3(0, 0, from.mesh.position.z), 'blue', 40);
+  if (pad) from.splat(new THREE.Vector3(0, 0, fromEdge.zMin + 0.5), 'red', 1);
+
+  const player = new Player(level.surfaces, new THREE.Vector3(0, 0, fromEdge.zMax - 1));
+  player.onGround = true;
+
+  const input = { isDown: (k) => k === 'KeyW' };
+  let airborneOverGap = false;
+
+  for (let i = 0; i < 900; i++) {
+    // one jump at the lip — the plain route. On a red pad the bounce launches
+    // the player before the lip, so this never fires and must not be required.
+    const jump = !airborneOverGap && player.onGround && player.position.z <= fromEdge.zMin;
+    player.update(1 / 60, input, { jump });
+
+    if (player.position.z <= fromEdge.zMin - 0.3 && !player.onGround) airborneOverGap = true;
+    if (player.position.y < -6) return { landed: false, z: player.position.z, y: player.position.y };
+    if (airborneOverGap && player.onGround) {
+      const { z, y } = player.position;
+      // y matters: island C and the platform above it overlap in z, so a landing
+      // on the platform would otherwise masquerade as a landing on the island.
+      return { landed: z <= toEdge.zMax && z >= toEdge.zMin, z, y };
+    }
+  }
+  return { landed: false, z: player.position.z, y: player.position.y };
 }
 
 test('the level package exposes the fields main.js depends on', async () => {
@@ -59,11 +103,55 @@ test('isFloor splits surfaces the way the player controller will (floors vs wall
   assert.equal(walls.every((s) => s.isFloor === false), true);
 });
 
+/**
+ * Gap widths are DESIGN numbers, not incidental spacing: Gap 1 is sized to the
+ * jump, and Gap 2 is sized to be too wide for blue alone, so the red pad is the
+ * only answer. Pinned so a blockout tweak cannot quietly delete the lesson.
+ */
+test('the gaps keep the widths the design depends on', async () => {
+  const { level } = await buildLevel();
+  const [a, b, c] = level.surfaces
+    .filter((s) => s.isFloor && s.mesh.position.y === 0)
+    .sort((s1, s2) => s2.mesh.position.z - s1.mesh.position.z);
+
+  const gap1 = (a.mesh.position.z - a.height / 2) - (b.mesh.position.z + b.height / 2);
+  const gap2 = (b.mesh.position.z - b.height / 2) - (c.mesh.position.z + c.height / 2);
+
+  assert.ok(Math.abs(gap1 - 3.5) < 1e-6, `Gap 1 should be 3.5m, got ${gap1}`);
+  assert.ok(Math.abs(gap2 - 9) < 1e-6, `Gap 2 should be 9m, got ${gap2}`);
+});
+
+/**
+ * The widths above are only right if the physics actually agrees. This plays the
+ * route on the real geometry: a plain jump must clear Gap 1, blue alone must NOT
+ * clear Gap 2, and blue + a red pad at the lip must.
+ */
+test('L1 is completable: Gap 1 on a jump, Gap 2 only with blue AND red (#53)', async () => {
+  const { level } = await buildLevel();
+  const [a, b, c] = level.surfaces
+    .filter((s) => s.isFloor && s.mesh.position.y === 0)
+    .sort((s1, s2) => s2.mesh.position.z - s1.mesh.position.z);
+
+  const g1 = playGap(level, { from: a, to: b });
+  assert.equal(g1.landed, true, `Gap 1 must be jumpable on grey, fell at z=${g1.z}`);
+
+  const blueOnly = playGap(level, { from: b, to: c, paintBlue: true });
+  assert.equal(blueOnly.landed, false,
+    'blue alone must not cross Gap 2, or the red pad is decoration');
+
+  const withPad = playGap(level, { from: b, to: c, paintBlue: true, pad: true });
+  assert.equal(withPad.landed, true, `blue + red must clear Gap 2, fell at z=${withPad.z}`);
+  // and it must land on the island itself, not skip the Sprayer by landing on
+  // the platform above it (the platform is y=4, the island is y=0)
+  assert.ok(Math.abs(withPad.y) < 0.5,
+    `the super jump should land on island C (y=0), not the platform (y=4): y=${withPad.y}`);
+});
+
 test('extraction is a Box3 covering the ledge, reachable at standing height', async () => {
   const { level } = await buildLevel();
   assert.ok(level.extraction instanceof THREE.Box3);
   // a player standing on the ledge (y≈9) is inside the win volume
-  assert.equal(level.extraction.containsPoint(new THREE.Vector3(0, 9, -22)), true);
+  assert.equal(level.extraction.containsPoint(new THREE.Vector3(0, 9, -27)), true);
   // the start island is not
   assert.equal(level.extraction.containsPoint(new THREE.Vector3(0, 9, 13)), false);
 });
@@ -76,9 +164,9 @@ test('the extraction ledge protrudes past the wall so the climb can land on it',
 
   ledge.mesh.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(ledge.mesh);
-  // the climb pushes the player to z ≈ -18.6; the ledge must extend in front of
-  // the wall (z=-19) so the jump-off lands on solid ground
-  assert.ok(box.max.z > -19, 'ledge must protrude in front of the wall (got max.z=' + box.max.z + ')');
+  // the climb pushes the player out in front of the wall; the ledge must extend
+  // past it (z=-24) so the jump-off lands on solid ground
+  assert.ok(box.max.z > -24, 'ledge must protrude in front of the wall (got max.z=' + box.max.z + ')');
 });
 
 test('dispose removes root from the scene and is repeatable (no leak on R)', async () => {
@@ -134,11 +222,11 @@ test('the DESIGN.md teaching beats are placed on the right islands', async () =>
   assert.equal(a.type, 'charger');
   assert.equal(b.type, 'sprayer');
 
-  // Charger stands on island B (zMin -4, zMax 3.5)
-  assert.ok(a.position.z >= -4 && a.position.z <= 3.5,
+  // Charger stands on island B (zMin -7, zMax 4.5)
+  assert.ok(a.position.z >= -7 && a.position.z <= 4.5,
     `Charger should be on island B, got z=${a.position.z}`);
-  // Sprayer stands on island C (zMin -19, zMax -11)
-  assert.ok(b.position.z >= -19 && b.position.z <= -11,
+  // Sprayer stands on island C (zMin -24, zMax -16)
+  assert.ok(b.position.z >= -24 && b.position.z <= -16,
     `Sprayer should be on island C, got z=${b.position.z}`);
 });
 
@@ -352,7 +440,7 @@ test('win fires exactly once when the player enters the extraction volume', asyn
   let wins = 0;
   game.onWin = () => { wins += 1; };
 
-  const player = { position: new THREE.Vector3(0, 9, -22) };
+  const player = { position: new THREE.Vector3(0, 9, -27) };
   level.update(0.016, player);   // inside → fire
   level.update(0.016, player);   // still inside → must NOT re-fire
   assert.equal(wins, 1);

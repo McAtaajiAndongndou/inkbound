@@ -13,9 +13,9 @@ import { Enemy } from '../enemies/enemy.js';
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
  * Full-width corridor (x −8…8) so no gate can be bypassed sideways.
  *
- * Route (z runs +18 → −25): start island → jump Gap 1 → island B (enemies,
- * blue run-up) → blue over Gap 2 → island C (red pad) → red launch onto the
- * platform → green climb the wall → extraction ledge.
+ * Route (z runs +18 → −30): start island → jump Gap 1 → island B (Charger,
+ * blue run-up) → blue + RED PAD super jump over Gap 2 → island C (Sprayer,
+ * red pad) → red launch onto the platform → green climb the wall → extraction.
  */
 const L1 = {
   corridorHalf: 8,            // full width 16
@@ -24,20 +24,20 @@ const L1 = {
 
   islands: {
     A: { zMin: 8,   zMax: 18  },  // start — spawn + fall respawn land here
-    B: { zMin: -4,  zMax: 3.5 },  // middle — enemy spawns + blue run-up
-    C: { zMin: -19, zMax: -11 },  // red pad → platform
+    B: { zMin: -7,  zMax: 4.5 },  // middle — deep: Charger fight + blue run-up
+    C: { zMin: -24, zMax: -16 },  // red pad → platform
   },
 
-  platform: { zMin: -18, zMax: -12, y: 4, width: 8 },  // red required (jump apex 1.39m)
-  wall:     { yBase: 4, yTop: 9, z: -19 },             // green required, full width
-  ledge:    { zMin: -25, zMax: -14, y: 9 },            // walkable; protrudes so the wall jump-off lands
-  extraction: { zMin: -25, zMax: -19 },                // win zone (back of the ledge, past the wall)
+  platform: { zMin: -23, zMax: -17, y: 4, width: 8 },  // red required (jump apex 1.39m)
+  wall:     { yBase: 4, yTop: 9, z: -24 },             // green required, full width
+  ledge:    { zMin: -30, zMax: -19, y: 9 },            // walkable; protrudes so the wall jump-off lands
+  extraction: { zMin: -30, zMax: -24 },                // win zone (back of the ledge, past the wall)
 
-  beacons: {                  // colour-coded to their gate
-    blue:  { x: 0, y: 2,    z: -7.5 },   // Gap 2
-    red:   { x: 0, y: 5,    z: -12 },    // platform
-    green: { x: 0, y: 10.5, z: -19 },    // wall
-  },
+  beacons: [                  // colour-coded to the gate they mark
+    { colour: 'red',   x: 0, y: 2,    z: -11.5 },  // Gap 2 — red is the gate; blue is the run-up
+    { colour: 'red',   x: 0, y: 5,    z: -17 },    // platform
+    { colour: 'green', x: 0, y: 10.5, z: -24 },    // wall
+  ],
 
   // DESIGN.md teaching beats, not just spawn points:
   //   Charger  — island B. Charges at 5 m/s for 25 contact damage. The only
@@ -47,8 +47,8 @@ const L1 = {
   //   Sprayer  — island C. Slower (10 damage) pressure while you paint the red
   //              pad that launches you to the platform.
   spawns: [
-    { x: 4,  y: 0, z: 2,   type: 'charger' },
-    { x: -4, y: 0, z: -14, type: 'sprayer' },
+    { x: 4,  y: 0, z: -1,  type: 'charger' },
+    { x: -4, y: 0, z: -19, type: 'sprayer' },
   ],
 };
 
@@ -150,9 +150,9 @@ export class Level01 extends LevelBase {
       red:   new THREE.MeshBasicMaterial({ color: PAINT.red.hex }),
       green: new THREE.MeshBasicMaterial({ color: PAINT.green.hex }),
     };
-    for (const [colour, pos] of Object.entries(L1.beacons)) {
+    for (const { colour, x, y, z } of L1.beacons) {
       const m = new THREE.Mesh(geo, mats[colour]);
-      m.position.set(pos.x, pos.y, pos.z);
+      m.position.set(x, y, z);
       this.root.add(m);
     }
   }
