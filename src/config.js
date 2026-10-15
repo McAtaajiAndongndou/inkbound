@@ -43,11 +43,25 @@ export const PLAYER = {
   lookSensitivity: 0.0022,
   killY: -20, // fall below this and you respawn
 
+  // jump feel (#33)
+  coyoteTime: 0.1,        // seconds after leaving a ledge you can still jump (~6 frames at 60fps)
+  jumpBufferTime: 0.12,   // seconds before landing a jump press is remembered
+
   // collision tolerances
   groundProbeLift: 0.5, // ground probe starts this far above the feet
   groundProbeRange: 6, // how far below that it looks for a floor
   groundSnap: 0.02, // within this of the floor counts as landed
   bounceClearance: 0.05, // lift off red by this so the bounce does not re-hit
+};
+
+// Camera rig (#34). TPV is the default; FPV is the V toggle / ADS target.
+export const CAMERA = {
+  tpvDistance: 5.0,        // how far behind the player the third-person camera sits
+  tpvShoulder: 0.9,        // right-vector offset, so the player does not block the view
+  tpvHeight: 0.45,         // vertical offset above the player's chest
+  minHeightAboveFeet: 0.3, // camera never dips below player.position.y + this
+  pitchMin: -0.6,          // how far down the camera can look (radians)
+  pitchMax: 1.2,           // how far up
 };
 
 // Player health. Enemies deal their ENEMY.*.contactDamage on touch.
