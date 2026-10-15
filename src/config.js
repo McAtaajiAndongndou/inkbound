@@ -102,6 +102,8 @@ export const AMMO = {
 };
 
 // One enemy class, five configs. Not five systems. (Week 2.)
+// One enemy class, five configs. Not five systems. (Week 2.)
+// windup / attackRange / attackCooldown drive the attack telegraph (#40).
 export const ENEMY = {
   sprayer: {
     hp: 40,
@@ -111,6 +113,9 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: false,
     contactDamage: 10,
+    windup: 0.6,
+    attackRange: 12,
+    attackCooldown: 2.5,
   },
   charger: {
     hp: 30,
@@ -120,6 +125,9 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: false,
     contactDamage: 25,
+    windup: 0.5,
+    attackRange: 8,
+    attackCooldown: 3,
   },
   wallCrawler: {
     hp: 45,
@@ -129,6 +137,9 @@ export const ENEMY = {
     climbsGreen: true,
     drainsPaint: false,
     contactDamage: 10,
+    windup: 0.6,
+    attackRange: 12,
+    attackCooldown: 2.5,
   },
   turret: {
     hp: 70,
@@ -138,6 +149,9 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: false,
     contactDamage: 0,
+    windup: 0.8,
+    attackRange: 15,
+    attackCooldown: 3,
   },
   drainer: {
     hp: 20,
@@ -147,9 +161,11 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: true,
     contactDamage: 5,
+    windup: 0.5,
+    attackRange: 3,
+    attackCooldown: 2.5,
   },
 };
-
 // Difficulty = new rules, not bigger health bars.
 export const DEFENCE = {
   1: { requiredColour: null, combo: [] },

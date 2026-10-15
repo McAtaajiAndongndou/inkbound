@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { Input } from "./core/input.js";
 import { Player } from "./core/player.js";
+import { Avatar } from "./shaders/avatar.js";
 import { CameraRig } from "./core/camera-rig.js";
 import { PaintGun } from "./paint/paint-gun.js";
 import { Level01 } from "./levels/level-01-mission.js";
@@ -9,12 +10,9 @@ import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { PLAYER } from "./config.js";
 
-// ---------------------------------------------------------------------------
-// Renderer + scene
-// ---------------------------------------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // cap for lab hardware
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setScissorTest(false);
@@ -24,7 +22,6 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0f0f16);
 scene.fog = new THREE.Fog(0x0f0f16, 45, 110);
 
-// lights: one directional caster, one ambient fill. Deliberate, not decorative.
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(18, 30, 12);
 sun.castShadow = true;
@@ -36,26 +33,17 @@ sun.shadow.camera.bottom = -30;
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x8899bb, 0x22222a, 0.5));
 
-// ---------------------------------------------------------------------------
-// Game state — everything here is torn down and rebuilt on restart
-// ---------------------------------------------------------------------------
 let level = null;
 let player = null;
 let gun = null;
+let avatar = null;
+const lastPos = new THREE.Vector3();
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
 
-// Browsers keep audio suspended until a user gesture. The first click (the
-// menu's Play button) or keypress starts it; later calls are no-ops.
 window.addEventListener("pointerdown", () => audio.unlock());
 window.addEventListener("keydown", () => audio.unlock());
 
-
-// Win / death overlays — inline here (decision #15), hidden until needed.
-// Placeholder until the win/lose screens (#21) land.
-
-// Levels read the scene and report a win back through this object.
-// `game` stays the integration point until core swaps in game.js.
 const game = {
   scene,
   onWin: () => {
@@ -67,9 +55,17 @@ const game = {
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
 const input = new Input(renderer.domElement);
 
+function hidePlaceholder(p, a) {
+  if (p.mesh.material) p.mesh.material.visible = false;
+  for (const child of p.mesh.children) {
+    if (child !== a.root) child.visible = false;
+  }
+}
+
 function loadLevel() {
   if (level) {
-    level.dispose(); // removes root from scene + frees every GPU resource
+    if (avatar) avatar.dispose();
+    level.dispose();
     scene.remove(player.mesh);
     player.dispose();
   }
@@ -77,15 +73,23 @@ function loadLevel() {
   hud.hideEnd();
 
   level = new Level01(game);
-  level.load(); // no awaits inside yet — main.js does not await it
+  level.load();
   scene.add(level.root);
 
   player = new Player(level.surfaces, level.spawn);
+  scene.add(player.mesh);
+
+  const thisPlayer = player;
+  avatar = new Avatar(player.mesh, () => {
+    if (player === thisPlayer) hidePlaceholder(thisPlayer, avatar);
+  });
+  lastPos.copy(player.mesh.position);
+
   player.onDeath = () => {
+    avatar.die();
     hud.showEnd("lose");
     audio.play("lose");
   };
-  scene.add(player.mesh);
 
   gun = new PaintGun(level.surfaces, 1, level.enemies);
 }
@@ -100,9 +104,6 @@ const menu = new Menu(document.body, {
   onRestart: loadLevel,
 });
 
-// ---------------------------------------------------------------------------
-// Loop
-// ---------------------------------------------------------------------------
 const clock = new THREE.Clock();
 
 /** One step of gameplay. Skipped entirely while the menu is open. */
@@ -115,6 +116,14 @@ function simulate(dt, elapsed, actions, mouse) {
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
 
+  const p = player.mesh.position;
+  const dx = p.x - lastPos.x;
+  const dz = p.z - lastPos.z;
+  const speed = dt > 0 ? Math.hypot(dx, dz) / dt : 0;
+  lastPos.copy(p);
+  if (!player.dead) avatar.setMoving(speed > 0.5);
+  avatar.update(dt);
+
   level.update(dt, player);
   player.checkEnemyContact(level.enemies);
 
@@ -124,7 +133,7 @@ function simulate(dt, elapsed, actions, mouse) {
     if (gun.lastShot === "splat") {
       audio.play("splat");
     } else {
-      audio.play(gun.lastShot); // "hit" or "kill"
+      audio.play(gun.lastShot);
       hud.showHitmarker(gun.lastShot === "kill");
     }
   }
@@ -155,15 +164,12 @@ function animate() {
     surfaces: level.surfaces,
   });
 
-  // --- main view ---
   const w = window.innerWidth;
   const h = window.innerHeight;
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, w, h);
   renderer.render(scene, rig.camera);
 
-  // --- minimap, orthographic (Viewing rubric) ---
-  // WebGL viewport y counts up from the bottom, so this sits top-right.
   const size = Math.round(Math.min(w, h) * 0.2);
   const pad = 16;
   renderer.setScissorTest(true);

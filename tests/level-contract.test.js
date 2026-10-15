@@ -82,6 +82,54 @@ test('spawn is placed on island A where the player starts', async () => {
   assert.deepEqual([level.spawn.x, level.spawn.y, level.spawn.z], [0, 2, 13]);
 });
 
+/**
+ * Fog is geometry, not just scene.fog, so main.js needs one handle to switch the
+ * whole lot off for the minimap. Without it the mist sheets render as a grey
+ * wash straight over the top-down map — switching off scene.fog does not touch
+ * them, because they are real meshes.
+ */
+test('the level groups its atmosphere so a top-down view can drop it', async () => {
+  const { level } = await buildLevel();
+
+  assert.ok(level.atmosphere instanceof THREE.Group,
+    'main.js hides level.atmosphere for the minimap pass');
+  assert.equal(level.atmosphere.parent, level.root,
+    'it must hang off root, or dispose() would never free the sky and mist');
+
+  // one sky dome + one sheet per mist layer
+  assert.equal(level.atmosphere.children.length, 4);
+  // decoration, not something you can paint or stand on
+  assert.equal(level.atmosphere.children.every((o) => !o.userData.paintSurface), true);
+});
+
+/**
+ * The mist must not reach the spawn island, and this is easy to undo by shifting
+ * the sheets with no visible error. Island A is where the player learns jump
+ * distance, and Gap 1 is the weakest jump in the level — mist there is
+ * difficulty, not atmosphere.
+ */
+test('the mist stops before the spawn island', async () => {
+  const { level } = await buildLevel();
+  const [islandA] = level.surfaces
+    .filter((s) => s.isFloor && s.mesh.position.y === 0)
+    .sort((s1, s2) => s2.mesh.position.z - s1.mesh.position.z);
+
+  // the lip the player jumps Gap 1 from
+  const islandAFarEdge = islandA.mesh.position.z - islandA.height / 2;
+
+  const mist = level.atmosphere.children.filter((o) => o.material.transparent);
+  assert.ok(mist.length > 0, 'expected the mist sheets to be in the atmosphere group');
+
+  for (const sheet of mist) {
+    // the texture bakes alpha down to zero over the outer fifth of each end, so
+    // the sheet's own +Z edge is already invisible: reaching exactly the lip is
+    // the furthest it may go
+    const sheetFarEdge = sheet.position.z + sheet.geometry.parameters.height / 2;
+    assert.ok(sheetFarEdge <= islandAFarEdge + 1e-6,
+      `mist reaches z=${sheetFarEdge}, past island A's lip at z=${islandAFarEdge}`);
+  }
+});
+
 test('isFloor is set on every surface (no accidental fall-through / phase-through)', async () => {
   const { level } = await buildLevel();
   assert.equal(level.surfaces.length > 0, true);
