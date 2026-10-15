@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { ENEMY, PAINT, PAINT_IDS } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
+import { audio } from "../audio/audio-manager.js";
 
 // Paint ids are indices into the grid (see PAINT_IDS in config.js).
 const ID_TO_NAME = ["grey", "blue", "red", "green"];
@@ -13,6 +14,13 @@ const BASE_COLOUR = GREY_TOON;
 // How long a colour hit stays fully saturated before fading back, in seconds.
 const TINT_FADE = 1.0;
 const KILL_FLASH_MS = 120;
+
+// Attack telegraph (#40). Yellow is not a paint colour, so the warning can
+// never be mistaken for a paint hit.
+const TELEGRAPH_COLOUR = 0xffe600;
+const TELEGRAPH_SWELL = 0.35;       // body grows by this fraction by the end of the windup
+const DEFAULT_WINDUP = 0.6;         // seconds; overridden by config.windup
+const DEFAULT_ATTACK_COOLDOWN = 2;  // seconds; overridden by config.attackCooldown
 
 /**
  * One enemy class, five configs. Behaviour comes from ENEMY.* flags, not from
@@ -60,6 +68,13 @@ export class Enemy {
     this._tintTimer = 0;
     this._pinnedTimer = 0;                 // green: hard root (movement only)
     this._slipTimer = 0;                   // blue: direct hit slow
+
+    // Attack telegraph (#40)
+    this._windupTimer = 0;                 // > 0 while telegraphing an attack
+    this._windupTotal = 0;
+    this._attackCooldown = 0;
+    this._telegraphColour = new THREE.Color(TELEGRAPH_COLOUR);
+    this.onAttack = null;                  // fired when a windup completes: (enemy) => void
 
     // Without floors we cannot tell ground from void, so the safe fallback is
     // to stand still rather than walk off the edge.
@@ -122,6 +137,15 @@ export class Enemy {
     // after the canMove check, so a stationary enemy kept its hit colour
     // forever. It is called exactly once, here, so no branch below repeats it.
     this._fadeTint(dt);
+
+    // Attack telegraph (#40). Runs for every living enemy, movers or not. While
+    // winding up the enemy plants its feet so the tell reads; knockback from a
+    // red hit still carries it.
+    this._updateAttack(dt, playerPos);
+    if (this._windupTimer > 0) {
+      this._applyKnockback(dt);
+      return;
+    }
 
     if (!this.config.canMove) return;
 
@@ -279,6 +303,10 @@ export class Enemy {
 
     if (this.hp <= 0) {
       this.alive = false;
+      // A dead enemy never lands its attack: cancel the windup. The colour is
+      // left alone so the killing hit still reads as coloured.
+      this._windupTimer = 0;
+      this.mesh.scale.setScalar(1);
       setTimeout(() => this.dispose(), KILL_FLASH_MS);
     }
 
@@ -295,6 +323,73 @@ export class Enemy {
       .copy(this._baseColour)
       .lerp(this._tintTarget, Math.max(0, this._tintTimer / TINT_FADE));
     this.bodyMat.uniforms.uColour.value.copy(this._tintBlend);
+  }
+
+  // --- attack telegraph (#40) -------------------------------------------------
+  // Every attack is announced first: yellow flash + swell + the 'telegraph'
+  // sound, THEN the attack lands. The tell starts before damage, not with it.
+
+  /** True while the enemy is winding up an attack. */
+  get telegraphing() {
+    return this._windupTimer > 0;
+  }
+
+  /**
+   * Begin an attack windup. Returns false if the enemy is dead, already
+   * winding up, or still cooling down from its last attack.
+   * The attack itself lands when the windup ends — see `onAttack`.
+   * Anything that attacks (shooting, a charge, a drain) should go through this.
+   */
+  startTelegraph() {
+    if (!this.alive || this._windupTimer > 0 || this._attackCooldown > 0) return false;
+    this._windupTotal = this.config.windup ?? DEFAULT_WINDUP;
+    this._windupTimer = this._windupTotal;
+    this._vel.set(0, 0, 0);          // plant: the tell has to read
+    audio.play("telegraph");
+    return true;
+  }
+
+  _updateAttack(dt, playerPos) {
+    if (this._attackCooldown > 0) this._attackCooldown -= dt;
+
+    if (this._windupTimer <= 0) {
+      // Enemies with an attackRange start their own windup once the player is
+      // inside it. Guard the argument like update() does: a non-Vector3 gives NaN.
+      const range = this.config.attackRange;
+      if (range && playerPos) {
+        const dx = playerPos.x - this.position.x;
+        const dz = playerPos.z - this.position.z;
+        if (dx * dx + dz * dz <= range * range) this.startTelegraph();
+      }
+      return;
+    }
+
+    this._windupTimer -= dt;
+    if (this._windupTimer <= 0) {
+      this._endTelegraph();
+      this._attackCooldown = this.config.attackCooldown ?? DEFAULT_ATTACK_COOLDOWN;
+      this.onAttack?.(this);
+      return;
+    }
+
+    // p runs 0 -> 1 across the windup. The flicker speeds up as the hit gets
+    // closer, so the last moments read as the most urgent. A colour change on
+    // a 0.8 m box is easy to miss at ~10 m, so the whole mesh swells too.
+    const p = 1 - this._windupTimer / this._windupTotal;
+    const flicker = 0.5 + 0.5 * Math.sin(p * Math.PI * 2 * (3 + 6 * p));
+    const amount = (0.35 + 0.65 * flicker) * (0.5 + 0.5 * p);
+
+    this._tintBlend.copy(this._baseColour).lerp(this._telegraphColour, amount);
+    this.bodyMat.uniforms.uColour.value.copy(this._tintBlend);
+    this.mesh.scale.setScalar(1 + TELEGRAPH_SWELL * p);
+  }
+
+  _endTelegraph() {
+    this._windupTimer = 0;
+    this.mesh.scale.setScalar(1);
+    // A live paint tint rewrites the uniform on the next frame; otherwise put
+    // the body back to its resting colour so the yellow does not stick.
+    if (this._tintTimer <= 0) this.bodyMat.uniforms.uColour.value.copy(this._baseColour);
   }
 
   /** Frees our own GPU resources. The level still disposes them via its base
