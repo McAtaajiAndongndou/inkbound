@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Input } from "./core/input.js";
 import { Player } from "./core/player.js";
 import { CameraRig } from "./core/camera-rig.js";
@@ -56,8 +57,18 @@ window.addEventListener("keydown", () => audio.unlock());
 
 // Levels read the scene and report a win back through this object.
 // `game` stays the integration point until core swaps in game.js.
+//
+// `loadGLB` is the ONE glTF loader for the game. MECHANICS.md:196 puts the
+// GLB/animation pipeline in `shaders/`, and the levels lane must not grow a
+// second one — so a level that wants a model asks for it here instead of
+// importing GLTFLoader itself. Levels treat it as optional: with no loader they
+// build their own fallback geometry, which is what keeps `node --test` (no DOM,
+// no server) from dialling out on every level load.
+const gltfLoader = new GLTFLoader();
+
 const game = {
   scene,
+  loadGLB: (url) => gltfLoader.loadAsync(url),
   onWin: () => {
     hud.showEnd("win");
     audio.play("win");

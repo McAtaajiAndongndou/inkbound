@@ -6,4 +6,9 @@
 export const CREDITS = [
   { what: 'Three.js', source: 'https://threejs.org', licence: 'MIT' },
   { what: 'Rapier',   source: 'https://rapier.rs',   licence: 'Apache-2.0' },
+  {
+    what: 'Stylized Nature tree models (L1 forest)',
+    source: 'https://poly.pizza/u/Quaternius',
+    licence: 'CC0',
+  },
 ];

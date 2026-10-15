@@ -1,8 +1,45 @@
 # Level 1 — Forest polish (dressing + lighting)
 
-**Status:** plan, not started
+**Status:** steps 1–5 built (15 Oct 2026, on `issue-57-l1-forest`). Step 5 lands 55
+trees rather than the 100+ below — see "What step 5 actually landed" at the bottom.
 **Written:** 15 Oct 2026 — one day before the beta milestone
 **Author:** Renda (levels), with a large Lethabo (shaders) dependency
+
+---
+
+## What step 5 actually landed
+
+Steps 1–5 are in. Two of the numbers in this document did not survive contact
+with the level, and both are worth knowing before anyone re-reads the plan:
+
+**1. 55 trees, not 100+.** The rule "every tree stands on a floor" (step 2, and
+`tests/level-01-forest.test.js`) is what caps it. L1's floors are a 16-wide
+corridor through five islands — there is no ground outside it, so a tree placed
+out there floats over the void. 29.5 m of island plus an 11 m ledge, banded on
+both sides at ~1.1 m spacing, is ~55 trees once the crowding guard has run. To
+get past that the LEVEL needs more ground, not the forest module. The knob is
+`FOREST.scatter.step` / `.spacing` in `src/levels/forest.js`.
+
+The performance point step 5 was actually making is met regardless: the forest
+costs **25 InstancedMesh draw calls whether it holds 55 trees or 250**.
+
+**2. Per-tree colour with instancing did not need Lethabo's shader.** This
+document says the custom toon shader cannot do `instanceColor` and suggests
+asking `shaders/`, or switching to `MeshToonMaterial`. Neither was necessary:
+the colour already lives in a shared material, so a tree changes colour by
+MOVING to a different `InstancedMesh` that draws the same geometry with a
+different material. 5 variants x 4 colours + 5 trunks = the 25 calls above.
+
+**3. A real bug fell out of step 3.** `createToonMaterial` defaults `uLightDir`
+to `(0.5, 1.0, 0.3)`, which is NOT the sun's vector, and `_lightDirection()`
+walked `this.surfaces` only. So the trees added in step 2 were lit from a
+different direction than the ground they stand on — the exact thing #57 was
+opened to fix. Fixed, and the test was extended to cover tree materials and
+verified to fail without the fix.
+
+**Also:** the two `.glb` files are texture-stripped by
+`tools/strip-glb-textures.mjs` (6.0 MB -> 1.6 MB). The art direction is flat
+toon, so every texture would be decoded at load and then thrown away.
 
 ---
 

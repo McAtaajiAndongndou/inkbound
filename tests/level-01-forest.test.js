@@ -1,15 +1,49 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Session } from 'node:inspector/promises';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import { Level01 } from '../src/levels/level-01-mission.js';
-import { FOREST } from '../src/levels/forest.js';
+import { FOREST, collectVariants } from '../src/levels/forest.js';
 
 /** Same shape the other level tests use: a bare game object, no renderer. */
 async function buildLevel() {
   const level = new Level01({ scene: new THREE.Scene(), onWin: null });
   await level.load();
+  return level;
+}
+
+/**
+ * The .glb files, read off disk and parsed without a server.
+ *
+ * `GLTFLoader.parse` needs no DOM and no network, so this is the REAL asset
+ * pipeline running in the test suite: the actual shipped files, the actual
+ * loader, the actual baking code. Only the HTTP request is skipped. That matters
+ * because every interesting thing about these files is an artefact of the export
+ * (a x100 scale, a Z-up node, five trees in a strip) and a hand-built stub would
+ * happily agree with my own misunderstanding of it.
+ */
+function parseGlb(url) {
+  // `FOREST.models` holds RUNTIME urls, and Vite serves `public/` at the root —
+  // so `./assets/trees/pine.glb` is the right thing to ask the browser for and
+  // the wrong thing to hand to readFileSync. Same convention as the avatar's
+  // `./assets/soldier-swat.glb`.
+  const path = url.replace(/^\.\//, 'public/');
+  const buffer = readFileSync(path);
+  const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+
+  return new Promise((resolve, reject) => {
+    new GLTFLoader().parse(arrayBuffer, '', resolve, reject);
+  });
+}
+
+/** A level whose models load for real; `forest.pending` has settled on return. */
+async function buildLevelWithModels() {
+  const level = new Level01({ scene: new THREE.Scene(), onWin: null, loadGLB: parseGlb });
+  await level.load();
+  await level.forest.pending;
   return level;
 }
 
@@ -217,7 +251,7 @@ test('a tree only pays for a material swap when the colour actually changed', as
   const player = { position: new THREE.Vector3(base.x, 2, base.z) };
 
   tree.floor.splat(new THREE.Vector3(base.x, base.y, base.z), 'blue', 3);
-  assert.equal(level.forest.update(1, player), 1, 'the first heartbeat reports the change');
+  assert.ok(level.forest.update(1, player) > 0, 'the first heartbeat reports the change');
 
   // nothing was painted since, so the next heartbeat is a no-op — the point of
   // tracking `paintName` per tree instead of reassigning every time
@@ -244,6 +278,218 @@ test('many tiny frames do not fire the heartbeat early', async () => {
 
   level.update(FOREST.reactInterval, player);
   assert.equal(tree.canopy.material, level.forest.canopy.blue);
+});
+
+// --- steps 4 and 5: the real models, instanced ------------------------------
+
+/**
+ * The asset pipeline, run against the real files.
+ *
+ * Each shipped .glb is a pack, not a model: five trees laid out in a strip along
+ * X, each holding a bark and a leaf primitive. Getting this wrong is silent —
+ * group them by the wrong node and you get one "variant" ten primitives wide and
+ * a forest where every tree is five trees stacked on top of each other.
+ */
+test('every shipped tree file yields five complete tree shapes (#57 step 4)', async () => {
+  for (const url of FOREST.models) {
+    const variants = collectVariants(await parseGlb(url));
+
+    assert.ok(variants.length >= FOREST.maxVariants,
+      `${url} should hold at least ${FOREST.maxVariants} variants, found ${variants.length}`);
+
+    for (const [i, variant] of variants.entries()) {
+      assert.ok(variant.trunk, `${url} variant ${i} has no bark primitive`);
+      assert.ok(variant.canopy, `${url} variant ${i} has no leaf primitive`);
+      assert.ok(variant.trunk[0].geometry.attributes.position.count > 0);
+      assert.ok(variant.canopy[0].geometry.attributes.position.count > 0);
+    }
+  }
+});
+
+/**
+ * The three things the FBX export got wrong, undone by the bake. Each one is
+ * checked against the REAL file, because each one is a property of that file:
+ * the strip offset (x = 172…221), the x100 node scale, and a pivot that is
+ * somewhere different on every variant.
+ */
+test('baked models stand on y=0, centred, at the height the design asked for', async () => {
+  const level = await buildLevelWithModels();
+
+  assert.equal(level.forest.variants.length, FOREST.maxVariants);
+  assert.ok(level.forest.modelCount > 0, 'the trees should have moved onto the models');
+
+  for (const variant of level.forest.variants) {
+    for (const part of [variant.trunk, variant.canopy]) {
+      const box = new THREE.Box3().setFromBufferAttribute(part.attributes.position);
+
+      // the canopy sits ON the trunk, so only the trunk proves the base is at 0
+      if (part === variant.trunk) {
+        assert.ok(Math.abs(box.min.y) < 1e-4,
+          `a trunk base hovered at y=${box.min.y}; the strip pivot was not undone`);
+      }
+      // and the strip offset is gone: nothing may live 170 metres from its origin
+      assert.ok(Math.abs(box.min.x) < 20 && Math.abs(box.max.x) < 20,
+        `variant still sits at its strip position, x=${box.min.x}..${box.max.x}`);
+    }
+
+    const trunkBox = new THREE.Box3().setFromBufferAttribute(variant.trunk.attributes.position);
+    assert.ok(trunkBox.max.y <= FOREST.modelHeight + 1e-4,
+      'a variant is taller than the height it was normalised to');
+  }
+});
+
+test('the models replace the cones rather than standing beside them (#57 step 5)', async () => {
+  const level = await buildLevelWithModels();
+  const forest = level.forest;
+
+  assert.equal(forest.fallback.visible, false,
+    'the fallback cones must be hidden, or every tree is drawn twice');
+  assert.ok(forest.models.children.length > 0);
+  assert.equal(forest.trees.every((t) => t.bucket !== null), true,
+    'every tree must be sitting in an instanced bucket');
+  assert.equal(forest.modelCount, forest.trees.length);
+});
+
+/**
+ * The draw-call budget, pinned. This is the whole point of step 5: the forest's
+ * cost must not scale with the number of trees. One InstancedMesh per variant
+ * per paint colour, plus one per variant for the trunks — which share a single
+ * material that never changes, so they are one call each rather than four.
+ */
+test('the forest costs a fixed number of draw calls per variant (#57 step 5)', async () => {
+  const level = await buildLevelWithModels();
+  const forest = level.forest;
+  const colours = Object.keys(forest.canopy).length;
+
+  assert.equal(forest.models.children.length, forest.variants.length * (1 + colours));
+  assert.ok(forest.models.children.every((m) => m.isInstancedMesh),
+    'every model draw call must be an InstancedMesh');
+
+  // and the count is the budget, not the tree count: it is the same number
+  // whether the level holds twenty trees or two hundred
+  const perVariant = forest.models.children.length / forest.variants.length;
+  assert.equal(perVariant, 1 + colours);
+});
+
+test('only the buckets in use are drawn', async () => {
+  const level = await buildLevelWithModels();
+  const forest = level.forest;
+
+  const grey = forest.trees.filter((t) => t.paintName === 'grey');
+  for (const bucket of forest.buckets) {
+    for (const colour of ['blue', 'red', 'green']) {
+      assert.equal(bucket[colour].live, 0, `nothing is painted ${colour} yet`);
+      assert.equal(bucket[colour].mesh.count, 0,
+        'a bucket nothing is in must not be submitted to the GPU at all');
+    }
+  }
+  assert.equal(grey.length, forest.trees.length);
+});
+
+/**
+ * The reaction has to survive the upgrade: step 5 must not quietly delete step 3.
+ * With models in place a tree changes colour by MOVING between buckets, because
+ * the toon shader cannot do per-instance colour — so this is the test that the
+ * swap-remove free list actually keeps its books.
+ */
+test('painting still works once the trees are models (#57 step 3 + 5)', async () => {
+  const level = await buildLevelWithModels();
+  const forest = level.forest;
+
+  const tree = forest.trees.find((t) => t.floor && t.z > 8 && t.variant >= 0);
+  const base = new THREE.Vector3(tree.x, tree.y, tree.z);
+  tree.floor.splat(base, 'blue', 3);
+
+  const buckets = forest.buckets[tree.variant];
+  const greyBefore = buckets.grey.live;
+  const totalBefore = forest.buckets.reduce(
+    (sum, set) => sum + Object.keys(forest.canopy).reduce((n, c) => n + set[c].live, 0), 0);
+  const changed = level.forest.update(1, { position: new THREE.Vector3(tree.x, 2, tree.z) });
+
+  assert.ok(changed > 0, 'the heartbeat should have repainted something');
+  assert.equal(tree.paintName, 'blue');
+  assert.equal(tree.bucket, buckets.blue, 'the tree must have moved into the blue bucket');
+  assert.ok(buckets.blue.live > 0);
+  assert.ok(buckets.grey.live < greyBefore,
+    'and it must have LEFT the grey bucket, not been copied into both');
+
+  // conservation: a move is one out and one in, at every repaint
+  const totalAfter = forest.buckets.reduce(
+    (sum, set) => sum + Object.keys(forest.canopy).reduce((n, c) => n + set[c].live, 0), 0);
+  assert.equal(totalAfter, totalBefore, 'no tree may be lost or duplicated by a bucket move');
+});
+
+/**
+ * Swap-remove is easy to get subtly wrong, and the failure is invisible: the
+ * buckets stay the right SIZE while trees inside them swap places. So this walks
+ * several colour changes and checks the invariant directly — every tree is in
+ * exactly one canopy bucket, and the bucket agrees about where.
+ */
+test('every tree is in exactly one bucket, however often it is repainted', async () => {
+  const level = await buildLevelWithModels();
+  const forest = level.forest;
+  const tree = forest.trees.find((t) => t.floor && t.variant >= 0);
+
+  for (const colour of ['blue', 'red', 'green', 'blue']) {
+    tree.floor.splat(new THREE.Vector3(tree.x, tree.y, tree.z), colour, 4);
+    forest.update(1, { position: new THREE.Vector3(tree.x, 2, tree.z) });
+
+    let found = 0;
+    for (const bucket of forest.buckets) {
+      for (const name of Object.keys(forest.canopy)) {
+        const slot = bucket[name].slots.indexOf(tree);
+        if (slot === -1) continue;
+        found += 1;
+        assert.equal(tree[bucket[name].slotField], slot,
+          `bucket says ${slot}, the tree says ${tree[bucket[name].slotField]}`);
+        assert.ok(slot < bucket[name].live, 'a tree must not sit past the live count');
+      }
+    }
+    assert.equal(found, 1, `the tree is in ${found} buckets after being painted ${colour}`);
+  }
+});
+
+test('a tree that fails to load leaves a forest standing, not a hole (#57 step 4)', async () => {
+  const level = new Level01({
+    scene: new THREE.Scene(),
+    onWin: null,
+    loadGLB: () => Promise.reject(new Error('offline')),
+  });
+  await level.load();
+  await level.forest.pending;
+
+  assert.equal(level.forest.modelCount, 0);
+  assert.equal(level.forest.fallback.visible, true, 'the cones must still be showing');
+  assert.ok(level.forest.trees.length >= 15);
+  assert.equal(level.forest.trees.every((t) => t.bucket === null), true,
+    'and every tree must still be on the fallback path');
+});
+
+/**
+ * The "R race" from the plan: pressing R while the models are in flight rebuilds
+ * the level, and the load then resolves against a level that no longer exists.
+ * Attaching the result there puts a forest on screen that nothing will ever
+ * remove, because dispose() has already run.
+ */
+test('a model load that finishes after the level died is dropped (#57 step 4)', async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+
+  const level = new Level01({
+    scene: new THREE.Scene(),
+    onWin: null,
+    loadGLB: async (url) => { await gate; return parseGlb(url); },
+  });
+  await level.load();
+
+  const forest = level.forest;
+  level.dispose();          // R, mid-download
+  release();                // ...and the files arrive
+  const loaded = await forest.pending;
+
+  assert.equal(loaded, 0, 'a dead level must not adopt the models');
+  assert.equal(forest.models.children.length, 0, 'nothing may be added to a disposed forest');
+  assert.equal(forest.modelCount, 0);
 });
 
 test('the forest heartbeat allocates (almost) nothing per tree', async () => {

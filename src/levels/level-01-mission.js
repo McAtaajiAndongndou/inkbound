@@ -511,6 +511,12 @@ export class Level01 extends LevelBase {
     // and a tree that "stands on" the wall stands inside it.
     this.forest.build(this.surfaces.filter((s) => s.isFloor));
 
+    // Step 4: upgrade to the real .glb trees. NOT awaited, and deliberately so —
+    // `main.js` does not await load(), so the level is playable immediately and
+    // the forest swaps itself in when the files arrive. A failed load leaves the
+    // cones standing; see Forest.loadModels.
+    if (this.game.loadGLB) this.forest.loadModels(this.game.loadGLB);
+
     return this.forest.trees.map((t) => t.mesh);
   }
 
@@ -590,6 +596,9 @@ export class Level01 extends LevelBase {
     // Enemies may own GPU resources not attached to `root` — free them first,
     // then let the base traverse dispose every mesh/material/texture under root.
     for (const enemy of this.enemies) enemy.dispose?.();
+    // Tells a model load still in flight that its level is gone, so it drops the
+    // result instead of attaching a forest to a dead level (the "R race").
+    this.forest?.dispose();
     super.dispose();
   }
 
