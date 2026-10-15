@@ -54,6 +54,16 @@ export const PLAYER = {
   bounceClearance: 0.05, // lift off red by this so the bounce does not re-hit
 };
 
+// Camera rig (#34). TPV is the default; FPV is the V toggle / ADS target.
+export const CAMERA = {
+  tpvDistance: 5.0,        // how far behind the player the third-person camera sits
+  tpvShoulder: 0.9,        // right-vector offset, so the player does not block the view
+  tpvHeight: 0.45,         // vertical offset above the player's chest
+  minHeightAboveFeet: 0.3, // camera never dips below player.position.y + this
+  pitchMin: -0.6,          // how far down the camera can look (radians)
+  pitchMax: 1.2,           // how far up
+};
+
 // Player health. Enemies deal their ENEMY.*.contactDamage on touch.
 export const HEALTH = {
   max: 100,
