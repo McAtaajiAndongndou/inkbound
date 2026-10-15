@@ -41,6 +41,7 @@ let level = null;
 let player = null;
 let gun = null;
 let gunModel = null;
+const muzzleVec = new THREE.Vector3();
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
 
@@ -60,6 +61,9 @@ scene.add(rig.camera);
 const input = new Input(renderer.domElement);
 
 function loadLevel() {
+  if(gun){
+    gun.dispose();
+  }
   if (gunModel){
     gunModel.dispose();
     gunModel = null;
@@ -80,7 +84,7 @@ function loadLevel() {
   player.onDeath = () => hud.showEnd("lose");
   scene.add(player.mesh);
 
-  gun = new PaintGun(level.surfaces, 1, level.enemies);
+  gun = new PaintGun(level.surfaces, 1, level.enemies, scene);
   gunModel = new PaintGunModel(rig.camera, player);
 }
 
@@ -112,8 +116,10 @@ function animate() {
   player.checkEnemyContact(level.enemies);
 
   gun.update(dt);
-  if (input.firing && input.locked && !player.dead) gun.tryFire(rig.camera);
-
+  if (input.firing && input.locked && !player.dead){
+    const muzzle = gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson) ?? null;
+    gun.tryFire(rig.camera,muzzle);
+  }
   for (const s of level.surfaces) s.update(elapsed);
 
   rig.update(player);

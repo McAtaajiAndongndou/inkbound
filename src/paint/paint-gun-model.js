@@ -62,6 +62,11 @@ export class PaintGunModel {
         }
     }
 
+    getMuzzleWorldPosition(out, firstPerson){
+        const gun = firstPerson ? this.firstPersonGun : this.thirdPersonGun;
+        return gun ? gun.getWorldPosition(out) : null;
+    }
+
     dispose() {
         this.disposed = true;
 
