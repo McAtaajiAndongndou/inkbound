@@ -8,6 +8,7 @@ import { Level01 } from "./levels/level-01-mission.js";
 import { Hud } from "./ui/hud.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
+import { PLAYER } from "./config.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -39,7 +40,6 @@ let avatar = null;
 const lastPos = new THREE.Vector3();
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
-new Menu(document.body, audio);
 
 window.addEventListener("pointerdown", () => audio.unlock());
 window.addEventListener("keydown", () => audio.unlock());
@@ -97,22 +97,23 @@ function loadLevel() {
 loadLevel();
 document.getElementById("loading").remove();
 
+// Title + pause menu. Open whenever the pointer is unlocked (load, Escape).
+const menu = new Menu(document.body, {
+  audio,
+  canvas: renderer.domElement,
+  onRestart: loadLevel,
+});
+
 const clock = new THREE.Clock();
 
-function animate() {
-  requestAnimationFrame(animate);
-
-  const dt = Math.min(clock.getDelta(), 0.05);
-  const elapsed = clock.elapsedTime;
-  const actions = input.consumeActions();
-
+/** One step of gameplay. Skipped entirely while the menu is open. */
+function simulate(dt, elapsed, actions, mouse) {
   if (actions.restart) loadLevel();
   if (actions.toggleView) rig.toggle();
   if (actions.colour !== null) gun.selectColour(actions.colour);
   if (actions.refill) gun.refillAmmo();
 
-  const mouse = input.consumeMouse();
-  player.look(mouse.x, mouse.y);
+  player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
 
   const p = player.mesh.position;
@@ -127,7 +128,7 @@ function animate() {
   player.checkEnemyContact(level.enemies);
 
   gun.update(dt);
-  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera)) {
+  if (input.firing && !player.dead && gun.tryFire(rig.camera)) {
     audio.play("fire");
     if (gun.lastShot === "splat") {
       audio.play("splat");
@@ -138,6 +139,21 @@ function animate() {
   }
 
   for (const s of level.surfaces) s.update(elapsed);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const dt = Math.min(clock.getDelta(), 0.05); // clamp so a stall cannot teleport you
+  const elapsed = clock.elapsedTime;
+
+  // Always drain input, so keys pressed while paused do not fire on resume.
+  const actions = input.consumeActions();
+  const mouse = input.consumeMouse();
+
+  // Menu up (title or Escape): the world freezes but keeps rendering behind it,
+  // so enemies cannot hurt you while you change settings.
+  if (!menu.open) simulate(dt, elapsed, actions, mouse);
 
   rig.update(player);
   player.mesh.visible = !rig.firstPerson;
@@ -146,7 +162,6 @@ function animate() {
     gun,
     player,
     surfaces: level.surfaces,
-    locked: input.locked,
   });
 
   const w = window.innerWidth;
