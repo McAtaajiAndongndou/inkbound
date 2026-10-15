@@ -54,7 +54,8 @@ export class PaintGun {
     };
 
     this.cooldown = 0;
-    this.lastSplat = null; // for the hit marker
+    this.lastSplat = null;
+    this.lastShot = null;  // 'splat' | 'hit' | 'kill' — what the last landed shot did (HUD + SFX)
     this.dryFire = false;
 
     this._raycaster = new THREE.Raycaster();
@@ -86,8 +87,8 @@ export class PaintGun {
     this.current =
       (this.current + dir + this.colours.length) % this.colours.length;
   }
-
-  tryFire(camera, muzzle=null) {
+  
+  tryFire(camera, muzzle = null) {
     if (this.cooldown > 0) return false;
 
     if (this.colour !== "grey" && this.ammo[this.colour] < PAINT_GUN.cost) {
@@ -95,11 +96,14 @@ export class PaintGun {
       return false;
     }
 
+    this.lastShot = null;
     this._raycaster.setFromCamera(this._centre, camera);
     this._raycaster.far = PAINT_GUN.range;
 
     const hits = this._raycaster.intersectObjects(this._meshes, true);
-    if (hits.length === 0){
+
+    // If nothing is hit, still fire a visible projectile.
+    if (hits.length === 0) {
       const start = new THREE.Vector3();
       camera.getWorldPosition(start);
 
@@ -108,62 +112,88 @@ export class PaintGun {
 
       const target = start.addScaledVector(direction, PAINT_GUN.range);
 
-      if (this.colour !== "grey"){
+      if (this.colour !== "grey") {
         this.ammo[this.colour] -= PAINT_GUN.cost;
       }
 
       this.cooldown = PAINT_GUN.fireDelay;
       this._spawnProjectile(camera, muzzle, target, this.colour, () => {});
-
       return true;
     }
 
-    const hit = hits[0];
+    // Find the first hit that isn't a dead enemy.
+    let hit = null;
+    let enemy = null;
 
-    let enemyObject = hit.object;
-    while(enemyObject && !enemyObject.userData.enemy){
-      enemyObject = enemyObject.parent;
+    for (const h of hits) {
+      let obj = h.object;
+
+      while (obj && !obj.userData.enemy) {
+        obj = obj.parent;
+      }
+
+      const foundEnemy = obj?.userData.enemy ?? null;
+
+      if (foundEnemy && !foundEnemy.alive) continue;
+
+      hit = h;
+      enemy = foundEnemy;
+      break;
     }
-    const enemy = this.colour !== "grey" ? enemyObject?.userData.enemy:null;
+
+    if (!hit) return false;
+
+    // Grey paint cannot damage enemies.
+    if (enemy && this.colour === "grey") return false;
 
     let surface = null;
-    if (!enemy){
+
+    if (!enemy) {
       let surfaceObject = hit.object;
-      while(surfaceObject && !surfaceObject.userData.paintSurface){
+
+      while (surfaceObject && !surfaceObject.userData.paintSurface) {
         surfaceObject = surfaceObject.parent;
       }
+
       surface = surfaceObject?.userData.paintSurface;
-      if (!surface){
-        return false;
-      }
+
+      if (!surface) return false;
     }
+
     const colour = this.colour;
     const colourId = this.current + 1;
     const point = hit.point.clone();
-    const normal = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : new THREE.Vector3(0,1,0);
 
-    if (colour!=="grey"){
+    const normal = hit.face
+      ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld)
+      : new THREE.Vector3(0, 1, 0);
+
+    if (colour !== "grey") {
       this.ammo[colour] -= PAINT_GUN.cost;
     }
 
     this.cooldown = PAINT_GUN.fireDelay;
 
-    const onImpact = ()=>{
-      this._spawnImpactBurst(point,colour,normal);
+    const onImpact = () => {
+      this._spawnImpactBurst(point, colour, normal);
 
-      if (enemy){
+      if (enemy) {
         enemy.takeColourHit(colourId, undefined, point);
-      }else{
-        if(surface.splat(point,colour,PAINT_GUN.radius)){
-          this.lastSplat={point,colour,age:0};
+        this.lastShot = enemy.alive ? "hit" : "kill";
+      } else {
+        if (surface.splat(point, colour, PAINT_GUN.radius)) {
+          this.lastSplat = { point: point.clone(), colour, age: 0 };
+          this.lastShot = "splat";
         }
       }
     };
 
-    this._spawnProjectile(camera,muzzle, point, colour, onImpact);
+    this._spawnProjectile(camera, muzzle, point, colour, onImpact);
 
     return true;
   }
+
+ 
 
   _spawnProjectile(camera,muzzle,target,colour,onImpact){
     if(!this.scene){
