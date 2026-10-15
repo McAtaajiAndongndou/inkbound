@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER } from '../config.js';
+import { PLAYER, CAMERA } from '../config.js';
 
 /**
  * Three camera modes, which is most of the Viewing rubric on its own:
@@ -17,8 +17,8 @@ export class CameraRig {
     this.minimap.rotation.z = 0;
 
     this.firstPerson = false;
-    this.distance = 6.5;
-    this.shoulder = 0.9;
+    this.distance = CAMERA.tpvDistance;
+    this.shoulder = CAMERA.tpvShoulder;
 
     this._offset = new THREE.Vector3();
     this._target = new THREE.Vector3();
@@ -32,18 +32,28 @@ export class CameraRig {
     const { position, yaw, pitch } = player;
 
     if (this.firstPerson) {
-      this.camera.position.set(position.x, position.y + PLAYER.eyeHeight, position.z);
+      this.camera.position.set(
+        position.x,
+        position.y + PLAYER.eyeHeight,
+        position.z,
+      );
     } else {
-      // orbit behind the player, following yaw and pitch
+      // orbit behind the player. pitch is clamped in the player (see look()),
+      // so both camera and aim agree on how far up/down we can look.
       this._offset.set(
         Math.sin(yaw) * Math.cos(pitch),
-        Math.sin(pitch) + 0.45,
+        Math.sin(pitch) + CAMERA.tpvHeight,
         Math.cos(yaw) * Math.cos(pitch),
       ).multiplyScalar(this.distance);
 
       this.camera.position.copy(position).add(this._offset);
       this.camera.position.x += Math.cos(yaw) * this.shoulder;
       this.camera.position.z -= Math.sin(yaw) * this.shoulder;
+
+      // Never let the camera dip below the player's feet. This is the fix
+      // for "the camera can look beneath the character" (#34).
+      const minY = position.y + CAMERA.minHeightAboveFeet;
+      if (this.camera.position.y < minY) this.camera.position.y = minY;
     }
 
     this._target.set(

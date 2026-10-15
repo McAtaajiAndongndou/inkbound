@@ -115,6 +115,33 @@ test('no two materials share a uniform object', () => {
   }
 });
 
+/**
+ * three.js hands the shader fogColor in OUTPUT colour space, so the fog mix is
+ * only correct if the colour has already been converted. #41 did that for the
+ * toon material and missed the paint material; this pins both.
+ *
+ * The ORDER matters as much as the include: three.js's own materials run
+ * colorspace_fragment and only then fog_fragment.
+ */
+test('every material converts colour space before it fogs', () => {
+  for (const { name, material } of everyFoggedMaterial()) {
+    const fragment = material.fragmentShader;
+    const colorspace = fragment.indexOf('#include <colorspace_fragment>');
+    const fog = fragment.indexOf('heightFalloff');
+
+    // the outline writes pure black, and black is black in any colour space, so
+    // it legitimately has no conversion to do
+    if (name === 'outline') {
+      assert.equal(colorspace, -1, 'outline needs no conversion: it writes 0,0,0');
+      continue;
+    }
+
+    assert.ok(fog !== -1, `${name}: expected the fog chunk to be inlined`);
+    assert.ok(colorspace !== -1, `${name}: missing colorspace_fragment`);
+    assert.ok(colorspace < fog, `${name}: fog must run AFTER the colour space conversion`);
+  }
+});
+
 test('the paint texture stays the real one, not a cloned copy', () => {
   // UniformsUtils.merge() would clone uPaintMap; PaintSurface would then flip
   // needsUpdate on a texture the GPU is no longer reading and paint would
