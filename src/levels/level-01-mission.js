@@ -97,6 +97,18 @@ const MOOD = {
   void:    0x12141b,   // below the horizon: the pits are dark, not foggy
   fogNear: 12,         // beyond the TPV camera's 6.5 offset, so the player never fogs
   fogFar:  60,
+
+  // Where the drifting mist sheets lie. They are CENTRED on mistZ and
+  // mistLength is their full length, so these two numbers decide which parts of
+  // the corridor look misty. The texture fades out over the outer fifth of each
+  // end, so visible mist really starts about 20% in from the edge.
+  //
+  // -13 / 42 puts that fade edge exactly on island A's far edge (z = 8), which
+  // is what keeps the whole spawn island clear. That is deliberate: the spawn is
+  // where the player learns jump distance, and Gap 1 is the weakest jump in the
+  // level, so mist there is difficulty rather than atmosphere.
+  mistZ: -13,
+  mistLength: 42,
 };
 // Deliberately NOT here: the HEIGHT of the mist. That is FOG_FLOOR / FOG_CEIL
 // in src/shaders/fog-height.js, because it has to reach three materials
@@ -229,6 +241,13 @@ export class Level01 extends LevelBase {
    * the sky later wants a real shader, that is the handover point.
    */
   _mood() {
+    // Everything here is "air" rather than level geometry: the sky dome and the
+    // mist sheets. Grouped so main.js can hide the whole lot in one line for the
+    // minimap pass — fog is not useful in a top-down map, and without this the
+    // sheets render as a grey wash straight over the level.
+    this.atmosphere = new THREE.Group();
+    this.root.add(this.atmosphere);
+
     this._sky();
     this.game.scene.fog = new THREE.Fog(MOOD.horizon, MOOD.fogNear, MOOD.fogFar);
     // Base clear colour only; the dome covers it. This is what shows if a
@@ -283,7 +302,7 @@ export class Level01 extends LevelBase {
       fog: false,
       depthWrite: false,
     }));
-    this.root.add(sky);
+    this.atmosphere.add(sky);
     return sky;
   }
 
@@ -300,6 +319,8 @@ export class Level01 extends LevelBase {
    * the quad's real outline is never visible.
    *
    * Spanning the gaps is intentional — fog pooling in the chasms is the point.
+   * Where they sit along the corridor is MOOD.mistZ / MOOD.mistLength, and the
+   * fade is tuned to stop before the spawn island; see the note on MOOD.
    */
   _groundFog() {
     this.mist = [];
@@ -316,7 +337,7 @@ export class Level01 extends LevelBase {
       map.offset.set(layer.y * 0.13, layer.y * 0.29);   // desync the layers
 
       const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(L1.corridorHalf * 2 + 6, 42),
+        new THREE.PlaneGeometry(L1.corridorHalf * 2 + 6, MOOD.mistLength),
         new THREE.MeshBasicMaterial({
           map,
           color: tint,
@@ -327,8 +348,8 @@ export class Level01 extends LevelBase {
         }),
       );
       mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set(0, layer.y, -6);   // the middle of the A to C run
-      this.root.add(mesh);
+      mesh.position.set(0, layer.y, MOOD.mistZ);
+      this.atmosphere.add(mesh);
       this.mist.push({ map, speed: layer.speed });
     }
   }
