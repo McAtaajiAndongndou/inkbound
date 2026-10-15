@@ -98,7 +98,7 @@ test('isFloor splits surfaces the way the player controller will (floors vs wall
   const walls = level.surfaces.filter((s) => !s.isFloor);
 
   assert.equal(floors.length, 5); // islands A/B/C + platform + ledge — all walkable
-  assert.equal(walls.length, 1);  // the green wall — solid, not walkable
+  assert.equal(walls.length, 2);  // the green wall + the encounter gate (#37)
   assert.equal(floors.every((s) => s.isFloor === true), true);
   assert.equal(walls.every((s) => s.isFloor === false), true);
 });
@@ -134,6 +134,12 @@ test('L1 is completable: Gap 1 on a jump, Gap 2 only with blue AND red (#53)', a
 
   const g1 = playGap(level, { from: a, to: b });
   assert.equal(g1.landed, true, `Gap 1 must be jumpable on grey, fell at z=${g1.z}`);
+
+  // Island B is an encounter arena now (#37): its exit stays sealed until the
+  // Charger is down, so the route only reaches Gap 2 once the fight is won.
+  for (const enemy of level.enemies) enemy.takeColourHit(1, 999);
+  level.update(1 / 60, { position: new THREE.Vector3(0, 0, 0) });
+  assert.equal(level.gate.open, true, 'clearing island B must open the way to Gap 2');
 
   const blueOnly = playGap(level, { from: b, to: c, paintBlue: true });
   assert.equal(blueOnly.landed, false,
