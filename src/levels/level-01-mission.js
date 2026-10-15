@@ -33,8 +33,9 @@ const L1 = {
   ledge:    { zMin: -30, zMax: -19, y: 9 },            // walkable; protrudes so the wall jump-off lands
   extraction: { zMin: -30, zMax: -24 },                // win zone (back of the ledge, past the wall)
 
-  beacons: [                  // colour-coded to the gate they mark
-    { colour: 'red',   x: 0, y: 2,    z: -11.5 },  // Gap 2 — red is the gate; blue is the run-up
+  beacons: [                  // colour-coded to the paint each gate asks for
+    { colour: 'blue',  x: 0, y: 2,    z: -4.5 },   // island B — the blue run-up
+    { colour: 'red',   x: 0, y: 2,    z: -11.5 },  // Gap 2 — the launch colour
     { colour: 'red',   x: 0, y: 5,    z: -17 },    // platform
     { colour: 'green', x: 0, y: 10.5, z: -24 },    // wall
   ],
@@ -142,7 +143,7 @@ export class Level01 extends LevelBase {
     return s;
   }
 
-  /** Minimal unlit beacons, one per gate, colour-coded. Shared geo + material. */
+  /** Minimal unlit beacons, colour-coded to the paint they ask for. Shared geo + material. */
   _beacons() {
     const geo = new THREE.BoxGeometry(0.7, 2.2, 0.7);
     const mats = {
