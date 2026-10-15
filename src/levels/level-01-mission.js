@@ -72,6 +72,113 @@ const L1 = {
   ],
 };
 
+/**
+ * The mood palette. Tune NUMBERS here, not code.
+ *
+ * The important idea: fog colour must match the HORIZON, not the whole
+ * background. An earlier attempt set `scene.background` to the fog colour,
+ * which is wrong for two reasons:
+ *
+ *   1. The background is not all fog. Sky above the horizon is thin air, and
+ *      the pits below it are not foggy at all — so painting all of it the fog
+ *      colour makes the whole screen a flat plate that can never receive fog.
+ *      That reads as a grey filter over the screen, not as atmosphere.
+ *   2. A background colour is a single value that never varies with distance.
+ *      Fog's entire job is to vary with distance. They cannot be the same
+ *      thing and both be right.
+ *
+ * So the sky is a three-band gradient (dome, below) and only its horizon band
+ * matches the fog. Distant geometry then dissolves into the horizon, while the
+ * sky above it and the pits below it stay their own colour.
+ */
+const MOOD = {
+  horizon: 0x8a93a3,   // the haze: what distance fades toward. Matches the sky's horizon band.
+  zenith:  0x232a38,   // drained sky overhead — deliberately NOT the haze colour
+  void:    0x12141b,   // below the horizon: the pits are dark, not foggy
+  fogNear: 12,         // beyond the TPV camera's 6.5 offset, so the player never fogs
+  fogFar:  60,
+
+  // Where the drifting mist sheets lie. They are CENTRED on mistZ and
+  // mistLength is their full length, so these two numbers decide which parts of
+  // the corridor look misty. The texture fades out over the outer fifth of each
+  // end, so visible mist really starts about 20% in from the edge.
+  //
+  // -13 / 42 puts that fade edge exactly on island A's far edge (z = 8), which
+  // is what keeps the whole spawn island clear. That is deliberate: the spawn is
+  // where the player learns jump distance, and Gap 1 is the weakest jump in the
+  // level, so mist there is difficulty rather than atmosphere.
+  mistZ: -13,
+  mistLength: 42,
+};
+// Deliberately NOT here: the HEIGHT of the mist. That is FOG_FLOOR / FOG_CEIL
+// in src/shaders/fog-height.js, because it has to reach three materials
+// (paint, toon, outline) and the enemies, not just this level's surfaces.
+
+/** GLSL's smoothstep, for the sky gradient. Kept local: this is its only user. */
+function smoothstep(edge0, edge1, x) {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * A soft mist alpha map, built in code.
+ *
+ * Constraints that shaped this, all of them real:
+ *
+ *  - NO DOM. `tests/level-contract.test.js` calls `load()` under `node --test`
+ *    with no `document`, so a CanvasTexture would throw and take the whole
+ *    suite with it. A DataTexture built from arithmetic works in both.
+ *  - NO Math.random. Integer-frequency sine stacks are identical every run, so
+ *    nothing shimmers between reloads and the texture is reproducible.
+ *  - Edge falloff baked in. Alpha eases to 0 at all four borders, so the slab
+ *    has no hard rectangle edge AND scrolling it wraps seamlessly: the band
+ *    that wraps in is already transparent.
+ *  - White RGB + varying ALPHA, bound as `map` — not `alphaMap`. `dispose()`
+ *    frees `material.map` but not `material.alphaMap`, so alphaMap would leak
+ *    one texture per mist layer per restart, which is what the Phase 5 leak
+ *    gate exists to catch.
+ */
+function createMistTexture(size = 128) {
+  const data = new Uint8Array(size * size * 4);
+  const TAU = Math.PI * 2;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size;
+      const v = y / size;
+
+      // three octaves of smooth noise; integer frequencies so it would tile
+      let n = 0;
+      n += Math.sin((u * 3 + v * 2) * TAU) * 0.34;
+      n += Math.sin((u * 7 - v * 5) * TAU) * 0.20;
+      n += Math.sin((u * 13 + v * 11) * TAU) * 0.11;
+
+      // centre on "half mist", then ease so the sheet has real holes in it
+      let a = 0.5 + n;
+      a = a * a * (3 - 2 * a);
+
+      // fade to nothing at the borders (see note above)
+      const edge = smoothstep(0, 0.20, u) * smoothstep(0, 0.20, 1 - u)
+                 * smoothstep(0, 0.20, v) * smoothstep(0, 0.20, 1 - v);
+
+      const value = Math.round(Math.min(1, Math.max(0, a * edge)) * 255);
+      const i = (y * size + x) * 4;
+      data[i] = 255;
+      data[i + 1] = 255;
+      data[i + 2] = 255;
+      data[i + 3] = value;
+    }
+  }
+
+  const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 export class Level01 extends LevelBase {
   async load() {
     for (const { zMin, zMax } of Object.values(L1.islands)) {
@@ -83,6 +190,7 @@ export class Level01 extends LevelBase {
     this._wall();
     this._beacons();
     this._extraction();
+    this._mood();
 
     this.spawn.set(L1.spawn.x, L1.spawn.y, L1.spawn.z);
 
@@ -107,6 +215,145 @@ export class Level01 extends LevelBase {
     }
   }
 
+  /**
+   * The level owns its mood: the sky, the distance haze, and the mist that sits
+   * on the ground. Three separate things, deliberately not collapsed into one.
+   *
+   * Lessons from the two failed attempts, kept because both looked plausible:
+   *
+   *   1. The original bug was `near`, not the colour. main.js sets
+   *      Fog(0x0f0f16, 45, 110) app-wide, but L1 is only ~48 units from spawn
+   *      to the back ledge, so a near plane at 45 never engaged and nothing was
+   *      ever fogged. No colour change could have fixed that.
+   *
+   *   2. Fog colour ≠ background colour. Setting them equal makes the sky a
+   *      flat plate that can never receive fog — a grey filter over the whole
+   *      screen. Fog has to match the HORIZON specifically, which is what the
+   *      sky dome's haze band is for. See MOOD.
+   *
+   *   3. Fog tints geometry only; it has no volume. However it is tuned it can
+   *      never put mist IN THE AIR or ON THE FLOOR. That needs geometry, which
+   *      is why `_groundFog()` exists.
+   *
+   * Lane note: both helpers are plain meshes owned by the level, so this stays
+   * inside `levels/`. The sky is vertex-coloured rather than a ShaderMaterial
+   * specifically to avoid adding a file under `shaders/` (Lethabo's lane). If
+   * the sky later wants a real shader, that is the handover point.
+   */
+  _mood() {
+    // Everything here is "air" rather than level geometry: the sky dome and the
+    // mist sheets. Grouped so main.js can hide the whole lot in one line for the
+    // minimap pass — fog is not useful in a top-down map, and without this the
+    // sheets render as a grey wash straight over the level.
+    this.atmosphere = new THREE.Group();
+    this.root.add(this.atmosphere);
+
+    this._sky();
+    this.game.scene.fog = new THREE.Fog(MOOD.horizon, MOOD.fogNear, MOOD.fogFar);
+    // Base clear colour only; the dome covers it. This is what shows if a
+    // camera ever clips the dome — the minimap's far plane, for instance.
+    this.game.scene.background = new THREE.Color(MOOD.void);
+    this._groundFog();
+  }
+
+  /**
+   * A gradient sky dome — the piece that lets fog have its own colour.
+   *
+   * Three vertex-coloured bands: dark below the horizon, haze at it, drained
+   * dark above it. Vertex colours rather than a fragment shader because 32x20
+   * segments is plenty for a gradient, and it keeps a custom shader out of
+   * `shaders/`.
+   *
+   * `fog: false` is load-bearing. The dome sits at radius 200, far past
+   * fogFar, so with fog enabled the entire sky would be 100% fogged and would
+   * collapse straight back into the flat plate we are trying to avoid.
+   *
+   * `depthWrite: false` so a 200-unit sphere can never occlude real geometry.
+   */
+  _sky() {
+    const R = 200;
+    const geo = new THREE.SphereGeometry(R, 32, 20);
+    const horizon = new THREE.Color(MOOD.horizon);
+    const zenith = new THREE.Color(MOOD.zenith);
+    const below = new THREE.Color(MOOD.void);
+    const c = new THREE.Color();
+
+    const pos = geo.attributes.position;
+    const colours = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      // 0 at the bottom pole, 1 at the top. The horizon sits at 0.5.
+      const ny = (pos.getY(i) / R + 1) / 2;
+      // The haze band is deliberately BROAD. The wall and the gates sit about
+      // 11 degrees above the horizon, which is ~0.6 here. A narrow band would
+      // leave them fogged to pale grey but silhouetted against dark sky — the
+      // "painted gate" artefact all over again.
+      const up = smoothstep(0.50, 0.80, ny);
+      const down = 1 - smoothstep(0.30, 0.50, ny);
+      c.copy(horizon).lerp(zenith, up).lerp(below, down);
+      colours[i * 3] = c.r;
+      colours[i * 3 + 1] = c.g;
+      colours[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+
+    const sky = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      side: THREE.BackSide,
+      fog: false,
+      depthWrite: false,
+    }));
+    this.atmosphere.add(sky);
+    return sky;
+  }
+
+  /**
+   * Drifting mist sheets just above floor level — the "fog on the ground".
+   *
+   * A horizontal quad seen from a camera ~2 m up reads as a haze band lying
+   * along the floor and receding into the distance, which is what ground fog
+   * actually looks like. Three layers at different heights, opacities and
+   * speeds give parallax, so the mist drifts rather than sliding as one sheet.
+   *
+   * The quads are wider and longer than the corridor on purpose: the texture's
+   * baked edge falloff fades the mist out well before the geometry's edge, so
+   * the quad's real outline is never visible.
+   *
+   * Spanning the gaps is intentional — fog pooling in the chasms is the point.
+   * Where they sit along the corridor is MOOD.mistZ / MOOD.mistLength, and the
+   * fade is tuned to stop before the spawn island; see the note on MOOD.
+   */
+  _groundFog() {
+    this.mist = [];
+    const tint = new THREE.Color(MOOD.horizon);
+
+    const layers = [
+      { y: 0.35, opacity: 0.30, speed: 0.010 },
+      { y: 0.70, opacity: 0.22, speed: -0.016 },
+      { y: 1.05, opacity: 0.15, speed: 0.022 },
+    ];
+
+    for (const layer of layers) {
+      const map = createMistTexture(128);
+      map.offset.set(layer.y * 0.13, layer.y * 0.29);   // desync the layers
+
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(L1.corridorHalf * 2 + 6, MOOD.mistLength),
+        new THREE.MeshBasicMaterial({
+          map,
+          color: tint,
+          transparent: true,
+          opacity: layer.opacity,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        }),
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(0, layer.y, MOOD.mistZ);
+      this.atmosphere.add(mesh);
+      this.mist.push({ map, speed: layer.speed });
+    }
+  }
+
   update(dt, player) {
     // Pass the position, not the player: Enemy.update does arithmetic on what
     // it receives, and a Player object has no x/y/z.
@@ -114,6 +361,19 @@ export class Level01 extends LevelBase {
     // optimises it away, and this runs every frame.
     for (let i = 0; i < this.enemies.length; i++) {
       this.enemies[i].update(dt, player.position);
+    }
+
+    // Drift the ground mist. This moves the texture OFFSET, not the mesh, so it
+    // is one matrix update per layer and allocates nothing — the same
+    // discipline as the enemy loop above, which has its own allocation test.
+    // Offsets wrap into 0..1 so a long session cannot drift into float rubble.
+    for (let i = 0; i < this.mist.length; i++) {
+      const m = this.mist[i];
+      const step = m.speed * dt;
+      const ox = m.map.offset.x + step;
+      const oy = m.map.offset.y + step * 0.4;
+      m.map.offset.x = ox >= 1 ? ox - 1 : (ox < 0 ? ox + 1 : ox);
+      m.map.offset.y = oy >= 1 ? oy - 1 : (oy < 0 ? oy + 1 : oy);
     }
 
     // Encounter gates: an arena's exit opens the moment that arena is clear.
