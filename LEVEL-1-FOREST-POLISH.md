@@ -7,39 +7,64 @@ trees rather than the 100+ below — see "What step 5 actually landed" at the bo
 
 ---
 
-## What step 5 actually landed
+## What actually landed
 
-Steps 1–5 are in. Two of the numbers in this document did not survive contact
-with the level, and both are worth knowing before anyone re-reads the plan:
+The goal turned out to be bigger than "trees", and this document was written for
+a smaller version of it. Where the plan says **forest**, read **decor**: the whole
+environment is grey and comes back to colour when you paint the ground under it.
+That is now trees, bushes, rocks, grass, flowers and stumps — 249 props, one
+system (`src/levels/decor.js`).
 
-**1. 55 trees, not 100+.** The rule "every tree stands on a floor" (step 2, and
-`tests/level-01-forest.test.js`) is what caps it. L1's floors are a 16-wide
-corridor through five islands — there is no ground outside it, so a tree placed
-out there floats over the void. 29.5 m of island plus an 11 m ledge, banded on
-both sides at ~1.1 m spacing, is ~55 trees once the crowding guard has run. To
-get past that the LEVEL needs more ground, not the forest module. The knob is
-`FOREST.scatter.step` / `.spacing` in `src/levels/forest.js`.
+Three of this document's numbers did not survive contact with the level, and all
+three are worth knowing before anyone re-reads it:
 
-The performance point step 5 was actually making is met regardless: the forest
-costs **25 InstancedMesh draw calls whether it holds 55 trees or 250**.
+**1. 249 props, not the 100+ trees the plan asked for.** The rule "every prop
+stands on a floor" (step 2, and `tests/level-01-decor.test.js`) is what caps it.
+L1's floors are a 16-wide corridor through five islands — there is no ground
+outside it, so anything placed out there floats over the void. To get past that
+the LEVEL needs more ground, not the decor module. The density knobs are
+`step` / `spacing` / `edge` per kind in `KINDS`.
+
+The performance point step 5 was actually making is met regardless: the whole
+dressed level costs **21 InstancedMesh draw calls**, against 498 meshes' worth of
+geometry if every prop were placed by hand.
 
 **2. Per-tree colour with instancing did not need Lethabo's shader.** This
 document says the custom toon shader cannot do `instanceColor` and suggests
 asking `shaders/`, or switching to `MeshToonMaterial`. Neither was necessary:
-the colour already lives in a shared material, so a tree changes colour by
+the colour already lives in a shared material, so a prop changes colour by
 MOVING to a different `InstancedMesh` that draws the same geometry with a
-different material. 5 variants x 4 colours + 5 trunks = the 25 calls above.
+different material.
 
-**3. A real bug fell out of step 3.** `createToonMaterial` defaults `uLightDir`
+**3. The MegaKit itself was not used.** Its free download is an itch.io ZIP
+session, and the relevant models are published by the same author (Quaternius,
+CC0) on poly.pizza as individual glTFs — the same assets, already in the right
+format, a few KB each instead of one large archive to unpack. Nine files were
+taken and texture-stripped by `tools/strip-glb-textures.mjs` (6.0 MB -> 1.6 MB
+for the trees, ~200 KB for the props). The art direction is flat toon, so every
+texture would be decoded at load and then thrown away.
+
+**4. A real bug fell out of step 3.** `createToonMaterial` defaults `uLightDir`
 to `(0.5, 1.0, 0.3)`, which is NOT the sun's vector, and `_lightDirection()`
 walked `this.surfaces` only. So the trees added in step 2 were lit from a
 different direction than the ground they stand on — the exact thing #57 was
-opened to fix. Fixed, and the test was extended to cover tree materials and
+opened to fix. Fixed, and the test was extended to cover the decor palette and
 verified to fail without the fix.
 
-**Also:** the two `.glb` files are texture-stripped by
-`tools/strip-glb-textures.mjs` (6.0 MB -> 1.6 MB). The art direction is flat
-toon, so every texture would be decoded at load and then thrown away.
+**Still not done, and worth being honest about:**
+
+- **Nobody has measured the frame rate.** Step 5 asks for it explicitly and the
+  marking cares (DESIGN.md:133). There are draw-call and triangle budgets in the
+  commit message, but no FPS number from a real machine.
+- **The shadow bullet is not just undone, it is currently futile.** `sun.castShadow`
+  is on, the player casts a shadow, and the only mesh with `receiveShadow = true`
+  is the floor — whose custom shader never samples the shadow map. So a shadow
+  map is rendered every frame that nothing can display. Letting props cast shadows
+  would add cost and still show nothing until the shaders gain shadow support.
+- **`PAINT.grey.hex` is still `0x5a5a66`**, the blue-grey the step-1 watch-out
+  flagged. The decor tint is a drained grey-green (`DECOR.tint`), which is what
+  makes the un-painted world look like something that used to be alive; the
+  ground is still the blue-grey.
 
 ---
 

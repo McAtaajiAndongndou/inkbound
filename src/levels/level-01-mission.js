@@ -8,7 +8,7 @@ import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
 import { PAINT, ENEMY, PAINT_GRID } from '../config.js';
 import { Enemy } from '../enemies/enemy.js';
-import { Forest } from './forest.js';
+import { Decor, KINDS, createDecorPalette } from './decor.js';
 
 /**
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
@@ -72,20 +72,24 @@ const L1 = {
     { x: 5,  y: 0, z: -22, type: 'charger' },
   ],
 
-  // The forest. Hand-placed, because the rules are not geometric:
+  // The TREES. Hand-placed, because the rules are not geometric:
   //
   //   - every tree must stand ON a floor. A tree over a gap floats, and that is
   //     the one thing about the mist-free gaps a player will notice instantly.
-  //     `tests/level-01-forest.test.js` checks this for every entry.
+  //     `tests/level-01-decor.test.js` checks this for every entry.
   //   - keep x away from 0. The route runs down the middle of the corridor, and
   //     trees sit at +/-5.5 to 6.5 so they frame the path without standing in it.
-  //   - trees do not collide (see `_forest()`), so they can never block the Gap 1
+  //   - trees do not collide (see `_decor()`), so they can never block the Gap 1
   //     jump or trap the player against the Charger.
   //   - `scale` gives size variety for free. Nothing else changes per tree.
   //
   // y is the floor the tree stands on: 0 for the islands, 4 for the platform,
   // 9 for the extraction ledge.
-  forest: [
+  //
+  // The other kinds — bush, rock, grass, flower, stump — have no table here.
+  // Their placement is scatter, configured in `decor.js` KINDS, because they are
+  // ground cover: their job is density and distribution, not framing a route.
+  tree: [
     // island A — the approach, and a backdrop behind the spawn
     { x: -6.0, y: 0, z: 17.0, scale: 1.3 },
     { x: -6.5, y: 0, z: 13.0, scale: 1.0 },
@@ -262,7 +266,7 @@ export class Level01 extends LevelBase {
     this._extraction();
     this._mood();
     this._light();
-    this._forest();
+    this._decor();
 
     this.spawn.set(L1.spawn.x, L1.spawn.y, L1.spawn.z);
 
@@ -469,10 +473,10 @@ export class Level01 extends LevelBase {
    * normalises to (0.431, 0.863, 0.259), and the sun normalises to
    * (0.485, 0.808, 0.323). Not the same direction — so every tree in the level
    * was lit from somewhere the ground was not, and the surface-only walk below
-   * was why the test never noticed. The forest now hands over its materials and
-   * the loop covers them too.
+   * was why the test never noticed. The palette is now walked instead, which
+   * covers every kind of decor at once.
    *
-   * Called at the END of load(), after the gates and the forest exist. Both are
+   * Called at the END of load(), after the gates and the decor exist. Both are
    * built late — miss one and its faces are lit from a different direction than
    * the floor they stand on.
    */
@@ -480,44 +484,60 @@ export class Level01 extends LevelBase {
     const dir = new THREE.Vector3(
       MOOD.sunDir[0], MOOD.sunDir[1], MOOD.sunDir[2],
     ).normalize();
-    this.sunDir = dir;   // kept: future code (telegraphs, tree reactions) wants it
+    this.sunDir = dir;   // kept: future code (telegraphs, reactions) wants it
 
     for (let i = 0; i < this.surfaces.length; i++) {
       const uniform = this.surfaces[i].material.uniforms.uLightDir;
       if (uniform) uniform.value.copy(dir);
     }
 
-    // the trees, which are custom-shaded too and were the miss described above
-    for (let i = 0; i < this.forest.materials.length; i++) {
-      this.forest.materials[i].uniforms.uLightDir.value.copy(dir);
+    // the decor, which is custom-shaded too and was the miss described above
+    for (const material of this.decorMaterials) {
+      material.uniforms.uLightDir.value.copy(dir);
     }
   }
 
   /**
-   * The forest.
+   * The decor: trees, bushes, rocks, grass, flowers, stumps.
    *
-   * The shapes, the materials and the reaction to paint live in `./forest.js`
-   * — this method is only the wiring: hand it the placement table and the
-   * walkable floors, and hang it off `this.root` so dispose() frees it.
+   * One `Decor` per kind, each an instance of the same machinery with its own
+   * model set, size and scatter density. Trees differ from grass only in their
+   * numbers, not in their code — which is the point: the paint reaction, the
+   * instancing and the fallback are written once and every kind gets them.
    *
-   * The placement table is the design; the module is the machinery. That split
-   * is what lets step 5 (instanced GLB models) change how a tree is drawn
-   * without moving a single tree.
+   * The palette is built ONCE and shared by every kind, so a blue bush and a blue
+   * tree are the same blue. Per-kind palettes would make "the world comes back to
+   * colour" read as several different colours.
    */
-  _forest() {
-    this.forest = new Forest(this.root, L1.forest);
+  _decor() {
+    this.palette = createDecorPalette();
 
-    // Only walkable surfaces — see Forest.build. The wall is a PaintSurface too,
-    // and a tree that "stands on" the wall stands inside it.
-    this.forest.build(this.surfaces.filter((s) => s.isFloor));
+    // One flat list for `_lightDirection()`: custom shaders do not read scene
+    // lights, so a material missing from here is lit from createToonMaterial's
+    // own default direction and quietly disagrees with the ground (#57).
+    this.decorMaterials = [this.palette.base, ...Object.values(this.palette.tint)];
 
-    // Step 4: upgrade to the real .glb trees. NOT awaited, and deliberately so —
-    // `main.js` does not await load(), so the level is playable immediately and
-    // the forest swaps itself in when the files arrive. A failed load leaves the
-    // cones standing; see Forest.loadModels.
-    if (this.game.loadGLB) this.forest.loadModels(this.game.loadGLB);
+    // Only walkable surfaces — see Decor.build. The wall is a PaintSurface too,
+    // and a prop that "stands on" the wall stands inside it.
+    const floors = this.surfaces.filter((s) => s.isFloor);
 
-    return this.forest.trees.map((t) => t.mesh);
+    this.decor = {};
+    for (const [kind, config] of Object.entries(KINDS)) {
+      const props = new Decor(this.root, {
+        kind, config, palette: this.palette, hand: L1[kind] ?? [],
+      });
+      props.build(floors);
+
+      // Step 4: upgrade to the real .glb props. NOT awaited, and deliberately so
+      // — `main.js` does not await load(), so the level is playable immediately
+      // and each kind swaps itself in when its files arrive. A failed load leaves
+      // the code shapes standing; see Decor.loadModels.
+      if (this.game.loadGLB) props.loadModels(this.game.loadGLB);
+
+      this.decor[kind] = props;
+    }
+
+    return this.decor;
   }
 
   update(dt, player) {
@@ -542,9 +562,11 @@ export class Level01 extends LevelBase {
       m.map.offset.y = oy >= 1 ? oy - 1 : (oy < 0 ? oy + 1 : oy);
     }
 
-    // The forest wakes up where the player paints. It runs its own heartbeat
-    // (see Forest.update) rather than reading the grid every frame.
-    this.forest.update(dt, player.position);
+    // The decor wakes up where the player paints. Each kind runs its own
+    // heartbeat (see Decor.update) rather than reading the grid every frame.
+    for (const props of Object.values(this.decor)) {
+      props.update(dt, player.position);
+    }
 
     // Encounter gates: an arena's exit opens the moment that arena is clear.
     for (let i = 0; i < this.gates.length; i++) {
@@ -596,9 +618,9 @@ export class Level01 extends LevelBase {
     // Enemies may own GPU resources not attached to `root` — free them first,
     // then let the base traverse dispose every mesh/material/texture under root.
     for (const enemy of this.enemies) enemy.dispose?.();
-    // Tells a model load still in flight that its level is gone, so it drops the
-    // result instead of attaching a forest to a dead level (the "R race").
-    this.forest?.dispose();
+    // Tells any model load still in flight that its level is gone, so it drops
+    // the result instead of attaching decor to a dead level (the "R race").
+    for (const props of Object.values(this.decor ?? {})) props.dispose();
     super.dispose();
   }
 
