@@ -65,6 +65,11 @@ export const PAINT_GUN = {
   fireDelay: 0.14, // seconds
 };
 
+// Starting master volume (0..1). The options menu overrides it per player.
+export const AUDIO = {
+  volume: 0.6,
+};
+
 export const PAINT_GRID = {
   level1Cells: 4,
 };
