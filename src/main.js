@@ -99,6 +99,7 @@ function loadLevel() {
   avatar = new Avatar(player.mesh, () => {
     if (player === thisPlayer) hidePlaceholder(thisPlayer, avatar);
   });
+  avatar.setArmed(true);
   lastPos.copy(player.mesh.position);
 
   player.onDeath = () => {
@@ -110,22 +111,19 @@ function loadLevel() {
   
 
   gun = new PaintGun(level.surfaces, 1, level.enemies, scene);
-  gunModel = new PaintGunModel(rig.camera, player);
+  gunModel = new PaintGunModel(rig.camera, player, avatar);
 }
 
 loadLevel();
 document.getElementById("loading").remove();
 
-const timer = new THREE.Timer();
-timer.connect(document);
+const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
 
-  timer.update();
-
-  const dt = Math.min(timer.getDelta(), 0.05);
-  const elapsed = timer.getElapsed();
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const elapsed = clock.elapsedTime;
   const actions = input.consumeActions();
 
   if (actions.restart) loadLevel();
@@ -150,7 +148,8 @@ function animate() {
   player.checkEnemyContact(level.enemies);
 
   gun.update(dt);
-  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera)) {
+  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson))) {
+    gunModel?.kick();
     audio.play("fire");
     if (gun.lastShot === "splat") {
       audio.play("splat");

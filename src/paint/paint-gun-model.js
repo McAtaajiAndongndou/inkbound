@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-const MUZZLE_OFFSET = new THREE.Vector3(0,0,-0.5);
+const MUZZLE_OFFSET = new THREE.Vector3(0,0.74,-6.6);
 const RECOIL_DISTANCE_FIRST = 0.12;
-const RECOIL_DISTANCE_THIRD = 0.35;
+const RECOIL_DISTANCE_THIRD = 0.08;
+const THIRD_PERSON_SCALE = 0.07;
+const GRIP_LOCAL = new THREE.Vector3(0,-0.25,0);
 const RECOIL_TILT = 0.35;
 const RECOIL_RECOVERY = 8;
 const FLASH_TIME = 0.05;
@@ -11,13 +13,14 @@ const FLASH_TIME = 0.05;
 
 
 export class PaintGunModel {
-    constructor(camera, player){
+    constructor(camera, player,avatar=null){
         this.camera = camera;
         this.player = player;
 
         this.firstPersonGun = null;
         this.thirdPersonGun = null;
         this.disposed = false;
+        this.avatar = avatar ?? player.avatar ?? null;
 
         this.recoil = 0;
         this.flashTimer = 0;
@@ -51,10 +54,18 @@ export class PaintGunModel {
                 this.camera.add(this.firstPersonGun);
 
                 this.thirdPersonGun = model.clone(true);
-                this.thirdPersonGun.scale.setScalar(0.3);
-                this.thirdPersonGun.position.set(1.0,0.2,-0.4);
-                this.thirdPersonGun.visible  = false;
-                this.player.mesh.add(this.thirdPersonGun);
+                
+                this.thirdPersonGun.visible = false;
+
+                if (this.avatar){
+                    this.thirdPersonGun.scale.setScalar(THIRD_PERSON_SCALE);
+                    this.thirdPersonGun.position.copy(GRIP_LOCAL).multiplyScalar(-THIRD_PERSON_SCALE);
+                    this.avatar.attachToHand(this.thirdPersonGun);
+                }else{
+                    this.thirdPersonGun.scale.setScalar(0.3);
+                    this.thirdPersonGun.position.set(1.0,0.2,-0.4);
+                    this.player.mesh.add(this.thirdPersonGun);
+                }
 
                 this.firstPersonGun.traverse((object) => {
                     if (object.isMesh){
@@ -136,6 +147,7 @@ export class PaintGunModel {
         }
 
         if (this.thirdPersonGun) {
+            this.avatar?.detachFromHand(this.thirdPersonGun);
             this.thirdPersonGun.removeFromParent();
         }
 

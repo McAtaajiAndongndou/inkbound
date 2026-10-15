@@ -5,6 +5,22 @@ import { PLAYER } from '../config.js';
 const MODEL_URL = './assets/soldier-swat.glb';
 const CLIP_PREFIX = 'CharacterArmature|';
 
+const HAND_BONE = 'Wrist-R';
+const HAND_ROTATION = new THREE.Euler(1.557,0.042, 1.393);
+const HAND_OFFSET = new THREE.Vector3(0,0.08,0);
+const CLIPS = {
+  unarmed: {idle: 'Idle', move: 'Run'},
+  armed: {idle: 'Idle_Gun_Pointing', move: 'Run_Shoot'},
+};
+
+function findBone(root, wanted){
+  const clean = (s) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  const target = clean(wanted);
+  let found = null;
+  root.traverse((o)=> {if (!found && o.isBone && clean(o.name) === target) found = o;});
+  return found;
+}
+
 function disposeNode(o) {
   if (o.geometry) o.geometry.dispose();
   if (o.skeleton) o.skeleton.dispose();
@@ -24,6 +40,11 @@ export class Avatar {
     this.actions = {};
     this.current = null;
     this.disposed = false;
+    this.armed = false;
+    this.moving = false;
+    this.handSlot = null;
+    this.handGrip = null;
+    this._pendingHand = [];
 
     parent.add(this.root);
 
@@ -76,9 +97,59 @@ export class Avatar {
 
     this.model = model;
     this.root.add(model);
-    this.play('Idle', 0);
+    this._createHandSlot();
+    this.play(this._locomotionClip(), 0);
     this.onLoad?.();
   }
+
+  _createHandSlot() {
+    const bone = findBone(this.model, HAND_BONE);
+    if (!bone) {
+      console.warn('avatar: hand bone not found');
+      for (const o of this._pendingHand) this.root.add(o);
+        this._pendingHand.length = 0;
+        return;
+     }
+ 
+    this.root.updateMatrixWorld(true);
+    const rel = new THREE.Matrix4().copy(this.root.matrixWorld).invert().multiply(bone.matrixWorld);
+    const s = new THREE.Vector3();
+    rel.decompose(new THREE.Vector3(), new THREE.Quaternion(), s);
+
+    this.handSlot = new THREE.Group();
+    this.handSlot.scale.setScalar(s.x > 0 ? 1 / s.x : 1);
+    bone.add(this.handSlot);
+
+    this.handGrip = new THREE.Group();
+    this.handGrip.position.copy(HAND_OFFSET);
+    this.handGrip.rotation.copy(HAND_ROTATION);
+    this.handSlot.add(this.handGrip);
+
+    for (const o of this._pendingHand) this.handGrip.add(o);
+      this._pendingHand.length = 0;
+    }
+
+  attachToHand(object) {
+    if (this.handGrip) this.handGrip.add(object);
+    else this._pendingHand.push(object);
+  }
+
+  detachFromHand(object) {
+    const i = this._pendingHand.indexOf(object);
+    if (i !== -1) this._pendingHand.splice(i, 1);
+      object.removeFromParent();
+  }
+
+  _locomotionClip() {
+    const set = this.armed ? CLIPS.armed : CLIPS.unarmed;
+    return this.moving ? set.move : set.idle;
+  }
+
+  setArmed(armed) {
+    this.armed = armed;
+    this.play(this._locomotionClip());
+  }
+
 
   play(name, fade = 0.2) {
     const next = this.actions[name];
@@ -89,7 +160,8 @@ export class Avatar {
   }
 
   setMoving(moving) {
-    this.play(moving ? 'Run' : 'Idle');
+    this.moving = moving;
+    this.play(this._locomotionClip());
   }
 
   die() {
@@ -106,6 +178,8 @@ export class Avatar {
       this.mixer.stopAllAction();
       if (this.model) this.mixer.uncacheRoot(this.model);
     }
+    this.handSlot?.removeFromParent();
+    this._pendingHand.length = 0;
     this.parent.remove(this.root);
     this.root.traverse(disposeNode);
   }
