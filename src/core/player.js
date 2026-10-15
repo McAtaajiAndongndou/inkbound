@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER, HEALTH } from '../config.js';
+import { PLAYER, HEALTH, CAMERA } from '../config.js';
 
 const ID_TO_NAME = ['grey', 'blue', 'red', 'green'];
 
@@ -36,6 +36,10 @@ export class Player {
     this.climbing = false;
     this.touchingWall = null;   // { surface, point, normal, rules }
     this.currentColour = 'grey';
+
+    // jump feel (#33) — seconds remaining on each grace window
+    this._coyoteTimer = 0;
+    this._jumpBufferTimer = 0;
 
     // Speed cap earned from paint, in m/s. See the cap block in update(). (#52)
     this.speedCap = PLAYER.maxSpeed;
@@ -112,8 +116,9 @@ export class Player {
     if (this.dead) return;
     this.yaw -= dx * sensitivity;
     this.pitch -= dy * sensitivity;
-    const limit = Math.PI / 2 - 0.05;
-    this.pitch = Math.max(-limit, Math.min(limit, this.pitch));
+    // clamp with the same numbers the camera rig reads, so aim and camera
+    // agree about how far down you can look (#34).
+    this.pitch = Math.max(CAMERA.pitchMin, Math.min(CAMERA.pitchMax, this.pitch));
   }
 
   /**
@@ -229,6 +234,14 @@ export class Player {
     if (this.hurtTimer > 0) this.hurtTimer -= dt;
     if (this.dead) return;     // dead: frozen in place until the level restarts
 
+    // ---- jump feel (#33) — decay the grace windows -----------------------
+    // onGround here is last frame's value: exactly what coyote time wants.
+    if (this.onGround || this.climbing) this._coyoteTimer = PLAYER.coyoteTime;
+    else if (this._coyoteTimer > 0)    this._coyoteTimer -= dt;
+
+    if (actions.jump) this._jumpBufferTimer = PLAYER.jumpBufferTime;
+    else if (this._jumpBufferTimer > 0) this._jumpBufferTimer -= dt;
+
     // ---- movement intent, relative to where we are looking ---------------
     this._fwd.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     this._right.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
@@ -294,9 +307,14 @@ export class Player {
     }
 
     // ---- jump ------------------------------------------------------------
-    if (actions.jump && (this.onGround || this.climbing)) {
+    // Jump fires if the buffer has a recent press AND we are grounded,
+    // climbing, or still inside the coyote window (#33).
+    const canJump = this.onGround || this.climbing || this._coyoteTimer > 0;
+    if (this._jumpBufferTimer > 0 && canJump) {
       this.velocity.y = PLAYER.jumpSpeed;
       this.onGround = false;
+      this._coyoteTimer = 0;       // consume the grace window, no double-jump
+      this._jumpBufferTimer = 0;   // consume the buffered press
       if (this.climbing) {
         // hop off the wall so you land on the ledge instead of sticking
         this.velocity.addScaledVector(wall.normal, PLAYER.wallJumpPush);
@@ -310,6 +328,10 @@ export class Player {
     this._resolveWalls();
 
     // ---- ground collision + BOUNCE FROM THE PAINT ------------------------
+    // Snap to the floor found at the start of this frame. Not a fresh probe:
+    // that one-frame-late snap is what keeps the player "grounded" for the
+    // frame it takes to cross a ledge, which is what coyote time and the
+    // level's playable gaps are built on (#33, #53).
     this.onGround = false;
     if (ground && this.position.y <= feetY + PLAYER.groundSnap) {
       this.position.y = feetY;
@@ -322,7 +344,7 @@ export class Player {
         // does nothing, because a grounded player has ~zero fall speed.
         // do NOT set onGround, or friction would eat the bounce.
         this.velocity.y = Math.max(-impact * rules.restitution, PLAYER.minBounce);
-        this.position.y = feetY + PLAYER.bounceClearance;   // clear the surface so we do not re-hit
+        this.position.y = feetY + PLAYER.bounceClearance;
       } else {
         this.velocity.y = 0;
         this.onGround = true;
@@ -340,6 +362,8 @@ export class Player {
     this.position.copy(this.spawn);
     this.velocity.set(0, 0, 0);
     this.speedCap = PLAYER.maxSpeed;   // respawning earns nothing (#52)
+    this._coyoteTimer = 0;
+    this._jumpBufferTimer = 0;
   }
 
   dispose() {

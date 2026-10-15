@@ -22,6 +22,11 @@ export class LevelBase {
     this.enemies = [];                      // Enemy[], ticked in update()
     this.extraction = null;                 // THREE.Box3 win trigger (if any)
     this._complete = false;                 // win reported once
+    // Optional: a Group holding everything that is "air" rather than level
+    // geometry -- sky, mist, weather. main.js hides it for the minimap pass so
+    // the top-down view is not washed out. Levels with no atmosphere leave it
+    // null, and main.js tolerates that.
+    this.atmosphere = null;
   }
 
   async load() { throw new Error('implement load()'); }
