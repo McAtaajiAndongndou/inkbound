@@ -442,6 +442,12 @@ test('every shipped model file yields complete shapes (#57 step 4)', async () =>
  */
 test('baked models stand on y=0, centred, at the height the design asked for', async () => {
   const level = await buildLevelWithModels();
+  // the tallest size any model in that kind was baked to, per-model heights included
+  const MAX_KIND_HEIGHT = Object.fromEntries(
+    Object.entries(KINDS).map(([kind, c]) => [
+      kind, c.heights ? Math.max(...Object.values(c.heights)) : c.height,
+    ]),
+  );
 
   for (const [kind, props] of Object.entries(level.decor)) {
     assert.equal(props.variants.length, KINDS[kind].maxVariants,
@@ -456,7 +462,7 @@ test('baked models stand on y=0, centred, at the height the design asked for', a
         assert.ok(Math.abs(box.min.x) < 20 && Math.abs(box.max.x) < 20,
           `${kind} still sits at its strip position, x=${box.min.x}..${box.max.x}`);
         // and no single part may be taller than the height its kind was baked to
-        assert.ok(box.max.y <= KINDS[kind].height + 1e-4,
+        assert.ok(box.max.y <= MAX_KIND_HEIGHT[kind] + 1e-4,
           `${kind} has a part taller than its normalised height`);
       }
 
@@ -473,8 +479,13 @@ test('baked models stand on y=0, centred, at the height the design asked for', a
 
       assert.ok(Math.abs(combined.min.y) < 1e-4,
         `${kind} prop hovers at y=${combined.min.y}; the pivot was not undone`);
-      assert.ok(Math.abs(combined.max.y - KINDS[kind].height) < 1e-3,
-        `${kind} prop is ${combined.max.y.toFixed(3)} tall, expected ${KINDS[kind].height}`);
+      // a kind with per-model heights legitimately bakes to several sizes --
+      // the point of them is that Short and Tall stop looking identical
+      const allowed = KINDS[kind].heights
+        ? Object.values(KINDS[kind].heights)
+        : [KINDS[kind].height];
+      assert.ok(allowed.some((h) => Math.abs(combined.max.y - h) < 1e-3),
+        `${kind} prop is ${combined.max.y.toFixed(3)} tall, expected one of ${allowed.join(', ')}`);
       // and it is centred, not standing off to one side of its own origin
       assert.ok(Math.abs(combined.min.x + combined.max.x) < 1e-3,
         `${kind} prop is not centred on x (${combined.min.x}..${combined.max.x})`);
@@ -607,6 +618,83 @@ test('a kind that fails to load leaves decor standing, not a hole (#57 step 4)',
   }
 });
 
+/**
+ * The fallback props must NOT be on screen while the models load.
+ *
+ * They exist so a failed download can never leave a bare level — but showing
+ * them during a normal load meant every restart flashed cones and blobs that
+ * then turned into trees. Renda reported exactly that: "when the lvl first loads
+ * after pressing R, it initially shows the old trees and grass".
+ *
+ * Driven by level time, not a timer, so this is testable.
+ */
+test('the fallback props stay hidden while the models load', async () => {
+  const level = await buildLevelWithModels();      // models arrive
+
+  for (const [kind, props] of Object.entries(level.decor)) {
+    assert.equal(props.fallback.visible, false, `${kind} showed its fallback despite loading`);
+  }
+
+  // and a heartbeat well past the delay must not bring it back
+  for (let i = 0; i < 20; i++) {
+    level.update(DECOR.reactInterval, { position: new THREE.Vector3(0, 2, 13) });
+  }
+  for (const [kind, props] of Object.entries(level.decor)) {
+    assert.equal(props.fallback.visible, false, `${kind} revealed its fallback after the models landed`);
+    assert.ok(props.modelCount > 0);
+  }
+});
+
+test('a slow load still gets a dressed level once the delay has passed', async () => {
+  // a loader that never resolves — the worst case: no error, no models
+  const level = new Level01({
+    scene: new THREE.Scene(),
+    onWin: null,
+    loadGLB: () => new Promise(() => {}),
+  });
+  await level.load();
+
+  for (const [kind, props] of Object.entries(level.decor)) {
+    assert.equal(props.fallback.visible, false, `${kind} showed the fallback before its delay`);
+  }
+
+  // step past DECOR.fallbackDelay in small slices, exactly as a game loop would
+  const steps = Math.ceil(DECOR.fallbackDelay / 0.05) + 2;
+  for (let i = 0; i < steps; i++) {
+    level.update(0.05, { position: new THREE.Vector3(0, 2, 13) });
+  }
+
+  for (const [kind, props] of Object.entries(level.decor)) {
+    assert.equal(props.fallback.visible, true,
+      `${kind} left the level bare — a hung download must still produce a dressed level`);
+  }
+});
+
+/**
+ * Four grass models at the same size is one grass model with extra steps. The
+ * pack ships them as Short/Tall pairs, and normalising every model in a kind to
+ * a single height erases the only thing distinguishing them.
+ */
+test('a kind with per-model heights bakes variants at different sizes', async () => {
+  const level = await buildLevelWithModels();
+  const props = level.decor.grass;
+
+  const heights = props.variants.map((v) => {
+    const box = new THREE.Box3();
+    for (const part of [v.base, v.tint].filter(Boolean)) {
+      box.union(new THREE.Box3().setFromBufferAttribute(part.attributes.position));
+    }
+    return +box.max.y.toFixed(3);
+  });
+
+  assert.equal(new Set(heights).size, heights.length,
+    `all ${heights.length} grass variants baked to the same height (${heights.join(', ')}) — `
+    + 'the Short/Tall pairs were flattened back into one size');
+
+  // and every one matches what the config asked for
+  const wanted = Object.values(KINDS.grass.heights).sort((a, b) => a - b);
+  assert.deepEqual([...heights].sort((a, b) => a - b), wanted);
+});
 /**
  * THE ONE THAT COST A WHOLE DEBUGGING SESSION, pinned so it cannot come back.
  *

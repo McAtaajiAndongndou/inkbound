@@ -51,6 +51,16 @@ export const DECOR = {
 
   reactRadius: 15,     // metres; props past this keep whatever colour they had
   reactInterval: 0.25, // seconds between refreshes
+
+  // How long the code-built props stay HIDDEN while the real models load.
+  //
+  // The fallback exists so a failed download can never leave a bare level, but
+  // showing it DURING a normal load was wrong: on every restart the player saw
+  // cones and blobs for a few hundred milliseconds and then watched them turn
+  // into trees. Now it is hidden, and only revealed once this much time has
+  // passed without the models arriving — so a normal load never shows it at all,
+  // and a failed or hung one still gets a dressed level.
+  fallbackDelay: 0.4,  // seconds of level time, not wall clock
 };
 
 /**
@@ -186,12 +196,26 @@ export const KINDS = {
       './assets/megakit/Grass_Wispy_Tall.glb',
     ],
     maxVariants: 4,
-    height: 0.9,
+    height: 0.7,
+    // EVERY grass model gets its OWN target height, and this is the whole point
+    // of the change. The pack ships these as Short/Tall pairs, and normalising
+    // all four to a single number threw that away: four different models
+    // rendered at identical sizes, which reads as one model repeated and made
+    // the ground cover look like a uniform hedge.
+    //
+    // These values are what makes a forest floor: ankle-height common grass for
+    // the bulk of it, a taller wispy variant to break up the silhouette.
+    heights: {
+      Grass_Common_Short: 0.3,
+      Grass_Common_Tall: 0.8,
+      Grass_Wispy_Short: 0.4,
+      Grass_Wispy_Tall: 0.72,
+    },
     fallback: 'tuft',
     scale: [0.7, 1.4],
     // grass is the one kind that MAY come close to the route: a corridor with no
     // ground cover at its edges reads as a corridor, not a forest floor
-    step: 0.9, spacing: 0.7, edge: 1.5, inset: 0.7, seed: 0x6a55e5,
+    step: 0.8, spacing: 0.6, edge: 1.5, inset: 0.7, seed: 0x6a55e5,
   },
 
   flower: {
@@ -313,6 +337,10 @@ export class Decor {
     this.pending = null;  // the in-flight load, so a test or a reload can await it
 
     this._sinceCheck = 0;
+    this._sinceBuild = 0;
+    // true once the fallback's fate is decided: either the models arrived, or
+    // `fallbackDelay` passed without them. See the note on DECOR.fallbackDelay.
+    this._settled = false;
 
     // reused every refresh — never allocate in a loop
     this._base = new THREE.Vector3();
@@ -337,6 +365,11 @@ export class Decor {
    * @param {import('../paint/paint-surface.js').PaintSurface[]} floors walkable only
    */
   build(floors) {
+    // The code shapes are built, but NOT shown yet — see DECOR.fallbackDelay.
+    // Nothing is visible for the first fraction of a second, and in the common
+    // case the models land first and the fallback is never seen at all.
+    if (this.config.models.length > 0) this.fallback.visible = false;
+
     for (const spot of this._spots(floors)) {
       // The floor this prop stands on, resolved ONCE. A prop never moves, so the
       // floor under it never changes: this turns what would be a per-frame probe
@@ -526,6 +559,24 @@ export class Decor {
     return null;
   }
 
+  /**
+   * The height to bake one model to: its own if the kind lists a `heights`
+   * entry, otherwise the kind's single `height`.
+   *
+   * This exists because "normalise everything to one size" and "make four
+   * variants look like four variants" are in direct conflict for anything the
+   * pack ships as a size family — grass and trees both come as Short/Tall or
+   * small/large pairs, and flattening them is what turns a varied forest floor
+   * into a uniform hedge.
+   */
+  _heightFor(url) {
+    const byName = this.config.heights;
+    if (!byName) return this.config.height;
+
+    const file = url.slice(url.lastIndexOf('/') + 1).replace(/\.glb$/, '');
+    return byName[file] ?? this.config.height;
+  }
+
   // -------------------------------------------------------------------------
   // The real models
   // -------------------------------------------------------------------------
@@ -563,14 +614,21 @@ export class Decor {
       }
 
       const variants = [];
-      for (const gltf of files) {
-        for (const variant of collectVariants(gltf)) {
+      // `files` is in the same order as `config.models`, which is what lets each
+      // model carry its own target height (see KINDS.grass.heights).
+      for (let i = 0; i < files.length; i++) {
+        const height = this._heightFor(this.config.models[i]);
+        for (const variant of collectVariants(files[i])) {
           if (variants.length >= this.config.maxVariants) break;
-          variants.push(bakeVariant(variant, this.config.height, this.geometries));
+          variants.push(bakeVariant(variant, height, this.geometries));
         }
       }
 
-      if (this.disposed || variants.length === 0) return 0;
+      if (this.disposed || variants.length === 0) {
+        // nothing came back — no point making the player wait out the delay
+        this._giveUpOnModels();
+        return 0;
+      }
 
       this.variants = variants;
       this._buildInstances();
@@ -583,8 +641,22 @@ export class Decor {
       // the Error: six failures at load would otherwise print six stack traces
       // and bury the real output.
       console.warn(`[Decor:${this.kind}] model load failed, keeping the fallback props: ${err?.message ?? err}`);
+      this._giveUpOnModels();
       return 0;
     }
+  }
+
+  /**
+   * No models are coming. Show the code shapes NOW rather than waiting out
+   * `fallbackDelay`, which exists only to cover a load that is still PENDING.
+   *
+   * Guarded on `disposed`: a level that died mid-load must not be handed visible
+   * geometry on its way out.
+   */
+  _giveUpOnModels() {
+    if (this.disposed) return;
+    this._settled = true;
+    this.fallback.visible = true;
   }
 
   /**
@@ -717,12 +789,45 @@ export class Decor {
   // -------------------------------------------------------------------------
 
   /**
+   * Decide the fallback's fate, once, after `fallbackDelay` seconds of level
+   * time.
+   *
+   * Driven by the level's own update loop rather than a `setTimeout`, for the
+   * usual reasons in this codebase: no timer to leak, nothing keeping a Node
+   * test process alive, and the clock only runs when the game does. A level that
+   * is disposed before the delay elapses simply never reveals anything.
+   */
+  _settle(dt) {
+    if (this._settled || this.disposed) return;
+    this._sinceBuild += dt;
+    if (this._sinceBuild < DECOR.fallbackDelay) return;
+
+    this._settled = true;
+    // only if the models have not arrived — if they have, `_load` already hid
+    // this and there is nothing to do
+    if (this.modelCount === 0) this.fallback.visible = true;
+  }
+
+  /**
+   * The level's per-frame entry point.
+   *
+   * Two independent jobs, and the settle check runs FIRST because it is about
+   * the level becoming visible while the reaction is about paint:
+   *   - decide whether the fallback props come out (see `_settle`)
+   *   - re-colour whatever the player has painted near (see `_react`)
+   */
+  update(dt, playerPosition) {
+    this._settle(dt);
+    return this._react(dt, playerPosition);
+  }
+
+  /**
    * Re-colour the props near the player from the paint they are standing on.
    *
    * Returns how many changed, which is what the tests assert on — a "did anything
    * happen" signal is worth more than a silent void here.
    */
-  update(dt, playerPosition) {
+  _react(dt, playerPosition) {
     this._sinceCheck += dt;
     if (this._sinceCheck < DECOR.reactInterval) return 0;
     this._sinceCheck = 0;

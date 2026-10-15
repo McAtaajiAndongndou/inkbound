@@ -29,12 +29,26 @@
  * Tune the mist height HERE. One place, every material, every level.
  *
  * `floor` is where the fog is at full strength, `ceil` is where it has faded
- * out completely. World units. For L1: full fog at the floor (y 0), gone by
- * y 6, which is roughly the height of the encounter gates.
+ * out completely. World units.
  *
- * Consequence worth knowing: anything above `ceil` gets NO fog at all. L1's
- * extraction ledge sits at y 9, so the top of the level is deliberately
- * fog-free -- the green climb finishes above the mist.
+ * WHY THE CEILING MOVED FROM 6 TO 10 — and it is a real bug fix, not a tweak.
+ *
+ * The original 6 was chosen when L1's props were cones: "gone by y 6, which is
+ * roughly the height of the encounter gates". Then the level got a forest. L1's
+ * trees are 3.4 m, its dead trees 5 m and its twisted trees 6.5 m -- so at a
+ * ceiling of 6 the canopy was 40-100% fog-free, and the fog read as mist ON THE
+ * FLOOR with none of it in the woods. Renda spotted exactly that: "I know we
+ * have mist on the floor but we no longer have fog in the forest."
+ *
+ * It hid for a while because the instanced props were not rendering at all, so
+ * the corridor looked empty and the fog read as ordinary distance fog across
+ * open space. Fixing the instancing exposed it.
+ *
+ * 10 keeps the original intent intact: the extraction ledge at y 9 is still
+ * essentially fog-free (falloff 0.06), so the green climb still finishes above
+ * the mist. A canopy at y 3.4 now gets 0.81 of the distance fog instead of 0.58.
+ *
+ * Consequence worth knowing: anything above `ceil` gets NO fog at all.
  *
  * If one level ever needs different values, pass them to
  * createFogHeightUniforms() and set them from that level. Nothing needs that
@@ -42,7 +56,7 @@
  * surface AND every enemy separately, which is why it is not done here.
  */
 export const FOG_FLOOR = 0.5;
-export const FOG_CEIL = 6.0;
+export const FOG_CEIL = 10.0;
 
 /**
  * Fresh fog-height uniforms for ONE material.

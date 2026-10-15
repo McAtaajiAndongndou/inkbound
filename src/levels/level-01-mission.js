@@ -142,8 +142,17 @@ const MOOD = {
   horizon: 0x8a93a3,   // the haze: what distance fades toward. Matches the sky's horizon band.
   zenith:  0x232a38,   // drained sky overhead — deliberately NOT the haze colour
   void:    0x12141b,   // below the horizon: the pits are dark, not foggy
-  fogNear: 12,         // beyond the TPV camera's 6.5 offset, so the player never fogs
-  fogFar:  60,
+
+  // Distance fog. Tightened from 12/60 once the decor landed, and the reason is
+  // worth recording: 60 was tuned against a corridor that was mostly EMPTY,
+  // because the instanced props were not rendering at all. With the forest
+  // actually in the level, a far plane of 60 means the far half of the corridor
+  // is barely touched and the woods read as crisp, not as somewhere you are
+  // standing inside. 48 puts the back wall (43 from the spawn) at ~95% haze.
+  //
+  // `fogNear` still clears the TPV camera's 6.5 offset, so the player never fogs.
+  fogNear: 9,
+  fogFar:  48,
 
   // Where the drifting mist sheets lie. They are CENTRED on mistZ and
   // mistLength is their full length, so these two numbers decide which parts of
