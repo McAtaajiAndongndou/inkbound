@@ -29,6 +29,7 @@ export class Hud {
             <div id="dry-fire">EMPTY</div>
           </div>
           <div id="ammo-text">100</div>
+          <div id="refill-warning"><b>F</b> refill</div>
         </div>
         <div id="colours">
           <button class="swatch" data-i="0" style="--c:#3aa7ff"><span>1</span>Ice</button>
@@ -42,11 +43,6 @@ export class Hud {
         <div id="standing-hint"></div>
         <div id="coverage">Coverage: 0%</div>
       </div>
-      <div id="controls">
-        <b>WASD</b> move &nbsp; <b>Space</b> jump &nbsp; <b>Mouse</b> look &nbsp;
-        <b>Click</b> paint &nbsp; <b>1/2/3/4</b> colour &nbsp;<span id="refill-warning"><b>F</b> refill ammo</span> &nbsp; <b>V</b> view &nbsp; <b>R</b> restart &nbsp; <b>M</b> mute
-      </div>
-      <div id="click-prompt">Click to play</div>
       <div id="end-win" class="end hidden"><h1>EXTRACTED</h1><p>Press R to redeploy</p></div>
       <div id="end-lose" class="end hidden"><h1>DOWN</h1><p>Press R to redeploy</p></div>
     `;
@@ -55,7 +51,6 @@ export class Hud {
     this.ammoText = root.querySelector('#ammo-text');
     this.standing = root.querySelector('#standing b');
     this.coverage = root.querySelector('#coverage');
-    this.prompt = root.querySelector('#click-prompt');
     this.refillWarning = root.querySelector('#refill-warning');
     this.dryFire = root.querySelector('#dry-fire');
     this.swatches = [...root.querySelectorAll('.swatch')];
@@ -99,7 +94,7 @@ export class Hud {
     this.endLose.classList.add('hidden');
   }
 
-  update(dt, { gun, player, surfaces, locked }) {
+  update(dt, { gun, player, surfaces }) {
     if (gun.colour === "grey"){
       this.ammoFill.style.width = "100%";
       this.ammoFill.style.background = `#${PAINT.grey.hex.toString(16).padStart(6, "0")}`;
@@ -127,7 +122,6 @@ export class Hud {
     }
 
     this.swatches.forEach((el, i) => el.classList.toggle('active', i === gun.current));
-    this.prompt.style.display = locked ? 'none' : 'grid';
 
     // coverage is a full grid scan — do it 4x a second, not 60
     this._coverageTimer -= dt;
