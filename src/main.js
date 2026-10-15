@@ -126,13 +126,27 @@ function animate() {
   renderer.render(scene, rig.camera);
 
   // --- minimap, bottom-right, orthographic (Viewing rubric) ---
+  // Fog is scaled for the player's camera, which sits ~6 units off the ground.
+  // The minimap camera sits 60 units up — well past fogFar — so every surface
+  // in it is 100% fogged and the whole panel renders as a flat grey square.
+  // Suspend fog for this pass only, then put the SAME object back: the level
+  // owns `scene.fog`, so restore it rather than build a new one.
+  //
+  // Deliberate tradeoff: toggling `scene.fog` flips the USE_FOG define, so
+  // three.js switches to the fog-free variant of each program. Programs are
+  // cached after the first two frames, so this is a per-frame program switch,
+  // not a per-frame recompile. If the minimap ever grows expensive, the clean
+  // fix is a separate scene for it — not worth it at beta.
   const size = Math.round(Math.min(w, h) * 0.2);
   const pad = 16;
+  const fog = scene.fog;
+  scene.fog = null;
   renderer.setScissorTest(true);
   renderer.setViewport(w - size - pad, h - size - pad, size, size);
   renderer.setScissor(w - size - pad, h - size - pad, size, size);
   renderer.render(scene, rig.minimap);
   renderer.setScissorTest(false);
+  scene.fog = fog;
 }
 
 animate();
