@@ -6,6 +6,8 @@ import { PaintGun } from "./paint/paint-gun.js";
 import { Level01 } from "./levels/level-01-mission.js";
 import { Hud } from "./ui/hud.js";
 import { PaintGunModel } from "./paint/paint-gun-model.js";
+import { PlayerModel } from "./core/player-model.js";
+
 
 // ---------------------------------------------------------------------------
 // Renderer + scene
@@ -41,7 +43,9 @@ let level = null;
 let player = null;
 let gun = null;
 let gunModel = null;
+let playerModel = null;
 const muzzleVec = new THREE.Vector3();
+const handVec = new THREE.Vector3();
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
 
@@ -64,6 +68,10 @@ function loadLevel() {
   if(gun){
     gun.dispose();
   }
+  if(playerModel){
+    playerModel.dispose();
+    playerModel = null;
+  }
   if (gunModel){
     gunModel.dispose();
     gunModel = null;
@@ -83,6 +91,7 @@ function loadLevel() {
   player = new Player(level.surfaces, level.spawn);
   player.onDeath = () => hud.showEnd("lose");
   scene.add(player.mesh);
+  playerModel = new PlayerModel(player);
 
   gun = new PaintGun(level.surfaces, 1, level.enemies, scene);
   gunModel = new PaintGunModel(rig.camera, player);
@@ -111,6 +120,7 @@ function animate() {
   const mouse = input.consumeMouse();
   player.look(mouse.x, mouse.y);
   player.update(dt, input, actions);
+  playerModel?.update(dt);
 
   level.update(dt, player);
   player.checkEnemyContact(level.enemies);
@@ -128,7 +138,8 @@ function animate() {
   player.mesh.visible = !rig.firstPerson;
 
   if (gunModel){
-    gunModel.update(rig.firstPerson,dt);
+    const hand = playerModel?.getHandPosition(handVec) ?? null;
+    gunModel.update(rig.firstPerson,dt,hand);
   }
 
   hud.update(dt, {

@@ -7,6 +7,7 @@ const RECOIL_DISTANCE_THIRD = 0.35;
 const RECOIL_TILT = 0.35;
 const RECOIL_RECOVERY = 8;
 const FLASH_TIME = 0.05;
+const THIRD_HAND_OFFSET = new THREE.Vector3(0,0.05,-0.25);
 
 
 export class PaintGunModel {
@@ -83,7 +84,7 @@ export class PaintGunModel {
         );
     }
 
-    update(firstPerson,dt) {
+    update(firstPerson,dt, handPos = null) {
         this.recoil = Math.max(0, this.recoil - dt * RECOIL_RECOVERY);
         this.flashTimer = Math.max(0,this.flashTimer-dt);
 
@@ -101,6 +102,9 @@ export class PaintGunModel {
 
         if (this.thirdPersonGun){
             this.thirdPersonGun.visible = !firstPerson;
+            if (handPos){
+                this.thirdPersonBase.copy(handPos).add(THIRD_HAND_OFFSET);
+            }
             this.thirdPersonGun.position.copy(this.thirdPersonBase);
             this.thirdPersonGun.position.z += kick * RECOIL_DISTANCE_THIRD;
             this.thirdPersonGun.rotation.x = kick * RECOIL_TILT;
