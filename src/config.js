@@ -82,6 +82,8 @@ export const PAINT_GUN = {
   radius: 1.4, // splat radius in world units
   cost: 4, // ammo per shot
   fireDelay: 0.14, // seconds
+  hipSpread: 0.025,
+  adsSpread: 0.005,
 };
 
 // Starting master volume (0..1). The options menu overrides it per player.

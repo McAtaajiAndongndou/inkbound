@@ -115,24 +115,29 @@ function animate() {
   player.look(mouse.x, mouse.y, input.aiming);
   player.update(dt, input, actions);
 
+  
   level.update(dt, player);
   player.checkEnemyContact(level.enemies);
 
+  // Update the camera before firing.
+  rig.update(player, dt);
+  player.mesh.visible = !rig.firstPerson;
+
   gun.update(dt);
+
   if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera, null, input.aiming)) {
     audio.play("fire");
     if (gun.lastShot === "splat") {
       audio.play("splat");
     } else {
-      audio.play(gun.lastShot); // "hit" or "kill"
+      audio.play(gun.lastShot);
       hud.showHitmarker(gun.lastShot === "kill");
     }
   }
 
+
   for (const s of level.surfaces) s.update(elapsed);
 
-  rig.update(player,dt);
-  player.mesh.visible = !rig.firstPerson;
 
   hud.update(dt, {
     gun,
