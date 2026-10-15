@@ -43,6 +43,10 @@ export const PLAYER = {
   lookSensitivity: 0.0022,
   killY: -20, // fall below this and you respawn
 
+  // jump feel (#33)
+  coyoteTime: 0.1,        // seconds after leaving a ledge you can still jump (~6 frames at 60fps)
+  jumpBufferTime: 0.12,   // seconds before landing a jump press is remembered
+
   // collision tolerances
   groundProbeLift: 0.5, // ground probe starts this far above the feet
   groundProbeRange: 6, // how far below that it looks for a floor
