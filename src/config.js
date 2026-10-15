@@ -15,7 +15,9 @@ export const PAINT = {
 // Colour -> physics. This object IS the game.
 //   friction    how fast ground speed bleeds away (per second)
 //   traction    multiplier on PLAYER.accel while standing here (low = can't turn)
-//   speedScale  multiplier on PLAYER.maxSpeed while standing here
+//   speedScale  how much extra speed this surface grants. You keep it after
+//               you leave, and a lower one never takes it away (red's 1.0
+//               means "no boost", not "back to base"). See #52.
 //   restitution > 0 makes the surface a trampoline (see PLAYER.minBounce)
 //   climbable   walls of this colour can be climbed
 export const SURFACE = {
