@@ -98,6 +98,9 @@ const MOOD = {
   fogNear: 12,         // beyond the TPV camera's 6.5 offset, so the player never fogs
   fogFar:  60,
 };
+// Deliberately NOT here: the HEIGHT of the mist. That is FOG_FLOOR / FOG_CEIL
+// in src/shaders/fog-height.js, because it has to reach three materials
+// (paint, toon, outline) and the enemies, not just this level's surfaces.
 
 /** GLSL's smoothstep, for the sky gradient. Kept local: this is its only user. */
 function smoothstep(edge0, edge1, x) {

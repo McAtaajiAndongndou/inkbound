@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { PAINT } from '../config.js';
+// Height fog lives in shaders/fog-height.js, shared with the toon and outline
+// materials so the maths is not written out three times.
+import { createFogHeightUniforms, FOG_HEIGHT_PARS, FOG_HEIGHT_FRAGMENT } from './fog-height.js';
 
 /**
  * ONE custom ShaderMaterial for every paintable surface.
@@ -61,6 +64,8 @@ const fragmentShader = /* glsl */ `
 
   // declares the fog uniforms + vFogDepth behind #ifdef USE_FOG
   #include <fog_pars_fragment>
+  // adds uFogFloor / uFogCeil for the height term
+  ${FOG_HEIGHT_PARS}
 
   // read the paint id stored at a given cell
   float paintIdAt(vec2 uv) {
@@ -108,8 +113,9 @@ const fragmentShader = /* glsl */ `
 
     gl_FragColor = vec4(colour, 1.0);
 
-    // must come last: it mixes gl_FragColor.rgb toward fogColor using vFogDepth
-    #include <fog_fragment>
+    // must come last: it mixes gl_FragColor.rgb toward fogColor using
+    // vFogDepth and how high off the floor this pixel is
+    ${FOG_HEIGHT_FRAGMENT}
   }
 `;
 
@@ -152,6 +158,11 @@ export function createPaintMaterial(paintMap) {
   };
   uniforms.uTime     = { value: 0 };
   uniforms.uLightDir = { value: new THREE.Vector3(0.5, 1.0, 0.3).normalize() };
+
+  // Height fog uniforms. These are OURS, so they are not in UniformsLib.fog and
+  // have to be added by hand like the others above -- the same rule, for the
+  // same reason: they must exist on this material and must not be shared.
+  Object.assign(uniforms, createFogHeightUniforms());
 
   return new THREE.ShaderMaterial({
     vertexShader,
