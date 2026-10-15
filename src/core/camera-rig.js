@@ -17,13 +17,8 @@ export class CameraRig {
     this.minimap.rotation.z = 0;
 
     this.firstPerson = false;
-<<<<<<< HEAD
-    this.distance = 6.5;
-    this.shoulder = 1.2;
-=======
     this.distance = CAMERA.tpvDistance;
     this.shoulder = CAMERA.tpvShoulder;
->>>>>>> 6e00a2e1c06b486783094a98aef2aeecccd37135
 
     this._offset = new THREE.Vector3();
     this._target = new THREE.Vector3();

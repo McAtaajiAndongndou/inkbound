@@ -5,14 +5,11 @@ import { CameraRig } from "./core/camera-rig.js";
 import { PaintGun } from "./paint/paint-gun.js";
 import { Level01 } from "./levels/level-01-mission.js";
 import { Hud } from "./ui/hud.js";
-<<<<<<< HEAD
 import { PaintGunModel } from "./paint/paint-gun-model.js";
 
 
-=======
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
->>>>>>> 6e00a2e1c06b486783094a98aef2aeecccd37135
 
 // ---------------------------------------------------------------------------
 // Renderer + scene
@@ -141,8 +138,8 @@ function animate() {
 
   gun.update(dt);
   if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera)) {
-  audio.play("fire");
-}
+    audio.play("fire");
+  }
 
   for (const s of level.surfaces) s.update(elapsed);
 
