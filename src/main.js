@@ -1,19 +1,21 @@
 import * as THREE from "three";
 import { Input } from "./core/input.js";
 import { Player } from "./core/player.js";
+import { Avatar } from "./shaders/avatar.js";
 import { CameraRig } from "./core/camera-rig.js";
 import { PaintGun } from "./paint/paint-gun.js";
 import { Level01 } from "./levels/level-01-mission.js";
 import { Hud } from "./ui/hud.js";
+import { PaintGunModel } from "./paint/paint-gun-model.js";
+
+
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
+import { PLAYER } from "./config.js";
 
-// ---------------------------------------------------------------------------
-// Renderer + scene
-// ---------------------------------------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // cap for lab hardware
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setScissorTest(false);
@@ -23,7 +25,6 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0f0f16);
 scene.fog = new THREE.Fog(0x0f0f16, 45, 110);
 
-// lights: one directional caster, one ambient fill. Deliberate, not decorative.
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(18, 30, 12);
 sun.castShadow = true;
@@ -35,27 +36,21 @@ sun.shadow.camera.bottom = -30;
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x8899bb, 0x22222a, 0.5));
 
-// ---------------------------------------------------------------------------
-// Game state — everything here is torn down and rebuilt on restart
-// ---------------------------------------------------------------------------
 let level = null;
 let player = null;
 let gun = null;
+let gunModel = null;
+
+const muzzleVec = new THREE.Vector3();
+const handVec = new THREE.Vector3();
+let avatar = null;
+const lastPos = new THREE.Vector3();
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
-new Menu(document.body, audio);
 
-// Browsers keep audio suspended until a user gesture. The first click (the
-// "Click to play" one) or keypress starts it; later calls are no-ops.
 window.addEventListener("pointerdown", () => audio.unlock());
 window.addEventListener("keydown", () => audio.unlock());
 
-
-// Win / death overlays — inline here (decision #15), hidden until needed.
-// Placeholder until the win/lose screens (#21) land.
-
-// Levels read the scene and report a win back through this object.
-// `game` stays the integration point until core swaps in game.js.
 const game = {
   scene,
   onWin: () => {
@@ -65,11 +60,28 @@ const game = {
 };
 
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
+scene.add(rig.camera);
 const input = new Input(renderer.domElement);
 
+function hidePlaceholder(p, a) {
+  if (p.mesh.material) p.mesh.material.visible = false;
+  for (const child of p.mesh.children) {
+    if (child !== a.root) child.visible = false;
+  }
+}
+
 function loadLevel() {
+  if(gun){
+    gun.dispose();
+  }
+ 
+  if (gunModel){
+    gunModel.dispose();
+    gunModel = null;
+  }
   if (level) {
-    level.dispose(); // removes root from scene + frees every GPU resource
+    if (avatar) avatar.dispose();
+    level.dispose();
     scene.remove(player.mesh);
     player.dispose();
   }
@@ -77,55 +89,71 @@ function loadLevel() {
   hud.hideEnd();
 
   level = new Level01(game);
-  level.load(); // no awaits inside yet — main.js does not await it
+  level.load();
   scene.add(level.root);
 
   player = new Player(level.surfaces, level.spawn);
+  scene.add(player.mesh);
+
+  const thisPlayer = player;
+  avatar = new Avatar(player.mesh, () => {
+    if (player === thisPlayer) hidePlaceholder(thisPlayer, avatar);
+  });
+  avatar.setArmed(true);
+  lastPos.copy(player.mesh.position);
+
   player.onDeath = () => {
+    avatar.die();
     hud.showEnd("lose");
     audio.play("lose");
   };
-  scene.add(player.mesh);
 
-  gun = new PaintGun(level.surfaces, 1, level.enemies);
+  
+
+  gun = new PaintGun(level.surfaces, 1, level.enemies, scene);
+  gunModel = new PaintGunModel(rig.camera, player, avatar);
 }
 
 loadLevel();
 document.getElementById("loading").remove();
 
-// ---------------------------------------------------------------------------
-// Loop
-// ---------------------------------------------------------------------------
+// Title + pause menu. Open whenever the pointer is unlocked (load, Escape).
+const menu = new Menu(document.body, {
+  audio,
+  canvas: renderer.domElement,
+  onRestart: loadLevel,
+});
+
 const clock = new THREE.Clock();
 
-function animate() {
-  requestAnimationFrame(animate);
-
-  const dt = Math.min(clock.getDelta(), 0.05); // clamp so a stall cannot teleport you
-  const elapsed = clock.elapsedTime;
-  const actions = input.consumeActions();
-
-  if (actions.restart) loadLevel();
+/** One step of gameplay. Skipped entirely while the menu is open. */
+function simulate(dt, elapsed, actions, mouse) {
+  if (actions.restart){
+    loadLevel();
+    return;
+  }
   if (actions.toggleView) rig.toggle();
-  rig.setAiming(input.aiming);
   if (actions.colour !== null) gun.selectColour(actions.colour);
   if (actions.refill) gun.refillAmmo();
 
-  const mouse = input.consumeMouse();
-  player.look(mouse.x, mouse.y, input.aiming);
+  player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
+ 
 
-  
+  const p = player.mesh.position;
+  const dx = p.x - lastPos.x;
+  const dz = p.z - lastPos.z;
+  const speed = dt > 0 ? Math.hypot(dx, dz) / dt : 0;
+  lastPos.copy(p);
+  if (!player.dead) avatar.setMoving(speed > 0.5);
+  avatar.update(dt);
+
   level.update(dt, player);
   player.checkEnemyContact(level.enemies);
 
-  // Update the camera before firing.
-  rig.update(player, dt);
-  player.mesh.visible = !rig.firstPerson;
-
   gun.update(dt);
-
-  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera, null, input.aiming)) {
+  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {
+    gunModel?.kick();
     audio.play("fire");
     if (gun.lastShot === "splat") {
       audio.play("splat");
@@ -135,25 +163,46 @@ function animate() {
     }
   }
 
-
   for (const s of level.surfaces) s.update(elapsed);
+}
 
+function animate() {
+  requestAnimationFrame(animate);
+
+  const dt = Math.min(clock.getDelta(), 0.05); // clamp so a stall cannot teleport you
+  const elapsed = clock.elapsedTime;
+
+  // Always drain input, so keys pressed while paused do not fire on resume.
+  const actions = input.consumeActions();
+  const mouse = input.consumeMouse();
+
+  // Menu up (title or Escape): the world freezes but keeps rendering behind it,
+  // so enemies cannot hurt you while you change settings.
+  if (!menu.open) {
+    rig.setAiming(input.aiming);
+    simulate(dt, elapsed, actions, mouse);
+  }
+
+  rig.update(player,dt);
+  player.mesh.visible = !rig.firstPerson;
+
+
+  if (gunModel){
+    gunModel.update(rig.firstPerson,dt);
+  }
 
   hud.update(dt, {
     gun,
     player,
     surfaces: level.surfaces,
-    locked: input.locked,
   });
 
-  // --- main view ---
   const w = window.innerWidth;
   const h = window.innerHeight;
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, w, h);
   renderer.render(scene, rig.camera);
 
-  // --- minimap, bottom-right, orthographic (Viewing rubric) ---
   const size = Math.round(Math.min(w, h) * 0.2);
   const pad = 16;
   renderer.setScissorTest(true);

@@ -82,9 +82,9 @@ export class CameraRig {
     }
 
     this._target.set(
-      position.x - Math.sin(yaw) * 10,
-      position.y + PLAYER.eyeHeight + Math.tan(pitch) * 10,
-      position.z - Math.cos(yaw) * 10,
+      position.x - Math.sin(yaw) * 12,
+      position.y + PLAYER.eyeHeight + Math.tan(pitch) * 12,
+      position.z - Math.cos(yaw) * 12,
     );
     this.camera.lookAt(this._target);
 
