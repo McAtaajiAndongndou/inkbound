@@ -47,18 +47,21 @@ const L1 = {
   ],
 
   // DESIGN.md teaching beats, not just spawn points:
-  //   Charger  — island B. Charges at 5 m/s for 25 contact damage. The only
-  //              answer on the island is paint BLUE: it slides straight past
-  //              instead of steering. That same blue patch is the run-up for
-  //              Gap 2, so one decision pays off twice.
-  //   Sprayer  — island C. Slower (10 damage) pressure while you paint the red
-  //              pad that launches you to the platform.
+  //   Charger  — island B. 5 m/s, 25 contact. The answer is paint BLUE: it
+  //              slides straight past. That patch is also the Gap 2 run-up.
+  //   Sprayer  — island C. Slower (10 damage) pressure while you paint red.
+  //   Charger  — island C, a second one (#36). A 2.5 m/s enemy is not pressure
+  //              — you outrun it without trying — so the red paint both island C
+  //              tasks need was free. This one asks island B's question again:
+  //              paint blue, or eat 25 while you stand still?
+  // Spawns are a starting hint, not a hold: there is no aggro radius, so enemies
+  // walk at the player from load and freeze where the next step would fall off.
+  // Where they start only sets the line they take to that edge — which is how
+  // the two on island C end up flanking it.
   spawns: [
     { x: 4,  y: 0, z: -1,  type: 'charger' },
-    // -21, not -19: the Gap 2 landing is at z ~-18.6, so -19 put the only
-    // ranged enemy 0.4m from the player's landing tile — a spawn-camp, not a
-    // fight. Deeper into island C so the player lands, looks, then engages.
     { x: -4, y: 0, z: -21, type: 'sprayer' },
+    { x: 5,  y: 0, z: -22, type: 'charger' },
   ],
 };
 

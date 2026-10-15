@@ -184,10 +184,10 @@ test('dispose removes root from the scene and is repeatable (no leak on R)', asy
   assert.doesNotThrow(() => level.dispose());
 });
 
-test('level spawns both enemies instead of swallowing the error', async () => {
+test('level spawns every enemy instead of swallowing the error', async () => {
   const { level } = await buildLevel();
-  assert.equal(level.spawnPoints.length, 2);
-  assert.equal(level.enemies.length, 2);   // real Enemy, no longer the throwing stub
+  assert.equal(level.spawnPoints.length, 3);
+  assert.equal(level.enemies.length, 3);   // real Enemy, no longer the throwing stub
 });
 
 /**
@@ -319,7 +319,7 @@ test('update() with a real position moves the enemy toward the player', async ()
 
   assert.notDeepEqual(enemy.position.toArray(), before.toArray(),
     'a Vector3 argument must actually produce movement');
-  assert.ok(enemy.position.z < before.z, 'the Sprayer on island C walks toward -z');
+  assert.ok(enemy.position.z < before.z, 'the Charger walks toward the player at -z');
 });
 
 // --- ground probe: the fix for enemies gliding across the void ---------------
