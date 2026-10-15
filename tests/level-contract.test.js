@@ -428,6 +428,11 @@ test('on grey a Charger keeps re-aiming at a sidestepping player', async () => {
   const islandB = level.surfaces.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
 
+  // These two tests are about steering on paint, not the attack. Within
+  // attackRange a Charger plants for its windup (velocity zeroed), so it
+  // would never build the momentum the ice case needs. Hold the attack off.
+  charger._attackCooldown = Infinity;
+
   // Get it moving and committed on grey, then sidestep to +x.
   charger.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 3);
   for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z));
@@ -449,6 +454,7 @@ test('on blue a Charger commits to its heading and slides past a sidestep', asyn
   const midY = islandB.mesh.position.y;
 
   // Same setup as above: committed, moving, aimed down -z at the player.
+  charger._attackCooldown = Infinity;   // see the grey test: no windup here
   charger.position.set(0, midY, midZ + 3);
   for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(0, midY, midZ));
 
