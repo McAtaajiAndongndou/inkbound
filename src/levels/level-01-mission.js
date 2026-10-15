@@ -55,7 +55,10 @@ const L1 = {
   //              pad that launches you to the platform.
   spawns: [
     { x: 4,  y: 0, z: -1,  type: 'charger' },
-    { x: -4, y: 0, z: -19, type: 'sprayer' },
+    // -21, not -19: the Gap 2 landing is at z ~-18.6, so -19 put the only
+    // ranged enemy 0.4m from the player's landing tile — a spawn-camp, not a
+    // fight. Deeper into island C so the player lands, looks, then engages.
+    { x: -4, y: 0, z: -21, type: 'sprayer' },
   ],
 };
 
