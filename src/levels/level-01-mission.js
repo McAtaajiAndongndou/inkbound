@@ -14,8 +14,9 @@ import { Enemy } from '../enemies/enemy.js';
  * Full-width corridor (x −8…8) so no gate can be bypassed sideways.
  *
  * Route (z runs +18 → −30): start island → jump Gap 1 → island B (Charger,
- * blue run-up) → blue + RED PAD super jump over Gap 2 → island C (Sprayer,
- * red pad) → red launch onto the platform → green climb the wall → extraction.
+ * blue run-up) → [gate B: clear island B] → blue + RED PAD super jump over
+ * Gap 2 → island C (Sprayer + Charger, red pad) → red launch onto the
+ * platform → [gate C: clear island C] → green climb the wall → extraction.
  */
 const L1 = {
   corridorHalf: 8,            // full width 16
@@ -33,11 +34,17 @@ const L1 = {
   ledge:    { zMin: -30, zMax: -19, y: 9 },            // walkable; protrudes so the wall jump-off lands
   extraction: { zMin: -30, zMax: -24 },                // win zone (back of the ledge, past the wall)
 
-  // Encounter gate (#37): island B's exit, sealed until the arena is clear.
-  // `z` is island B's front edge, derived in `_gate()` rather than repeated.
-  // Taller than a red bounce (minBounce 15 -> apex ≈4.3 m) so it cannot be
-  // jumped, and full width like every other barrier in the corridor.
-  gate: { yTop: 6 },
+  // Encounter gates (#37 island B, #56 island C): an arena's exit stays sealed
+  // until that arena is clear, so the fight has to be won rather than run past.
+  //
+  // Both are full-width VERTICAL panels — the only barrier the engine stops
+  // (see `_gate()`), which is why island C's sits on the platform lip rather
+  // than over the launch. `yTop` is taller than a red bounce
+  // (minBounce 15 -> apex ≈4.3 m) so neither can be hopped.
+  gates: {
+    B: { yTop: 6 },    // island B's front edge — seals the way to Gap 2
+    C: { yTop: 10 },   // the platform lip, from y 4 — seals the way to the wall
+  },
 
   beacons: [                  // colour-coded to the paint each gate asks for
     { colour: 'blue',  x: 0, y: 2,    z: -4.5 },   // island B — the blue run-up
@@ -74,7 +81,6 @@ export class Level01 extends LevelBase {
     this._floor(L1.ledge.zMin, L1.ledge.zMax, L1.ledge.y);
 
     this._wall();
-    this._gate();
     this._beacons();
     this._extraction();
 
@@ -83,9 +89,22 @@ export class Level01 extends LevelBase {
     this.spawnPoints = L1.spawns.map((p) => new THREE.Vector3(p.x, p.y, p.z));
     this._spawnEnemies();
 
-    // The gate waits on the enemies that SPAWN inside island B (the Charger).
-    // The Sprayer is on island C and must not hold it shut.
-    this._gateWatch = this.enemies.filter((e) => this._inIslandB(e.position));
+    // Gates go up after the enemies exist so each one can take its own watch
+    // list. A gate waits only on the enemies that SPAWN inside its own arena:
+    // island C's pair must not hold island B's gate shut, or the other way
+    // round. `z` and `yBase` come from the layout, never repeated as numbers.
+    this.gateB = this._gate({
+      arena: 'B', z: L1.islands.B.zMin, yBase: 0, yTop: L1.gates.B.yTop,
+    });
+    this.gateC = this._gate({
+      arena: 'C', z: L1.platform.zMin, yBase: L1.platform.y, yTop: L1.gates.C.yTop,
+    });
+    this.gates = [this.gateB, this.gateC];
+
+    for (let i = 0; i < this.gates.length; i++) {
+      const gate = this.gates[i];
+      gate.watch = this.enemies.filter((e) => this._inIsland(gate.arena, e.position));
+    }
   }
 
   update(dt, player) {
@@ -97,11 +116,17 @@ export class Level01 extends LevelBase {
       this.enemies[i].update(dt, player.position);
     }
 
-    // Encounter gate: island B's exit opens the moment the arena is clear.
-    if (this.gate && !this.gate.open && this._arenaCleared()) this._openGate();
+    // Encounter gates: an arena's exit opens the moment that arena is clear.
+    for (let i = 0; i < this.gates.length; i++) {
+      const gate = this.gates[i];
+      if (!gate.open && this._arenaCleared(gate)) this._openGate(gate);
+    }
 
-    // Extraction fires the win exactly once, guarded by `_complete`.
-    if (!this._complete && this.extraction && this.extraction.containsPoint(player.position)) {
+    // Extraction fires the win exactly once, guarded by `_complete` — and only
+    // once island C is clear. Its panel can be green-climbed over (see
+    // `_gate()`), so the panel alone cannot be the enforcement; this can.
+    if (!this._complete && this.extraction && this.extraction.containsPoint(player.position)
+        && this._arenaCleared(this.gateC)) {
       this._complete = true;
       this.game.onWin?.();
     }
@@ -168,19 +193,32 @@ export class Level01 extends LevelBase {
   }
 
   /**
-   * The encounter gate (#37): island B's exit, sealed until the arena is clear.
-   * It blocks the one thing the layout itself could not — running past the
-   * Charger — so the fight has to be won rather than skipped.
+   * One encounter gate (#37 island B, #56 island C): a full-width vertical panel
+   * seals its arena's exit until the arena is clear, so the fight has to be won
+   * rather than run past.
    *
    * It is a paint surface because that is the only thing that collides (see
    * `_resolveWalls`). It is deliberately NOT a paint puzzle: painting it
    * changes nothing that gets you through. That is the L1 version of "not
    * every obstacle is a colour answer" (cf. the L2 turret).
+   *
+   * VERTICAL on purpose, and that is a hard constraint, not a preference:
+   * `_resolveWalls` (player.js) pushes the player out along x/z and never
+   * resolves y, so a horizontal panel is pass-through and seals nothing. A gate
+   * can therefore only block a *horizontal* route. Consequence here: the red
+   * launch off island C is vertical, so it cannot be gated at all — island C's
+   * gate has to sit one step further along, on the platform lip.
+   *
+   * Corollary worth knowing before moving either gate: a panel is climbable
+   * once it is painted green (climbing only needs `rules.climbable`, and
+   * `PaintSurface` has no unpaintable option), so a determined player can go
+   * over the top. #37 was allowed that — it leads nowhere. Island C's gate is
+   * the first whose far side is the win, which is why the win also waits on
+   * `_arenaCleared(this.gateC)`: a check that cannot be climbed.
    */
-  _gate() {
-    const z = L1.islands.B.zMin;            // the exit of island B, not a new number
-    const s = new PaintSurface({ width: L1.corridorHalf * 2, height: L1.gate.yTop, cells: L1.cells });
-    s.mesh.position.set(0, L1.gate.yTop / 2, z);
+  _gate({ arena, z, yBase, yTop }) {
+    const s = new PaintSurface({ width: L1.corridorHalf * 2, height: yTop - yBase, cells: L1.cells });
+    s.mesh.position.set(0, (yBase + yTop) / 2, z);
     s.isFloor = false;
     this.root.add(s.mesh);
     this.surfaces.push(s);
@@ -191,27 +229,27 @@ export class Level01 extends LevelBase {
       new THREE.BoxGeometry(6, 0.4, 0.4),
       new THREE.MeshBasicMaterial({ color: PAINT.red.hex }),
     );
-    light.position.set(0, L1.gate.yTop + 1, z);
+    light.position.set(0, yTop + 1, z);
     this.root.add(light);
 
-    this.gate = { surface: s, light, open: false };
+    return { arena, surface: s, light, open: false, watch: [] };
   }
 
   /**
-   * An enemy releases the gate when it is dead OR has left island B.
+   * An arena releases its gate when every enemy in it is dead OR has left it.
    *
    * The second case is the soft-lock guard #37 asks for: a red hit flings an
    * enemy with no gravity (`enemy.js` `_applyKnockback`), so a Charger knocked
-   * into Gap 2 floats out there alive forever. Waiting only on `alive` would
+   * into a gap floats out there alive forever. Waiting only on `alive` would
    * shut the level down permanently.
    */
-  _arenaCleared() {
-    return this._gateWatch.every((e) => !e.alive || !this._inIslandB(e.position));
+  _arenaCleared(gate) {
+    return gate.watch.every((e) => !e.alive || !this._inIsland(gate.arena, e.position));
   }
 
-  /** Is a world point on island B? Slack at the edges so "on the lip" counts. */
-  _inIslandB(p) {
-    const { zMin, zMax } = L1.islands.B;
+  /** Is a world point on island `key` (A, B, C)? Slack at the edges so "on the lip" counts. */
+  _inIsland(key, p) {
+    const { zMin, zMax } = L1.islands[key];
     return p.z >= zMin - 0.5 && p.z <= zMax + 0.5 && Math.abs(p.x) <= L1.corridorHalf + 0.5;
   }
 
@@ -221,10 +259,10 @@ export class Level01 extends LevelBase {
    * the panel is what opens it; hiding it would not. y=-100 is below
    * `PLAYER.killY`, so no player can ever be inside the panel's height range.
    */
-  _openGate() {
-    this.gate.open = true;
-    this.gate.surface.mesh.position.y = -100;
-    this.gate.light.material.color.setHex(PAINT.green.hex);
+  _openGate(gate) {
+    gate.open = true;
+    gate.surface.mesh.position.y = -100;
+    gate.light.material.color.setHex(PAINT.green.hex);
   }
 
   /** Minimal unlit beacons, colour-coded to the paint they ask for. Shared geo + material. */
