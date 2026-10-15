@@ -85,7 +85,11 @@ export class Level01 extends LevelBase {
   update(dt, player) {
     // Pass the position, not the player: Enemy.update does arithmetic on what
     // it receives, and a Player object has no x/y/z.
-    for (const enemy of this.enemies) enemy.update(dt, player.position);
+    // indexed loop: `for...of` allocates an iterator object per call until V8
+    // optimises it away, and this runs every frame.
+    for (let i = 0; i < this.enemies.length; i++) {
+      this.enemies[i].update(dt, player.position);
+    }
 
     // Encounter gate: island B's exit opens the moment the arena is clear.
     if (this.gate && !this.gate.open && this._arenaCleared()) this._openGate();
