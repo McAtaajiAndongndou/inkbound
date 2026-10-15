@@ -46,7 +46,8 @@ export class PaintGun {
 
     this.cooldown = 0;
     this.lastSplat = null;
-    this.lastShot = null;
+    this.lastShot = null;  // 'splat' | 'hit' | 'kill' — set when the projectile lands
+    this.onImpact = null;  // optional (kind) => {}, fired when a shot lands (HUD + SFX)
     this.dryFire = false;
 
     this._raycaster = new THREE.Raycaster();
@@ -172,12 +173,19 @@ export class PaintGun {
     const onImpact = () => {
       this._spawnImpactBurst(point, colour, normal);
 
+      // What THIS shot did — not this.lastShot, which a later shot may have
+      // reset while the projectile was in flight.
+      let kind = null;
       if (enemy) {
         enemy.takeColourHit(colourId, undefined, point);
-        this.lastShot = enemy.alive ? "hit" : "kill";
+        kind = enemy.alive ? "hit" : "kill";
       } else if (surface.splat(point, colour, PAINT_GUN.radius)) {
         this.lastSplat = { point: point.clone(), colour, age: 0 };
-        this.lastShot = "splat";
+        kind = "splat";
+      }
+      if (kind) {
+        this.lastShot = kind;
+        this.onImpact?.(kind);
       }
     };
 

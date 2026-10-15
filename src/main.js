@@ -112,6 +112,12 @@ function loadLevel() {
   
 
   gun = new PaintGun(level.surfaces, 1, level.enemies, scene);
+  // Shots land when the projectile arrives, not when fired, so the hit
+  // feedback is driven from the impact rather than from tryFire().
+  gun.onImpact = (kind) => {
+    audio.play(kind);
+    if (kind !== "splat") hud.showHitmarker(kind === "kill");
+  };
   gunModel = new PaintGunModel(rig.camera, player, avatar);
 }
 
@@ -159,12 +165,6 @@ function simulate(dt, elapsed, actions, mouse) {
   if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {
     gunModel?.kick();
     audio.play("fire");
-    if (gun.lastShot === "splat") {
-      audio.play("splat");
-    } else {
-      audio.play(gun.lastShot);
-      hud.showHitmarker(gun.lastShot === "kill");
-    }
   }
 
   for (const s of level.surfaces) s.update(elapsed);

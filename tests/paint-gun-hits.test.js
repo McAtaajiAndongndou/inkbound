@@ -45,3 +45,13 @@ test('a dead enemy does not soak up shots: they reach the wall behind it', () =>
   assert.deepEqual(splats, ['blue']);
   assert.equal(gun.lastShot, 'splat');
 });
+
+test('onImpact reports what each shot did, when it lands', () => {
+  const { gun, camera } = setup({ alive: true });
+  const kinds = [];
+  gun.onImpact = (kind) => kinds.push(kind);
+  gun.tryFire(camera);           // kills the enemy
+  gun.cooldown = 0;
+  gun.tryFire(camera);           // passes the dead enemy, paints the wall
+  assert.deepEqual(kinds, ['kill', 'splat']);
+});
