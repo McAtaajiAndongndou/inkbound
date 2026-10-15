@@ -84,6 +84,12 @@ export const AUDIO = {
   volume: 0.6,
 };
 
+// Options-menu ranges. Sensitivity is a multiplier on PLAYER.lookSensitivity.
+export const OPTIONS = {
+  sensitivityMin: 0.25,
+  sensitivityMax: 3,
+};
+
 export const PAINT_GRID = {
   level1Cells: 4,
 };
