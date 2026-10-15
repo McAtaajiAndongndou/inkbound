@@ -8,7 +8,7 @@ import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
 import { PAINT, ENEMY, PAINT_GRID } from '../config.js';
 import { Enemy } from '../enemies/enemy.js';
-import { createToonMaterial } from '../shaders/toon/toon-material.js';
+import { Forest } from './forest.js';
 
 /**
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
@@ -176,12 +176,9 @@ const MOOD = {
   fillColour: 0x9fb0bb,
   fillIntensity: 0.45,
 
-  // The trees. Two colours, not one: a canopy the same colour as its trunk
-  // reads as a single bland shape. The canopy stays a drained grey-green on
-  // purpose — the world is grey until the player paints it, and step 3 of
-  // LEVEL-1-FOREST-POLISH.md is what brings the colour back.
-  treeBark: 0x413c36,
-  treeCanopy: 0x4f5a4d,
+  // The trees are NOT here. Their colours and their reaction to paint are the
+  // forest module's business (`./forest.js`), because they are not mood: the
+  // canopy changes while you play, and the sky does not.
 };
 // Deliberately NOT here: the HEIGHT of the mist. That is FOG_FLOOR / FOG_CEIL
 // in src/shaders/fog-height.js, because it has to reach three materials
@@ -459,7 +456,7 @@ export class Level01 extends LevelBase {
   }
 
   /**
-   * Point every paintable surface at the same sun the scene uses (#57).
+   * Point every custom-shaded surface at the same sun the scene uses (#57).
    *
    * This is the item that actually matters for "the ground and the props are lit
    * from the same side", because the ground does not read scene lights at all —
@@ -467,9 +464,17 @@ export class Level01 extends LevelBase {
    * sun's vector. Two nearly-equal numbers is exactly the kind of thing that
    * drifts apart over three levels, so it is set from one place now.
    *
-   * Called at the END of load(), after the gates exist. The gates are paint
-   * surfaces too, and they are built late — miss them and the gate faces would be
-   * lit from a different direction than the floor they stand on.
+   * The FOREST used to be missed here, and that was a real bug rather than a
+   * tidy-up: `createToonMaterial`'s own default is (0.5, 1.0, 0.3), which
+   * normalises to (0.431, 0.863, 0.259), and the sun normalises to
+   * (0.485, 0.808, 0.323). Not the same direction — so every tree in the level
+   * was lit from somewhere the ground was not, and the surface-only walk below
+   * was why the test never noticed. The forest now hands over its materials and
+   * the loop covers them too.
+   *
+   * Called at the END of load(), after the gates and the forest exist. Both are
+   * built late — miss one and its faces are lit from a different direction than
+   * the floor they stand on.
    */
   _lightDirection() {
     const dir = new THREE.Vector3(
@@ -481,60 +486,32 @@ export class Level01 extends LevelBase {
       const uniform = this.surfaces[i].material.uniforms.uLightDir;
       if (uniform) uniform.value.copy(dir);
     }
+
+    // the trees, which are custom-shaded too and were the miss described above
+    for (let i = 0; i < this.forest.materials.length; i++) {
+      this.forest.materials[i].uniforms.uLightDir.value.copy(dir);
+    }
   }
 
   /**
    * The forest.
    *
-   * TWO shared shapes — one cone for the canopy, one cylinder for the trunk —
-   * and two shared materials, reused by every tree. Nineteen trees therefore
-   * cost two geometries and two materials, not thirty-eight of each. That is the
-   * whole point of the "build one, share it" rule in the plan: it is the
-   * difference between this being free and it being a frame-rate problem on lab
-   * hardware.
+   * The shapes, the materials and the reaction to paint live in `./forest.js`
+   * — this method is only the wiring: hand it the placement table and the
+   * walkable floors, and hang it off `this.root` so dispose() frees it.
    *
-   * The cones use `createToonMaterial`, so trees shade exactly like the enemies
-   * do — same bands, same `uLightDir`. Anything else and the forest would look
-   * like it belongs to a different game.
-   *
-   * Trees deliberately DO NOT collide. That keeps them out of the physics
-   * entirely: a tree can never block the Gap 1 jump, trap the player against the
-   * Charger, or shift the gap distances the design tests pin. The price is that
-   * the player can walk through one, which is the right trade for beta.
-   *
-   * They also cast no shadows, on purpose. Nothing in this level can RECEIVE one
-   * — the paint and toon shaders are custom and never sample the shadow map, so
-   * the `receiveShadow` currently set on the floors does nothing. Switching
-   * shadows on here would pay for a shadow pass and change nothing on screen.
-   * Worth revisiting the moment the shaders gain shadow support.
+   * The placement table is the design; the module is the machinery. That split
+   * is what lets step 5 (instanced GLB models) change how a tree is drawn
+   * without moving a single tree.
    */
   _forest() {
-    const canopyGeo = new THREE.ConeGeometry(1.5, 3.2, 7);
-    const trunkGeo = new THREE.CylinderGeometry(0.22, 0.28, 1.6, 6);
-    const barkMat = createToonMaterial(MOOD.treeBark);
-    const canopyMat = createToonMaterial(MOOD.treeCanopy);
+    this.forest = new Forest(this.root, L1.forest);
 
-    const trees = [];
+    // Only walkable surfaces — see Forest.build. The wall is a PaintSurface too,
+    // and a tree that "stands on" the wall stands inside it.
+    this.forest.build(this.surfaces.filter((s) => s.isFloor));
 
-    for (const { x, y, z, scale } of L1.forest) {
-      const tree = new THREE.Group();
-      tree.userData.tree = true;      // the tests find trees by walking root
-
-      const trunk = new THREE.Mesh(trunkGeo, barkMat);
-      trunk.position.y = 0.8;                 // half the trunk's height
-      tree.add(trunk);
-
-      const canopy = new THREE.Mesh(canopyGeo, canopyMat);
-      canopy.position.y = 1.6 + 1.6;          // trunk top + half the canopy
-      tree.add(canopy);
-
-      tree.position.set(x, y, z);
-      tree.scale.setScalar(scale);
-      this.root.add(tree);
-      trees.push(tree);
-    }
-
-    return trees;
+    return this.forest.trees.map((t) => t.mesh);
   }
 
   update(dt, player) {
@@ -558,6 +535,10 @@ export class Level01 extends LevelBase {
       m.map.offset.x = ox >= 1 ? ox - 1 : (ox < 0 ? ox + 1 : ox);
       m.map.offset.y = oy >= 1 ? oy - 1 : (oy < 0 ? oy + 1 : oy);
     }
+
+    // The forest wakes up where the player paints. It runs its own heartbeat
+    // (see Forest.update) rather than reading the grid every frame.
+    this.forest.update(dt, player.position);
 
     // Encounter gates: an arena's exit opens the moment that arena is clear.
     for (let i = 0; i < this.gates.length; i++) {
