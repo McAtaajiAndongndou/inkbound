@@ -118,7 +118,9 @@ function animate() {
   gun.update(dt);
   if (input.firing && input.locked && !player.dead){
     const muzzle = gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson) ?? null;
-    gun.tryFire(rig.camera,muzzle);
+    if (gun.tryFire(rig.camera,muzzle)){
+      gunModel?.kick();
+    }
   }
   for (const s of level.surfaces) s.update(elapsed);
 
@@ -126,7 +128,7 @@ function animate() {
   player.mesh.visible = !rig.firstPerson;
 
   if (gunModel){
-    gunModel.update(rig.firstPerson);
+    gunModel.update(rig.firstPerson,dt);
   }
 
   hud.update(dt, {

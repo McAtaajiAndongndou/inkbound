@@ -11,6 +11,10 @@ const PROJECTILE_COLOURS = {
 
 const PROJECTILE_SPEED = 60;
 
+const BURST_PARTICLE_COUNT = 8;
+const BURST_PARTICLE_SPEED = 5;
+const BURST_PARTICLE_LIFETIME = 0.45;
+
 /**
  * Fires paint. Raycasts from the camera into the scene, finds the first
  * paintable surface, and splats.
@@ -24,6 +28,18 @@ export class PaintGun {
     this.enemies = enemies;
     this.scene = scene;
     this.projectiles = [];
+
+    this.burstParticles = [];
+    this._burstGeometry = new THREE.SphereGeometry(0.04,6,6);
+    this._burstMaterials = {};
+
+    for (const [name,hex] of Object.entries(PROJECTILE_COLOURS)){
+      this._burstMaterials[name] = new THREE.MeshBasicMaterial({
+        color: hex,
+        transparent: true,
+        opacity: 1,
+      });
+    }
 
     this.colours = ["blue", "red", "green", "grey"];
     this.current = 0;
@@ -124,6 +140,7 @@ export class PaintGun {
     const colour = this.colour;
     const colourId = this.current + 1;
     const point = hit.point.clone();
+    const normal = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : new THREE.Vector3(0,1,0);
 
     if (colour!=="grey"){
       this.ammo[colour] -= PAINT_GUN.cost;
@@ -131,11 +148,17 @@ export class PaintGun {
 
     this.cooldown = PAINT_GUN.fireDelay;
 
-    const onImpact = enemy ? () => enemy.takeColourHit(colourId, undefined, point) : () => {
-      if (surface.splat(point, colour, PAINT_GUN.radius)){
-        this.lastSplat = {point, colour, age:0};
+    const onImpact = ()=>{
+      this._spawnImpactBurst(point,colour,normal);
+
+      if (enemy){
+        enemy.takeColourHit(colourId, undefined, point);
+      }else{
+        if(surface.splat(point,colour,PAINT_GUN.radius)){
+          this.lastSplat={point,colour,age:0};
+        }
       }
-    }
+    };
 
     this._spawnProjectile(camera,muzzle, point, colour, onImpact);
 
@@ -162,6 +185,39 @@ export class PaintGun {
     this.projectiles.push({mesh, target:target.clone(), onImpact});
   }
 
+  _spawnImpactBurst(point, colour, normal){
+    if(!this.scene){
+      return;
+    }
+
+    for (let i = 0; i < BURST_PARTICLE_COUNT; i++){
+      const mesh = new THREE.Mesh(
+        this._burstGeometry,
+        this._burstMaterials[colour].clone()
+      );
+
+      mesh.position.copy(point);
+
+      const direction = new THREE.Vector3(
+        Math.random() * 2 - 1,
+        Math.random() * 2 - 1,
+        Math.random() * 2 - 1
+      ).normalize();
+
+      if(direction.dot(normal) < 0){
+        direction.reflect(normal);
+      }
+
+      this.scene.add(mesh);
+
+      this.burstParticles.push({
+        mesh,
+        direction,
+        age:0,
+      });
+    }
+  }
+
   refillAmmo() {
     if (this.colour === "grey") return;
     this.ammo[this.colour] = this.maxAmmo;
@@ -186,11 +242,42 @@ export class PaintGun {
         p.mesh.position.addScaledVector(dir, step/dist);
       }
     }
+
+    for (let i = this.burstParticles.length - 1; i >=0; i--){
+      const p = this.burstParticles[i];
+
+      p.age += dt;
+      p.mesh.position.addScaledVector(
+        p.direction,
+        BURST_PARTICLE_SPEED * dt
+      );
+
+      const progress = p.age/BURST_PARTICLE_LIFETIME;
+      p.mesh.material.opacity = 1 - progress;
+
+      if(p.age >= BURST_PARTICLE_LIFETIME){
+        this.scene.remove(p.mesh);
+        p.mesh.material.dispose();
+        this.burstParticles.splice(i,1);
+      }
+    }
   }
 
   dispose(){
     for(const p of this.projectiles){
       this.scene?.remove(p.mesh);
+    }
+
+    for(const p of this.burstParticles){
+      this.scene?.remove(p.mesh);
+      p.mesh.material.dispose();
+    }
+
+    this.burstParticles.length = 0;
+    this._burstGeometry.dispose();
+
+    for (const material of Object.values(this._burstMaterials)){
+      material.dispose();
     }
 
     this.projectiles.length = 0;
