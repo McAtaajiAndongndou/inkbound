@@ -113,6 +113,14 @@ const fragmentShader = /* glsl */ `
 
     gl_FragColor = vec4(colour, 1.0);
 
+    // linear -> output colour space, exactly as #41 did for the toon material.
+    // It is not just about matching the enemies: three.js feeds fogColor in
+    // OUTPUT space, so without this the fog below would mix an sRGB value into a
+    // still-linear one and the ground would fade toward the haze at a different
+    // rate than the enemies standing on it. Order matches three.js's own
+    // materials: colorspace_fragment, then fog_fragment.
+    #include <colorspace_fragment>
+
     // must come last: it mixes gl_FragColor.rgb toward fogColor using
     // vFogDepth and how high off the floor this pixel is
     ${FOG_HEIGHT_FRAGMENT}
