@@ -8,6 +8,7 @@ import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
 import { PAINT, ENEMY, PAINT_GRID } from '../config.js';
 import { Enemy } from '../enemies/enemy.js';
+import { createToonMaterial } from '../shaders/toon/toon-material.js';
 
 /**
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
@@ -70,6 +71,48 @@ const L1 = {
     { x: -4, y: 0, z: -21, type: 'sprayer' },
     { x: 5,  y: 0, z: -22, type: 'charger' },
   ],
+
+  // The forest. Hand-placed, because the rules are not geometric:
+  //
+  //   - every tree must stand ON a floor. A tree over a gap floats, and that is
+  //     the one thing about the mist-free gaps a player will notice instantly.
+  //     `tests/level-01-forest.test.js` checks this for every entry.
+  //   - keep x away from 0. The route runs down the middle of the corridor, and
+  //     trees sit at +/-5.5 to 6.5 so they frame the path without standing in it.
+  //   - trees do not collide (see `_forest()`), so they can never block the Gap 1
+  //     jump or trap the player against the Charger.
+  //   - `scale` gives size variety for free. Nothing else changes per tree.
+  //
+  // y is the floor the tree stands on: 0 for the islands, 4 for the platform,
+  // 9 for the extraction ledge.
+  forest: [
+    // island A — the approach, and a backdrop behind the spawn
+    { x: -6.0, y: 0, z: 17.0, scale: 1.3 },
+    { x: -6.5, y: 0, z: 13.0, scale: 1.0 },
+    { x: -5.5, y: 0, z:  9.5, scale: 0.85 },
+    { x:  6.0, y: 0, z: 16.0, scale: 1.15 },
+    { x:  6.5, y: 0, z: 11.0, scale: 0.95 },
+
+    // island B — the Charger arena. Edge trees only, so the fight stays readable.
+    { x: -6.5, y: 0, z:  3.0, scale: 1.2 },
+    { x: -6.0, y: 0, z: -1.5, scale: 0.9 },
+    { x: -6.5, y: 0, z: -5.5, scale: 1.05 },
+    { x:  6.5, y: 0, z:  2.0, scale: 1.1 },
+    { x:  6.0, y: 0, z: -3.5, scale: 0.95 },
+    { x:  6.5, y: 0, z: -6.0, scale: 1.25 },
+
+    // island C — the Sprayer's ground
+    { x: -6.0, y: 0, z: -17.5, scale: 1.0 },
+    { x: -6.5, y: 0, z: -21.0, scale: 1.3 },
+    { x:  6.5, y: 0, z: -18.5, scale: 0.9 },
+    { x:  6.0, y: 0, z: -22.5, scale: 1.15 },
+
+    // the platform and the ledge above it — the world does not stop at y 0
+    { x: -3.0, y: 4, z: -21.0, scale: 0.8 },
+    { x:  3.0, y: 4, z: -19.0, scale: 0.8 },
+    { x: -6.0, y: 9, z: -28.0, scale: 1.1 },
+    { x:  6.0, y: 9, z: -26.0, scale: 1.0 },
+  ],
 };
 
 /**
@@ -109,6 +152,36 @@ const MOOD = {
   // level, so mist there is difficulty rather than atmosphere.
   mistZ: -13,
   mistLength: 42,
+
+  // The direction the world is lit from, as ONE value. It mirrors the sun in
+  // main.js (`sun.position.set(18, 30, 12)`), and both the ground and the props
+  // now read it, so they cannot disagree (#57).
+  //
+  // Why the level carries a copy at all: the paint shader and the toon shader
+  // are custom and do NOT read scene lights. Each carries its own `uLightDir`
+  // uniform. The paint shader's built-in default is already very close to this
+  // vector, so matching it is about making drift impossible rather than about a
+  // big visible change today.
+  sunDir: [18, 30, 12],
+
+  // The fill light. Cold, and from the opposite side to the sun so props get
+  // some shape back without flattening the sun's direction.
+  //
+  // HONEST SCOPE: this only affects meshes using three.js's OWN lit materials.
+  // In L1 today that is just the player. The ground, the gates and the enemies
+  // all use custom shaders that ignore scene lights entirely — they read
+  // `sunDir` through their uniforms instead. So this light is close to
+  // invisible right now, and it starts earning its place when the animated GLB
+  // characters land (#49, #50), which must use built-in materials.
+  fillColour: 0x9fb0bb,
+  fillIntensity: 0.45,
+
+  // The trees. Two colours, not one: a canopy the same colour as its trunk
+  // reads as a single bland shape. The canopy stays a drained grey-green on
+  // purpose — the world is grey until the player paints it, and step 3 of
+  // LEVEL-1-FOREST-POLISH.md is what brings the colour back.
+  treeBark: 0x413c36,
+  treeCanopy: 0x4f5a4d,
 };
 // Deliberately NOT here: the HEIGHT of the mist. That is FOG_FLOOR / FOG_CEIL
 // in src/shaders/fog-height.js, because it has to reach three materials
@@ -191,6 +264,8 @@ export class Level01 extends LevelBase {
     this._beacons();
     this._extraction();
     this._mood();
+    this._light();
+    this._forest();
 
     this.spawn.set(L1.spawn.x, L1.spawn.y, L1.spawn.z);
 
@@ -213,6 +288,11 @@ export class Level01 extends LevelBase {
       const gate = this.gates[i];
       gate.watch = this.enemies.filter((e) => this._inIsland(gate.arena, e.position));
     }
+
+    // Last, once EVERY surface exists — the gates are built just above, and they
+    // are paint surfaces too. Miss them and the gate faces would be lit from a
+    // different direction than the floor they stand on.
+    this._lightDirection();
   }
 
   /**
@@ -352,6 +432,109 @@ export class Level01 extends LevelBase {
       this.atmosphere.add(mesh);
       this.mist.push({ map, speed: layer.speed });
     }
+  }
+
+  /**
+   * The level's own light rig.
+   *
+   * Read the MOOD note first: the ground and the enemies are custom shaders and
+   * do NOT read scene lights, so this fill only reaches meshes using three.js's
+   * own lit materials — today that is just the player. It is here because #57
+   * asks for it, and because it is what the animated GLB characters will read
+   * (#49, #50), not because it changes much on screen right now.
+   *
+   * Added to `this.root` like every other level object, so it is removed with
+   * the level instead of quietly stacking up on every restart.
+   */
+  _light() {
+    const fill = new THREE.DirectionalLight(MOOD.fillColour, MOOD.fillIntensity);
+    // Opposite side to the sun and a little lower, so props get some shape back
+    // without flattening the sun's own direction.
+    fill.position.set(-18, 12, -12);
+    // The sun is the only shadow caster. A second shadow map is a cost we do not
+    // need for a light that is meant to be soft.
+    fill.castShadow = false;
+    this.root.add(fill);
+    return fill;
+  }
+
+  /**
+   * Point every paintable surface at the same sun the scene uses (#57).
+   *
+   * This is the item that actually matters for "the ground and the props are lit
+   * from the same side", because the ground does not read scene lights at all —
+   * it reads its own `uLightDir` uniform, and its default is only *nearly* the
+   * sun's vector. Two nearly-equal numbers is exactly the kind of thing that
+   * drifts apart over three levels, so it is set from one place now.
+   *
+   * Called at the END of load(), after the gates exist. The gates are paint
+   * surfaces too, and they are built late — miss them and the gate faces would be
+   * lit from a different direction than the floor they stand on.
+   */
+  _lightDirection() {
+    const dir = new THREE.Vector3(
+      MOOD.sunDir[0], MOOD.sunDir[1], MOOD.sunDir[2],
+    ).normalize();
+    this.sunDir = dir;   // kept: future code (telegraphs, tree reactions) wants it
+
+    for (let i = 0; i < this.surfaces.length; i++) {
+      const uniform = this.surfaces[i].material.uniforms.uLightDir;
+      if (uniform) uniform.value.copy(dir);
+    }
+  }
+
+  /**
+   * The forest.
+   *
+   * TWO shared shapes — one cone for the canopy, one cylinder for the trunk —
+   * and two shared materials, reused by every tree. Nineteen trees therefore
+   * cost two geometries and two materials, not thirty-eight of each. That is the
+   * whole point of the "build one, share it" rule in the plan: it is the
+   * difference between this being free and it being a frame-rate problem on lab
+   * hardware.
+   *
+   * The cones use `createToonMaterial`, so trees shade exactly like the enemies
+   * do — same bands, same `uLightDir`. Anything else and the forest would look
+   * like it belongs to a different game.
+   *
+   * Trees deliberately DO NOT collide. That keeps them out of the physics
+   * entirely: a tree can never block the Gap 1 jump, trap the player against the
+   * Charger, or shift the gap distances the design tests pin. The price is that
+   * the player can walk through one, which is the right trade for beta.
+   *
+   * They also cast no shadows, on purpose. Nothing in this level can RECEIVE one
+   * — the paint and toon shaders are custom and never sample the shadow map, so
+   * the `receiveShadow` currently set on the floors does nothing. Switching
+   * shadows on here would pay for a shadow pass and change nothing on screen.
+   * Worth revisiting the moment the shaders gain shadow support.
+   */
+  _forest() {
+    const canopyGeo = new THREE.ConeGeometry(1.5, 3.2, 7);
+    const trunkGeo = new THREE.CylinderGeometry(0.22, 0.28, 1.6, 6);
+    const barkMat = createToonMaterial(MOOD.treeBark);
+    const canopyMat = createToonMaterial(MOOD.treeCanopy);
+
+    const trees = [];
+
+    for (const { x, y, z, scale } of L1.forest) {
+      const tree = new THREE.Group();
+      tree.userData.tree = true;      // the tests find trees by walking root
+
+      const trunk = new THREE.Mesh(trunkGeo, barkMat);
+      trunk.position.y = 0.8;                 // half the trunk's height
+      tree.add(trunk);
+
+      const canopy = new THREE.Mesh(canopyGeo, canopyMat);
+      canopy.position.y = 1.6 + 1.6;          // trunk top + half the canopy
+      tree.add(canopy);
+
+      tree.position.set(x, y, z);
+      tree.scale.setScalar(scale);
+      this.root.add(tree);
+      trees.push(tree);
+    }
+
+    return trees;
   }
 
   update(dt, player) {
