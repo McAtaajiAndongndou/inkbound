@@ -12,6 +12,7 @@ const BASE_COLOUR = 0xe0703a;
 
 // How long a colour hit stays fully saturated before fading back, in seconds.
 const TINT_FADE = 1.0;
+const KILL_FLASH_MS = 120;
 
 /**
  * One enemy class, five configs. Behaviour comes from ENEMY.* flags, not from
@@ -115,14 +116,20 @@ export class Enemy {
    * needs no hardcoded ice flag: just read the grid.
    */
   update(dt, playerPos) {
-    if (!this.alive || !this.config.canMove) return;
+    if (!this.alive) return;
+
+    // The tint fade runs for EVERY living enemy, movers or not. It used to sit
+    // after the canMove check, so a stationary enemy kept its hit colour
+    // forever. It is called exactly once, here, so no branch below repeats it.
+    this._fadeTint(dt);
+
+    if (!this.config.canMove) return;
 
     // Green pin: movement stops, threat does not (settled rule). The knockback
     // from a red hit can still carry it while pinned, so apply that first.
     if (this._pinnedTimer > 0) {
       this._pinnedTimer -= dt;
       this._applyKnockback(dt);
-      this._fadeTint(dt);
       return;
     }
     if (this._slipTimer > 0) this._slipTimer -= dt;
@@ -130,7 +137,6 @@ export class Enemy {
     const ground = this._probe.down(this.position);
     if (!ground) {                    // over a gap: no pathfinding, so hold
       this._applyKnockback(dt);
-      this._fadeTint(dt);
       return;
     }
     const rules = ground.surface.surfaceAtWorld(ground.point);
@@ -210,7 +216,6 @@ export class Enemy {
     }
 
     this._applyKnockback(dt);
-    this._fadeTint(dt);
   }
 
   /**
@@ -249,6 +254,7 @@ export class Enemy {
     // Feedback first, so a killing hit still reads as coloured.
     this._tintTarget.setHex(PAINT[name].hex);
     this._tintTimer = TINT_FADE;
+    this.bodyMat.uniforms.uColour.value.copy(this._tintTarget);
 
     this.hp -= damage;
 
@@ -273,7 +279,7 @@ export class Enemy {
 
     if (this.hp <= 0) {
       this.alive = false;
-      this.dispose();
+      setTimeout(() => this.dispose(), KILL_FLASH_MS);
     }
 
     return true;
