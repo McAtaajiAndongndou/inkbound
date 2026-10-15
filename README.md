@@ -152,13 +152,15 @@ git config core.ignorecase false
 
 ## Deployment
 
-Ship the **contents of `dist/`**, zipped so `index.html` is at the top level of the archive.
+The game is hosted on the department **LAMP server**. There is no SSH: you upload a zip through Moodle and it gets published to `https://<server>/<group-folder>/` (CGV brief, section 5).
 
 ```bash
-npm run build
-cd dist
-# PowerShell:
-Compress-Archive -Path * -DestinationPath ..\inkbound.zip
+npm run deploy:zip     # build, check, and write inkbound.zip
+npm run serve:dist     # play the build locally, all the way through
 ```
+
+`deploy:zip` zips the **contents of `dist/`** so `index.html` is at the top level. It refuses to zip if the build has absolute `/` paths or an `./assets/...` reference whose case does not match the file on disk, because both work on Windows and break on the Linux server.
+
+Then upload `inkbound.zip` to the Moodle submission (follow its naming convention), open the published URL in Chrome, play it through, and check the console for 404s.
 
 **Do this in week one.** Deployment problems cost whole days and we have three weeks to the graded beta.
