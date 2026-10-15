@@ -217,33 +217,44 @@ test('the ground, the walls, the gates and all the decor are lit from the same d
  * kind it names rather than about whatever ran before it.
  */
 test('painting the ground turns every kind of prop standing on it (#57)', async () => {
-  const level = await buildLevel();
-  const plan = { tree: 'blue', bush: 'red', rock: 'green', grass: 'blue', flower: 'red', stump: 'green' };
-
-  // every kind starts grey, asserted before a single heartbeat has run
-  const targets = {};
-  for (const [kind, props] of Object.entries(level.decor)) {
-    const prop = props.props.find((p) => p.floor && p.z > 8 && p.parts);
-    assert.ok(prop, `${kind} has no testable prop on the spawn island`);
+  // Each kind gets its OWN level. The heartbeat is level-wide, so a single shared
+  // level lets one kind's update paint a neighbour's ground — and then the
+  // neighbour starts its turn already the colour it is about to be asked for.
+  // A fresh level per kind costs ~20ms each and removes the whole class of
+  // cross-talk, which is worth far more than the time.
+  for (const kind of Object.keys(KINDS)) {
+    const level = await buildLevel();
+    const prop = level.decor[kind].props.find((p) => p.floor && p.z > 8 && p.parts);
+    assert.ok(prop, `${kind} has no prop with a fallback part on the spawn island`);
     assert.equal(prop.paintName, 'grey', `${kind} should start grey`);
-    targets[kind] = prop;
-  }
 
-  for (const [kind, prop] of Object.entries(targets)) {
-    const colour = plan[kind];
     const before = prop.parts[0].material;
+    assert.equal(before, level.palette.tint.grey, `${kind} should start on the grey tint`);
 
-    prop.floor.splat(new THREE.Vector3(prop.x, prop.y, prop.z), colour, 3);
+    prop.floor.splat(new THREE.Vector3(prop.x, prop.y, prop.z), 'blue', 3);
     level.update(HEARTBEAT, { position: new THREE.Vector3(prop.x, 2, prop.z) });
 
-    assert.equal(prop.paintName, colour, `${kind} did not read the paint under it`);
+    assert.equal(prop.paintName, 'blue', `${kind} did not read the paint under it`);
     assert.notEqual(prop.parts[0].material, before, `${kind} material did not change`);
-    assert.equal(prop.parts.every((p) => p.material === level.palette.tint[colour]), true,
-      `${kind} must use the SHARED ${colour}, not its own`);
+    assert.equal(prop.parts.every((p) => p.material === level.palette.tint.blue), true,
+      `${kind} must use the SHARED blue, not its own`);
   }
+});
 
-  assert.equal(Object.keys(targets).length, Object.keys(KINDS).length,
-    'every kind must be covered by this test');
+/**
+ * Every kind must be reachable by the test above — a kind added without a
+ * placement would make that loop silently skip it.
+ */
+test('every kind places props and reacts, so none can be added and quietly ignored', async () => {
+  const level = await buildLevel();
+
+  assert.deepEqual(Object.keys(level.decor).sort(), Object.keys(KINDS).sort(),
+    'the level must build one decor set per kind');
+
+  for (const [kind, props] of Object.entries(level.decor)) {
+    assert.ok(props.props.length > 0, `${kind} placed nothing`);
+    assert.ok(props.props.some((p) => p.floor), `${kind} has no prop standing on a floor`);
+  }
 });
 
 /**

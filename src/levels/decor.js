@@ -71,6 +71,21 @@ const BASE_PART = /bark|trunk|wood|stem|berry/i;
  * problem. Grass wants to be small, dense and right up against the route; a
  * tree wants to be large, sparse and out of the way.
  *
+ * The models are the real **Quaternius Stylized Nature MegaKit** (CC0), 30 of
+ * its 68 glTF models, packed from `.gltf` + `.bin` into texture-free `.glb` by
+ * `tools/gltf-to-gltf.mjs`. Picked for the JOB rather than for completeness:
+ *
+ *   - Every model is normalised to this kind's `height` because there is no
+ *     usable size in the files. The pack's native heights run from 0.1 (a
+ *     pebble) to 18.9 (a twisted tree) — 189x apart — and every one of them has
+ *     a different pivot.
+ *   - Vertex counts run from 14 (a petal) to 15,647 (a twisted tree), so the
+ *     heavy models are used SPARINGLY and the heavy kinds scatter wider. The
+ *     MegaKit's trees are 3-5x the vertex cost of the models they replaced.
+ *   - DeadTree is bark-only. It has no leaf material, so nothing matches
+ *     BASE_PART and the whole tree takes the paint — which is the right read for
+ *     this game: paint is what brings the dead world back.
+ *
  * `step` / `spacing` / `edge` / `inset` are the scatter:
  *   step     metres between candidate positions along the corridor
  *   spacing  no two props of this kind closer than this
@@ -80,7 +95,13 @@ const BASE_PART = /bark|trunk|wood|stem|berry/i;
  */
 export const KINDS = {
   tree: {
-    models: ['./assets/trees/pine.glb', './assets/trees/trees.glb'],
+    models: [
+      './assets/megakit/CommonTree_1.glb',
+      './assets/megakit/CommonTree_3.glb',
+      './assets/megakit/CommonTree_5.glb',
+      './assets/megakit/Pine_4.glb',
+      './assets/megakit/Pine_5.glb',
+    ],
     maxVariants: 5,
     height: 3.4,
     fallback: 'tree',
@@ -88,8 +109,39 @@ export const KINDS = {
     step: 1.1, spacing: 1.35, edge: 3.4, inset: 0.8, seed: 0x5eed1e,
   },
 
+  // The corrupted landmarks: gnarled, 16-19m native, and by far the heaviest
+  // models in the pack (14-15k vertices each). Sparse and big on purpose — a
+  // handful of silhouettes against the haze, not a species.
+  twistedTree: {
+    models: [
+      './assets/megakit/TwistedTree_1.glb',
+      './assets/megakit/TwistedTree_3.glb',
+    ],
+    maxVariants: 2,
+    height: 6.5,
+    fallback: 'tree',
+    scale: [0.85, 1.2],
+    step: 4.5, spacing: 4.0, edge: 5.0, inset: 1.0, seed: 0x7a17e5,
+  },
+
+  // Dead silhouettes, 9-13m native, bark only, so they take the paint whole.
+  deadTree: {
+    models: [
+      './assets/megakit/DeadTree_1.glb',
+      './assets/megakit/DeadTree_3.glb',
+    ],
+    maxVariants: 2,
+    height: 5.0,
+    fallback: 'tree',
+    scale: [0.85, 1.2],
+    step: 3.4, spacing: 2.8, edge: 4.2, inset: 0.9, seed: 0xdead11,
+  },
+
   bush: {
-    models: ['./assets/props/bush.glb', './assets/props/bush-berries.glb'],
+    models: [
+      './assets/megakit/Bush_Common.glb',
+      './assets/megakit/Bush_Common_Flowers.glb',
+    ],
     maxVariants: 2,
     height: 1.3,
     fallback: 'blob',
@@ -98,18 +150,43 @@ export const KINDS = {
   },
 
   rock: {
-    models: ['./assets/props/rocks.glb', './assets/props/rock-large.glb'],
-    maxVariants: 2,
+    models: [
+      './assets/megakit/Rock_Medium_1.glb',
+      './assets/megakit/Rock_Medium_2.glb',
+      './assets/megakit/Rock_Medium_3.glb',
+    ],
+    maxVariants: 3,
     height: 0.8,
     fallback: 'blob',
     scale: [0.6, 1.4],
     step: 2.2, spacing: 1.9, edge: 2.2, inset: 0.8, seed: 0x0c1a11,
   },
 
+  // Pebbles are 0.1-0.2m native: pure ground detail, and cheap (100-300
+  // vertices), so they are allowed to be dense and close to the route.
+  pebble: {
+    models: [
+      './assets/megakit/Pebble_Round_1.glb',
+      './assets/megakit/Pebble_Round_3.glb',
+      './assets/megakit/Pebble_Square_1.glb',
+      './assets/megakit/Pebble_Square_5.glb',
+    ],
+    maxVariants: 4,
+    height: 0.22,
+    fallback: 'blob',
+    scale: [0.7, 1.6],
+    step: 1.3, spacing: 0.9, edge: 1.6, inset: 0.6, seed: 0x9e11e5,
+  },
+
   grass: {
-    models: ['./assets/props/grass-tall.glb', './assets/props/grass-wispy.glb'],
-    maxVariants: 2,
-    height: 1.0,
+    models: [
+      './assets/megakit/Grass_Common_Short.glb',
+      './assets/megakit/Grass_Common_Tall.glb',
+      './assets/megakit/Grass_Wispy_Short.glb',
+      './assets/megakit/Grass_Wispy_Tall.glb',
+    ],
+    maxVariants: 4,
+    height: 0.9,
     fallback: 'tuft',
     scale: [0.7, 1.4],
     // grass is the one kind that MAY come close to the route: a corridor with no
@@ -118,21 +195,45 @@ export const KINDS = {
   },
 
   flower: {
-    models: ['./assets/props/flowers.glb'],
-    maxVariants: 1,
+    models: [
+      './assets/megakit/Flower_3_Group.glb',
+      './assets/megakit/Flower_4_Group.glb',
+      './assets/megakit/Flower_4_Single.glb',
+    ],
+    maxVariants: 3,
     height: 0.9,
     fallback: 'tuft',
     scale: [0.7, 1.2],
     step: 2.4, spacing: 1.6, edge: 2.0, inset: 0.8, seed: 0xf10e12,
   },
 
-  stump: {
-    models: ['./assets/props/stump.glb', './assets/props/log.glb'],
-    maxVariants: 2,
+  plant: {
+    models: [
+      './assets/megakit/Fern_1.glb',
+      './assets/megakit/Plant_1.glb',
+      './assets/megakit/Clover_2.glb',
+    ],
+    maxVariants: 3,
     height: 0.8,
+    fallback: 'tuft',
+    scale: [0.7, 1.3],
+    step: 1.6, spacing: 1.1, edge: 1.8, inset: 0.7, seed: 0x9ee0aa,
+  },
+
+  // Mushroom_Laetiporus is deliberately NOT here, and it is the one model the
+  // pack's own polycount rules out: 1,806 vertices for a 45cm bracket fungus is
+  // 3,216 triangles PER INSTANCE, heavier than a whole tree in the set that
+  // preceded these. It is a browse-the-pack-and-love-it model, not a scatter
+  // model. Mushroom_Common is 555 vertices and does the same job.
+  mushroom: {
+    models: [
+      './assets/megakit/Mushroom_Common.glb',
+    ],
+    maxVariants: 1,
+    height: 0.45,
     fallback: 'blob',
-    scale: [0.7, 1.2],
-    step: 3.1, spacing: 2.6, edge: 2.6, inset: 0.8, seed: 0x57059a,
+    scale: [0.7, 1.3],
+    step: 2.6, spacing: 2.0, edge: 2.0, inset: 0.8, seed: 0x5a11a5,
   },
 };
 
@@ -552,10 +653,15 @@ export class Decor {
     const mesh = new THREE.InstancedMesh(geometry, material, this.props.length);
     mesh.count = 0;
     mesh.name = `decor-${this.kind}-${kind}`;
-    // InstancedMesh culls against the BASE geometry's bounding sphere, which is
-    // one prop at the origin — so it would vanish the moment the camera left the
-    // origin. Cheap to disable here; there are a few dozen of these at most.
-    mesh.frustumCulled = false;
+    // Frustum culling stays ON, and this is worth understanding before anyone
+    // "optimises" it away. An InstancedMesh culls against ITS OWN bounding
+    // sphere, which starts as the base geometry's — one prop at the origin — so
+    // out of the box it is either always-in or always-out, and the tempting fix
+    // is `frustumCulled = false`. That is a trap: it makes every one of the 377
+    // props in this level be submitted every frame no matter where the camera
+    // points. three.js can compute the real sphere by unioning each instance's
+    // (computeBoundingSphere does exactly that), so `_add` and `_remove` call it
+    // whenever membership changes and the culler gets the truth.
     this.models.add(mesh);
 
     return {
@@ -573,6 +679,9 @@ export class Decor {
     this._writeInstance(bucket, index, prop);
     bucket.mesh.count = bucket.live;
     bucket.mesh.instanceMatrix.needsUpdate = true;
+    // only the first `count` instances are real, so the sphere has to be
+    // recomputed AFTER the count moves
+    bucket.mesh.computeBoundingSphere();
   }
 
   /** Swap the prop out of a bucket without leaving a dead instance behind. */
@@ -588,6 +697,9 @@ export class Decor {
     if (moved !== prop) this._writeInstance(bucket, slot, moved);
     bucket.mesh.count = last;
     bucket.mesh.instanceMatrix.needsUpdate = true;
+    // the prop that left may have been the outlier that grew this bucket's
+    // sphere; without this the bucket keeps culling as if it were still there
+    bucket.mesh.computeBoundingSphere();
   }
 
   _writeInstance(bucket, index, prop) {

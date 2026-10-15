@@ -36,13 +36,18 @@ the colour already lives in a shared material, so a prop changes colour by
 MOVING to a different `InstancedMesh` that draws the same geometry with a
 different material.
 
-**3. The MegaKit itself was not used.** Its free download is an itch.io ZIP
-session, and the relevant models are published by the same author (Quaternius,
-CC0) on poly.pizza as individual glTFs — the same assets, already in the right
-format, a few KB each instead of one large archive to unpack. Nine files were
-taken and texture-stripped by `tools/strip-glb-textures.mjs` (6.0 MB -> 1.6 MB
-for the trees, ~200 KB for the props). The art direction is flat toon, so every
-texture would be decoded at load and then thrown away.
+**3. The MegaKit itself was NOT used, at first.** Its free download is an itch.io
+ZIP behind a CSRF-token POST, which will not download from an automated browser —
+two attempts, both 0 bytes. Renda downloaded it by hand, and the level now runs on
+**30 of its 68 glTF models**: trees, twisted trees, dead trees, bushes, rocks,
+pebbles, grass, flowers, ferns, clover and mushrooms. The earlier Quaternius
+models from poly.pizza were the same author and the same style line, but were
+**not** the MegaKit, and are gone.
+
+Packed from `.gltf` + `.bin` into texture-free `.glb` by `tools/gltf-to-glb.mjs`
+(4.3 MB for 30 models). Every model is normalised to its kind's height, because
+the pack's native heights run from 0.1 (a pebble) to 18.9 (a twisted tree) — 189x
+apart — and every one has a different pivot.
 
 **4. A real bug fell out of step 3.** `createToonMaterial` defaults `uLightDir`
 to `(0.5, 1.0, 0.3)`, which is NOT the sun's vector, and `_lightDirection()`
@@ -51,11 +56,30 @@ different direction than the ground they stand on — the exact thing #57 was
 opened to fix. Fixed, and the test was extended to cover the decor palette and
 verified to fail without the fix.
 
+**WHAT IT COSTS** (measured, 377 props, 36 live draw calls):
+
+| | before MegaKit | with MegaKit |
+|---|---|---|
+| props | 249 | 377 |
+| live draw calls | 21 | 36 |
+| triangles | 213,433 | 554,379 |
+| vertices | — | 780,189 |
+
+2.6x the geometry, for a much richer level. The MegaKit's trees are 3-5x the
+vertex cost of what they replaced, and its twisted trees are 14-15k vertices
+each. Frustum culling is ON and correct (see `_newBucket`), so a corridor view
+submits a fraction of that — but **the frame rate has still not been measured on
+a real machine**, and that is the number that matters.
+
+`Mushroom_Laetiporus` is deliberately excluded: 1,806 vertices for a 45cm
+mushroom is 3,216 triangles per instance, heavier than a whole tree in the
+previous set.
+
 **Still not done, and worth being honest about:**
 
 - **Nobody has measured the frame rate.** Step 5 asks for it explicitly and the
-  marking cares (DESIGN.md:133). There are draw-call and triangle budgets in the
-  commit message, but no FPS number from a real machine.
+  marking cares (DESIGN.md:133). There are draw-call and triangle budgets above,
+  but no FPS number from a real machine.
 - **The shadow bullet is not just undone, it is currently futile.** `sun.castShadow`
   is on, the player casts a shadow, and the only mesh with `receiveShadow = true`
   is the floor — whose custom shader never samples the shadow map. So a shadow
