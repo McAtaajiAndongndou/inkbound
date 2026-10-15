@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import { Level01 } from '../src/levels/level-01-mission.js';
-import { DECOR, KINDS, collectVariants } from '../src/levels/decor.js';
+import { DECOR, KINDS, collectVariants, clearDecorCache } from '../src/levels/decor.js';
 
 /** Same shape the other level tests use: a bare game object, no renderer. */
 async function buildLevel() {
@@ -442,12 +442,6 @@ test('every shipped model file yields complete shapes (#57 step 4)', async () =>
  */
 test('baked models stand on y=0, centred, at the height the design asked for', async () => {
   const level = await buildLevelWithModels();
-  // the tallest size any model in that kind was baked to, per-model heights included
-  const MAX_KIND_HEIGHT = Object.fromEntries(
-    Object.entries(KINDS).map(([kind, c]) => [
-      kind, c.heights ? Math.max(...Object.values(c.heights)) : c.height,
-    ]),
-  );
 
   for (const [kind, props] of Object.entries(level.decor)) {
     assert.equal(props.variants.length, KINDS[kind].maxVariants,
@@ -462,7 +456,7 @@ test('baked models stand on y=0, centred, at the height the design asked for', a
         assert.ok(Math.abs(box.min.x) < 20 && Math.abs(box.max.x) < 20,
           `${kind} still sits at its strip position, x=${box.min.x}..${box.max.x}`);
         // and no single part may be taller than the height its kind was baked to
-        assert.ok(box.max.y <= MAX_KIND_HEIGHT[kind] + 1e-4,
+        assert.ok(box.max.y <= KINDS[kind].height + 1e-4,
           `${kind} has a part taller than its normalised height`);
       }
 
@@ -479,13 +473,8 @@ test('baked models stand on y=0, centred, at the height the design asked for', a
 
       assert.ok(Math.abs(combined.min.y) < 1e-4,
         `${kind} prop hovers at y=${combined.min.y}; the pivot was not undone`);
-      // a kind with per-model heights legitimately bakes to several sizes --
-      // the point of them is that Short and Tall stop looking identical
-      const allowed = KINDS[kind].heights
-        ? Object.values(KINDS[kind].heights)
-        : [KINDS[kind].height];
-      assert.ok(allowed.some((h) => Math.abs(combined.max.y - h) < 1e-3),
-        `${kind} prop is ${combined.max.y.toFixed(3)} tall, expected one of ${allowed.join(', ')}`);
+      assert.ok(Math.abs(combined.max.y - KINDS[kind].height) < 1e-3,
+        `${kind} prop is ${combined.max.y.toFixed(3)} tall, expected ${KINDS[kind].height}`);
       // and it is centred, not standing off to one side of its own origin
       assert.ok(Math.abs(combined.min.x + combined.max.x) < 1e-3,
         `${kind} prop is not centred on x (${combined.min.x}..${combined.max.x})`);
@@ -601,6 +590,7 @@ test('every prop is in exactly one bucket, however often it is repainted', async
 });
 
 test('a kind that fails to load leaves decor standing, not a hole (#57 step 4)', async () => {
+  clearDecorCache();
   const level = new Level01({
     scene: new THREE.Scene(),
     onWin: null,
@@ -646,6 +636,7 @@ test('the fallback props stay hidden while the models load', async () => {
 });
 
 test('a slow load still gets a dressed level once the delay has passed', async () => {
+  clearDecorCache();
   // a loader that never resolves — the worst case: no error, no models
   const level = new Level01({
     scene: new THREE.Scene(),
@@ -671,30 +662,48 @@ test('a slow load still gets a dressed level once the delay has passed', async (
 });
 
 /**
- * Four grass models at the same size is one grass model with extra steps. The
- * pack ships them as Short/Tall pairs, and normalising every model in a kind to
- * a single height erases the only thing distinguishing them.
+ * The model cache is module-level, which is the point of it - but it must not
+ * quietly turn the load-path tests above into no-ops. Every one of them clears
+ * it first, and this proves the clearing actually works.
  */
-test('a kind with per-model heights bakes variants at different sizes', async () => {
-  const level = await buildLevelWithModels();
-  const props = level.decor.grass;
+test('the model cache is real, and clearing it forces a genuine reload', async () => {
+  const warm = await buildLevelWithModels();
+  assert.equal(warm.decor.tree.modelCount > 0, true);
 
-  const heights = props.variants.map((v) => {
-    const box = new THREE.Box3();
-    for (const part of [v.base, v.tint].filter(Boolean)) {
-      box.union(new THREE.Box3().setFromBufferAttribute(part.attributes.position));
-    }
-    return +box.max.y.toFixed(3);
+  clearDecorCache();
+
+  const wanted = Object.values(KINDS).reduce((n, c) => n + c.models.length, 0);
+  let fetched = 0;
+  const level = new Level01({
+    scene: new THREE.Scene(),
+    onWin: null,
+    loadGLB: async (url) => { fetched += 1; return parseGlb(url); },
   });
+  await level.load();
+  await Promise.all(Object.values(level.decor).map((props) => props.pending));
 
-  assert.equal(new Set(heights).size, heights.length,
-    `all ${heights.length} grass variants baked to the same height (${heights.join(', ')}) — `
-    + 'the Short/Tall pairs were flattened back into one size');
-
-  // and every one matches what the config asked for
-  const wanted = Object.values(KINDS.grass.heights).sort((a, b) => a - b);
-  assert.deepEqual([...heights].sort((a, b) => a - b), wanted);
+  assert.equal(fetched, wanted, 'a cleared cache must re-fetch every model');
+  assert.equal(level.decor.tree.modelCount > 0, true);
 });
+
+test('a warm cache does NOT re-fetch, which is what kills the flicker on R', async () => {
+  await buildLevelWithModels();   // warms the cache
+
+  let fetched = 0;
+  const level = new Level01({
+    scene: new THREE.Scene(),
+    onWin: null,
+    loadGLB: async (url) => { fetched += 1; return parseGlb(url); },
+  });
+  await level.load();
+  await Promise.all(Object.values(level.decor).map((props) => props.pending));
+
+  assert.equal(fetched, 0,
+    'a restart must not touch the loader at all - that reload is what put the fallback cones on screen');
+  assert.equal(level.decor.tree.modelCount > 0, true);
+  assert.equal(level.decor.tree.fallback.visible, false);
+});
+
 /**
  * THE ONE THAT COST A WHOLE DEBUGGING SESSION, pinned so it cannot come back.
  *
@@ -758,6 +767,7 @@ test('the model geometry carries only the attributes the shader uses', async () 
  * because dispose() has already run.
  */
 test('a model load that finishes after the level died is dropped (#57 step 4)', async () => {
+  clearDecorCache();
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
 

@@ -196,26 +196,12 @@ export const KINDS = {
       './assets/megakit/Grass_Wispy_Tall.glb',
     ],
     maxVariants: 4,
-    height: 0.7,
-    // EVERY grass model gets its OWN target height, and this is the whole point
-    // of the change. The pack ships these as Short/Tall pairs, and normalising
-    // all four to a single number threw that away: four different models
-    // rendered at identical sizes, which reads as one model repeated and made
-    // the ground cover look like a uniform hedge.
-    //
-    // These values are what makes a forest floor: ankle-height common grass for
-    // the bulk of it, a taller wispy variant to break up the silhouette.
-    heights: {
-      Grass_Common_Short: 0.3,
-      Grass_Common_Tall: 0.8,
-      Grass_Wispy_Short: 0.4,
-      Grass_Wispy_Tall: 0.72,
-    },
+    height: 0.9,
     fallback: 'tuft',
     scale: [0.7, 1.4],
     // grass is the one kind that MAY come close to the route: a corridor with no
     // ground cover at its edges reads as a corridor, not a forest floor
-    step: 0.8, spacing: 0.6, edge: 1.5, inset: 0.7, seed: 0x6a55e5,
+    step: 0.9, spacing: 0.7, edge: 1.5, inset: 0.7, seed: 0x6a55e5,
   },
 
   flower: {
@@ -299,6 +285,31 @@ function createRandom(seed) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/**
+ * Baked model shapes, shared by every level instance.
+ *
+ * KEYED BY MODEL AND SIZE, and deliberately module-level rather than per-kind:
+ * pressing R rebuilds the whole level, and without this the forest had to be
+ * downloaded, parsed and re-baked every single time. That is visible — the
+ * fallback cones came out and were then replaced, which is the flicker Renda
+ * reported on restart.
+ *
+ * A cache hit means `_load` never calls the loader at all, so the upgrade lands
+ * in a microtask and finishes before the first frame: no flicker, and restart
+ * gets faster the more you press it.
+ *
+ * These geometries are NEVER handed to a level directly — see `cloneVariant` —
+ * because `LevelBase.dispose()` frees everything under the level's root, and a
+ * shared geometry would be destroyed the first time a level unloaded.
+ */
+const variantCache = new Map();
+
+/** Empty the model cache. Only tests need this: they build many levels in one
+ *  process and some of them have to exercise the real, uncached load path. */
+export function clearDecorCache() {
+  variantCache.clear();
 }
 
 export class Decor {
@@ -560,21 +571,24 @@ export class Decor {
   }
 
   /**
-   * The height to bake one model to: its own if the kind lists a `heights`
-   * entry, otherwise the kind's single `height`.
+   * The cache key for one model file.
    *
-   * This exists because "normalise everything to one size" and "make four
-   * variants look like four variants" are in direct conflict for anything the
-   * pack ships as a size family — grass and trees both come as Short/Tall or
-   * small/large pairs, and flattening them is what turns a varied forest floor
-   * into a uniform hedge.
+   * `maxVariants` is in the key because the variant count is a per-kind decision:
+   * two kinds pointing at one file would otherwise fight over how many variants
+   * came back.
    */
-  _heightFor(url) {
-    const byName = this.config.heights;
-    if (!byName) return this.config.height;
+  _cacheKey(url) {
+    return `${url}@${this.config.height}@${this.config.maxVariants}`;
+  }
 
-    const file = url.slice(url.lastIndexOf('/') + 1).replace(/\.glb$/, '');
-    return byName[file] ?? this.config.height;
+  /** Bake a file's props once, into the shared cache. */
+  _cacheBake(url, collected) {
+    const baked = [];
+    for (const variant of collected) {
+      if (baked.length >= this.config.maxVariants) break;
+      baked.push(bakeVariant(variant, this.config.height, []));
+    }
+    variantCache.set(this._cacheKey(url), baked);
   }
 
   // -------------------------------------------------------------------------
@@ -606,21 +620,35 @@ export class Decor {
 
   async _load(load) {
     try {
-      const files = await Promise.all(this.config.models.map((url) => load(url)));
+      // Only fetch and bake what is not already in the module cache. On a
+      // restart that is nothing at all, so the entire upgrade completes in a
+      // microtask -- before the first frame -- and the fallback props are never
+      // seen. The fallback delay alone was not enough: a restart took longer
+      // than it, so the code shapes came out and were then replaced.
+      const missing = this.config.models.filter((url) => !variantCache.has(this._cacheKey(url)));
 
-      if (this.disposed) {         // the level died while we were loading
-        disposeScenes(files);
-        return 0;
+      if (missing.length > 0) {
+        const files = await Promise.all(missing.map((url) => load(url)));
+
+        if (this.disposed) {       // the level died while we were loading
+          disposeScenes(files);
+          return 0;
+        }
+
+        for (let i = 0; i < files.length; i++) {
+          this._cacheBake(missing[i], collectVariants(files[i]));
+        }
       }
 
+      // Every model is cached by now, so the variant list is built from the
+      // cache in config order. The geometries are CLONED, never shared: each
+      // level owns and disposes its own, and a shared geometry would be freed
+      // the first time a level unloaded, leaving the next one drawing nothing.
       const variants = [];
-      // `files` is in the same order as `config.models`, which is what lets each
-      // model carry its own target height (see KINDS.grass.heights).
-      for (let i = 0; i < files.length; i++) {
-        const height = this._heightFor(this.config.models[i]);
-        for (const variant of collectVariants(files[i])) {
+      for (const url of this.config.models) {
+        for (const baked of variantCache.get(this._cacheKey(url))) {
           if (variants.length >= this.config.maxVariants) break;
-          variants.push(bakeVariant(variant, height, this.geometries));
+          variants.push(cloneVariant(baked, this.geometries));
         }
       }
 
@@ -1031,6 +1059,28 @@ function clean(geometry) {
   }
   if (!out.attributes.normal) out.computeVertexNormals();
   return out.index ? out : out.toNonIndexed();
+}
+
+/**
+ * A level-owned copy of a cached shape.
+ *
+ * Clone rather than share, and the reason is ownership: `LevelBase.dispose()`
+ * frees every geometry under the level's root, so a cached geometry handed
+ * straight to a mesh would be destroyed the first time a level unloaded and the
+ * NEXT level would draw nothing from it. Cloning costs a memcpy of a few
+ * kilobytes per model and keeps the dispose contract honest.
+ *
+ * The clones are pushed into the kind's geometry list so the level frees them
+ * the ordinary way.
+ */
+function cloneVariant(baked, into) {
+  const clone = (geometry) => {
+    if (!geometry) return null;
+    const copy = geometry.clone();
+    into.push(copy);
+    return copy;
+  };
+  return { base: clone(baked.base), tint: clone(baked.tint) };
 }
 
 /**
