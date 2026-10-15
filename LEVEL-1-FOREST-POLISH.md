@@ -85,10 +85,40 @@ previous set.
   is the floor — whose custom shader never samples the shadow map. So a shadow
   map is rendered every frame that nothing can display. Letting props cast shadows
   would add cost and still show nothing until the shaders gain shadow support.
-- **`PAINT.grey.hex` is still `0x5a5a66`**, the blue-grey the step-1 watch-out
-  flagged. The decor tint is a drained grey-green (`DECOR.tint`), which is what
-  makes the un-painted world look like something that used to be alive; the
-  ground is still the blue-grey.
+- (Resolved) The step-1 watch-out about `PAINT.grey.hex` being a blue-grey is
+  FIXED — see "Cross-lane changes" below. It is now `0x585e54`, the same drained
+  family as the decor, and a test asserts it stays there.
+
+---
+
+## Cross-lane changes made for #57 — please review
+
+Four files outside `levels/` were changed to make L1 work. Flagging them together
+because `MECHANICS.md:198` asks for a heads-up before editing another lane's file,
+and four separate surprises is worse than one list.
+
+| File | Lane | What and why |
+|---|---|---|
+| `shaders/toon/toon-material.js` | shaders (Lethabo) | **A bug, and it was blocking the whole level.** The vertex shader built its own `mvPosition` and so dropped the `instanceMatrix` multiply that three.js's own `project_vertex` chunk does behind `#ifdef USE_INSTANCING`. Every instance of every `InstancedMesh` rendered at its mesh origin: 377 props stacked on one point, no error, all triangles still counted. **Anyone writing a custom vertex shader in this project needs to know this.** The outline shader had the same latent bug (inert today, enemies are not instanced). |
+| `shaders/fog-height.js` | shaders (Lethabo) | `FOG_CEIL` 6 -> 10. The height fog was tuned when L1's props were cones ("gone by y 6"); with a forest the canopy sat above its own fog, so there was mist on the floor and none in the woods. 10 keeps the original intent — the extraction ledge at y 9 is still essentially clear. |
+| `shaders/paint-material.js` | shaders (Dikeledi/Lethabo) | **The visible grid is now decoupled from the paint grid.** One visible square is one world metre (`uGridStep`), where it used to be one paint cell: at 4 cells/unit that was a line every 25cm, i.e. 64 lines across a 16m corridor — graph paper, not a readable play space. Line width is divided by the same step so coarsening the grid does not fatten it, and the lines are softer (`0.75` not `0.55`). **Paint resolution is unchanged** — splats behave exactly as before. |
+| `config.js` | shared | `PAINT.grey.hex` `0x5a5a66` -> `0x585e54`. That value is the world's ONE dead colour: the ground shader's `uColours[0]` **and the HUD ammo bar in `ui/hud.js`** both read it (so Moses, this one moves the ammo bar from blue-grey to grey-green — deliberate, so the HUD agrees with the floor). The blue-violet read as a different world from the grey-green forest it is standing in. |
+
+The first one is the important one. The other three are tuning, and any of them
+is a one-line revert if the owner disagrees.
+
+---
+
+**Still not done:**
+
+- **Nobody has measured the frame rate.** Step 5 asks for it explicitly and the
+  marking cares (DESIGN.md:133). There are draw-call and triangle budgets above,
+  but no FPS number from a real machine.
+- **The shadow bullet is not just undone, it is currently futile.** `sun.castShadow`
+  is on, the player casts a shadow, and the only mesh with `receiveShadow = true`
+  is the floor — whose custom shader never samples the shadow map. So a shadow
+  map is rendered every frame that nothing can display. Letting props cast shadows
+  would add cost and still show nothing until the shaders gain shadow support.
 
 ---
 

@@ -5,8 +5,22 @@
 // 0 = grey (unpainted). Do not reorder without updating the shader.
 export const PAINT_IDS = { grey: 0, blue: 1, red: 2, green: 3 };
 
+// `grey` is not a paint colour, it is the ABSENCE of one: the colour of the
+// world before the player paints it. It is read by the ground shader
+// (uColours[0]) and by the HUD's ammo bar, so it is one value with one meaning.
+//
+// It used to be 0x5a5a66 -- a blue-violet grey -- which was fine in isolation
+// and wrong the moment the level had a forest in it: the drained decor is a
+// grey-GREEN (DECOR.tint, 0x4f5a4d), so the floor read as a different world
+// from the things standing on it. The plan flagged this in step 1 ("that is
+// blue-grey, not forest grey") and it sat unaddressed because the instanced
+// props were not rendering, so there was nothing for the floor to disagree with.
+//
+// 0x585e54 is the same drained family as the foliage, a little LIGHTER, so a
+// rock slab (which uses the decor tint) still separates from the floor it lies
+// on rather than disappearing into it.
 export const PAINT = {
-  grey: { id: 0, hex: 0x5a5a66, name: "Dead" },
+  grey: { id: 0, hex: 0x585e54, name: "Dead" },
   blue: { id: 1, hex: 0x3aa7ff, name: "Ice" },
   red: { id: 2, hex: 0xff4d5a, name: "Bounce" },
   green: { id: 3, hex: 0x4ee08a, name: "Grip" },
