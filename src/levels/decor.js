@@ -129,7 +129,10 @@ export const KINDS = {
     height: 3.4,
     fallback: 'tree',
     scale: [0.8, 1.25],
-    step: 1.1, spacing: 1.35, edge: 3.4, inset: 0.8, seed: 0x5eed1e,
+    // `edge` values across every kind were raised for #39 #5: with the corridor
+    // widened to 22 m the props did not have to sit as close to the route, and a
+    // tall prop standing between you and an incoming Charger is what hides it.
+    step: 1.1, spacing: 1.35, edge: 4.6, inset: 0.8, seed: 0x5eed1e,
   },
 
   // The corrupted landmarks: gnarled, 16-19m native, and by far the heaviest
@@ -144,7 +147,7 @@ export const KINDS = {
     height: 6.5,
     fallback: 'tree',
     scale: [0.85, 1.2],
-    step: 4.5, spacing: 4.0, edge: 5.0, inset: 1.0, seed: 0x7a17e5,
+    step: 4.5, spacing: 4.0, edge: 6.6, inset: 1.0, seed: 0x7a17e5,
   },
 
   // Dead silhouettes, 9-13m native, bark only, so they take the paint whole.
@@ -157,7 +160,7 @@ export const KINDS = {
     height: 5.0,
     fallback: 'tree',
     scale: [0.85, 1.2],
-    step: 3.4, spacing: 2.8, edge: 4.2, inset: 0.9, seed: 0xdead11,
+    step: 3.4, spacing: 2.8, edge: 5.6, inset: 0.9, seed: 0xdead11,
   },
 
   bush: {
@@ -169,7 +172,7 @@ export const KINDS = {
     height: 1.3,
     fallback: 'blob',
     scale: [0.75, 1.3],
-    step: 1.8, spacing: 1.5, edge: 2.4, inset: 0.8, seed: 0xbeef01,
+    step: 1.8, spacing: 1.5, edge: 3.2, inset: 0.8, seed: 0xbeef01,
   },
 
   rock: {
@@ -184,7 +187,7 @@ export const KINDS = {
     unpainted: DECOR.stone,
     fallback: 'blob',
     scale: [0.6, 1.4],
-    step: 2.2, spacing: 1.9, edge: 2.2, inset: 0.8, seed: 0x0c1a11,
+    step: 2.2, spacing: 1.9, edge: 2.9, inset: 0.8, seed: 0x0c1a11,
   },
 
   // Pebbles are 0.1-0.2m native: pure ground detail, and cheap (100-300
@@ -202,7 +205,7 @@ export const KINDS = {
     unpainted: DECOR.stone,
     fallback: 'blob',
     scale: [0.7, 1.6],
-    step: 1.3, spacing: 0.9, edge: 1.6, inset: 0.6, seed: 0x9e11e5,
+    step: 1.3, spacing: 0.9, edge: 2.1, inset: 0.6, seed: 0x9e11e5,
   },
 
   grass: {
@@ -218,7 +221,7 @@ export const KINDS = {
     scale: [0.7, 1.4],
     // grass is the one kind that MAY come close to the route: a corridor with no
     // ground cover at its edges reads as a corridor, not a forest floor
-    step: 0.9, spacing: 0.7, edge: 1.5, inset: 0.7, seed: 0x6a55e5,
+    step: 0.9, spacing: 0.7, edge: 1.9, inset: 0.7, seed: 0x6a55e5,
   },
 
   flower: {
@@ -231,7 +234,7 @@ export const KINDS = {
     height: 0.9,
     fallback: 'tuft',
     scale: [0.7, 1.2],
-    step: 2.4, spacing: 1.6, edge: 2.0, inset: 0.8, seed: 0xf10e12,
+    step: 2.4, spacing: 1.6, edge: 2.6, inset: 0.8, seed: 0xf10e12,
   },
 
   plant: {
@@ -244,7 +247,7 @@ export const KINDS = {
     height: 0.8,
     fallback: 'tuft',
     scale: [0.7, 1.3],
-    step: 1.6, spacing: 1.1, edge: 1.8, inset: 0.7, seed: 0x9ee0aa,
+    step: 1.6, spacing: 1.1, edge: 2.4, inset: 0.7, seed: 0x9ee0aa,
   },
 
   // Mushroom_Laetiporus is deliberately NOT here, and it is the one model the
@@ -260,7 +263,7 @@ export const KINDS = {
     height: 0.45,
     fallback: 'blob',
     scale: [0.7, 1.3],
-    step: 2.6, spacing: 2.0, edge: 2.0, inset: 0.8, seed: 0x5a11a5,
+    step: 2.6, spacing: 2.0, edge: 2.6, inset: 0.8, seed: 0x5a11a5,
   },
 };
 
@@ -826,6 +829,18 @@ export class Decor {
     bucket.slots[slot] = moved;
     moved[bucket.slotField] = slot;
     bucket.live = last;
+
+    // Clear the vacated TAIL instead of leaving `moved` referenced twice.
+    //
+    // The duplicate was harmless to the free list itself — the next `_add`
+    // overwrites that index — but it is NOT harmless to anything that asks the
+    // bucket where a prop is: `slots.indexOf(prop)` still finds a prop that has
+    // LEFT the bucket, sitting past the live count. That is exactly what
+    // `tests/level-01-decor.test.js` -> "every prop is in exactly one bucket"
+    // asserts against, and it went red when #39 #5 changed how many props land in
+    // each bucket (the failure needed the removed prop to be the LAST live one,
+    // so it was a coin-flip that had been landing heads for weeks).
+    bucket.slots[last] = undefined;
 
     if (moved !== prop) this._writeInstance(bucket, slot, moved);
     bucket.mesh.count = last;

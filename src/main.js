@@ -78,10 +78,33 @@ scene.add(rig.camera);
 const input = new Input(renderer.domElement);
 
 function hidePlaceholder(p, a) {
-  if (p.mesh.material) p.mesh.material.visible = false;
+  setPlaceholderVisible(p, false);
   for (const child of p.mesh.children) {
     if (child !== a.root) child.visible = false;
   }
+}
+
+/**
+ * Show or hide the PLACEHOLDER capsule — the pill-shaped stand-in the player is
+ * drawn as until the avatar model arrives.
+ *
+ * #39 #1, "the pill shows up sometimes when pressing R". The pill is this
+ * capsule: `CapsuleGeometry`, white, and it WAS only hidden once the avatar
+ * model finished loading. On the first load the `#loading` screen covers that
+ * window, so it was never seen; `R` restarts with no loading screen, so every
+ * restart put a white capsule on screen for as long as the model took to come
+ * back. "Sometimes", because a warm HTTP cache usually hides it.
+ *
+ * Two things this deliberately does NOT do:
+ *
+ *   - It does not touch `mesh.visible`. `animate()` sets that every frame from
+ *     the camera mode, so a flag there would be overwritten immediately.
+ *   - It does not touch the mesh's CHILDREN. The avatar's own root is a child of
+ *     this mesh, so hiding the children (which `hidePlaceholder` does, for the
+ *     gun) would hide the avatar instead.
+ */
+function setPlaceholderVisible(p, visible) {
+  if (p.mesh.material) p.mesh.material.visible = visible;
 }
 
 function loadLevel() {
@@ -109,10 +132,27 @@ function loadLevel() {
   player = new Player(level.surfaces, level.spawn);
   scene.add(player.mesh);
 
+  // Hidden NOW, before the avatar exists, and revealed only if the model never
+  // arrives. See `setPlaceholderVisible` (#39 #1). Order matters: hiding it
+  // after `new Avatar(...)` would need to know to leave the avatar's own root
+  // alone, and this way nothing is hidden that should not be.
+  setPlaceholderVisible(player, false);
+
   const thisPlayer = player;
-  avatar = new Avatar(player.mesh, () => {
-    if (player === thisPlayer) hidePlaceholder(thisPlayer, avatar);
-  });
+  avatar = new Avatar(
+    player.mesh,
+    () => {
+      if (player === thisPlayer) hidePlaceholder(thisPlayer, avatar);
+    },
+    () => {
+      // No model, ever: fall back to the capsule rather than leaving the player
+      // as an invisible pair of floating hands.
+      if (player === thisPlayer) {
+        setPlaceholderVisible(thisPlayer, true);
+        console.warn('[main] avatar model unavailable — showing the placeholder capsule');
+      }
+    },
+  );
   avatar.setArmed(true);
   lastPos.copy(player.mesh.position);
 
@@ -241,8 +281,10 @@ function animate() {
   const pad = 16;
   const fog = scene.fog;
   const atmosphere = level.atmosphere;
+  const lake = level.lake;
   scene.fog = null;
   if (atmosphere) atmosphere.visible = false;
+  if (lake) lake.visible = false;
   renderer.setScissorTest(true);
   renderer.setViewport(w - size - pad, h - size - pad, size, size);
   renderer.setScissor(w - size - pad, h - size - pad, size, size);
@@ -250,6 +292,7 @@ function animate() {
   renderer.setScissorTest(false);
   scene.fog = fog;
   if (atmosphere) atmosphere.visible = true;
+  if (lake) lake.visible = true;
 }
 
 

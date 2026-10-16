@@ -40,6 +40,40 @@ const CLIPS = {
   sprayer: { idle: "Rifle@Aim", run: "Rifle@Run.001", attack: "Rifle@Shoot" },
 };
 
+/**
+ * Size a model to `targetHeight` AND find where its feet are.
+ *
+ * Exported so this can be tested without a .glb: `node --test` has no server, so
+ * the asset itself is unloadable in a test, and this was the bug (#39).
+ *
+ * WHY IT IS NOT JUST A SCALE — the bug this exists to kill:
+ * `_tick` glues the enemy's ORIGIN to the floor (`position.y = nextGround.y`),
+ * which is only correct when the model's pivot is between its feet. These
+ * soldiers' pivots are mid-body — measured: min.y −2.695 on a 5.936 m model — so
+ * each one was drawn with its knees and shins buried in the ground. Half the
+ * body gone, no error anywhere, and it reads as "the enemies clip through the
+ * floor" (#39 #2).
+ *
+ * `avatar.js` had already solved this for the player with `-box.min.y * scale`.
+ * This is the same correction, made once and measured rather than assumed.
+ *
+ * @returns {{ scale: number, feetOffset: number }} metres to LIFT the model so
+ *          its lowest vertex sits on the origin.
+ */
+export function fitModelToHeight(object, targetHeight) {
+  const box = new THREE.Box3().setFromObject(object);
+  const height = box.max.y - box.min.y;
+  const scale = height > 0 && Number.isFinite(height) ? targetHeight / height : 1;
+
+  // An EMPTY box is min.y = +Infinity, so `-min.y * scale` is -Infinity and the
+  // model would be flung out of the world. A model with no geometry is a real
+  // possibility (a GLB with an empty scene), so this is guarded rather than
+  // assumed, and the test is `a flat or empty model does not divide by zero`.
+  const feetOffset = Number.isFinite(box.min.y) ? -box.min.y * scale : 0;
+
+  return { scale, feetOffset };
+}
+
 /** Await before spawning enemies. Any model that fails falls back to the box. */
 export async function preloadEnemyModel() {
   const loader = new GLTFLoader();
@@ -47,8 +81,11 @@ export async function preloadEnemyModel() {
     Object.entries(MODEL_URLS).map(async ([type, url]) => {
       try {
         const gltf = await loader.loadAsync(url);
-        const size = new THREE.Box3().setFromObject(gltf.scene).getSize(new THREE.Vector3());
-        MODELS[type] = { scene: gltf.scene, clips: gltf.animations, scale: MODEL_HEIGHT / size.y };
+        MODELS[type] = {
+          scene: gltf.scene,
+          clips: gltf.animations,
+          ...fitModelToHeight(gltf.scene, MODEL_HEIGHT),
+        };
       } catch (e) {
         console.warn(`Enemy model "${type}" failed to load, using box fallback`, e);
       }
@@ -135,6 +172,9 @@ export class Enemy {
 
     const model = cloneSkinned(m.scene);
     model.scale.setScalar(m.scale);
+    // ...and LIFT it so its feet are on the origin, because `_tick` glues the
+    // origin to the floor. See `fitModelToHeight` for the measurement (#39 #2).
+    model.position.y = m.feetOffset;
 
     // Keep the model's own colours/textures; tint via emissive (see _setColour).
     const mats = new Map();

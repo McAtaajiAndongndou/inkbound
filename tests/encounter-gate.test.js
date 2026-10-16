@@ -22,10 +22,6 @@ async function buildLevel() {
 const gateZ = (gate) => gate.surface.mesh.position.z;
 const panelBottom = (gate) => gate.surface.mesh.position.y - gate.surface.height / 2;
 
-/** The platform is the only floor above the corridor and below the ledge. */
-const platformFloor = (level) =>
-  level.surfaces.find((s) => s.isFloor && s.mesh.position.y === 4);
-
 /** Hold W straight down -z for `frames`; returns the furthest -z reached. */
 function walkForward(player, frames) {
   const input = { isDown: (k) => k === 'KeyW' };
@@ -43,15 +39,20 @@ function clearArena(level, gate) {
   level.update(1 / 60, { position: new THREE.Vector3(0, 0, 20) });
 }
 
-test('each gate watches only the enemies that spawn in its own arena (#37, #56)', async () => {
+test('each gate watches only the enemies that belong to its own arena (#37, #56)', async () => {
   const { level } = await buildLevel();
 
   assert.equal(level.gateB.open, false, 'island B starts sealed');
   assert.deepEqual(level.gateB.watch.map((e) => e.type), ['charger'],
-    'island C\'s pair must not hold island B shut');
+    'island C\'s enemies must not hold island B shut');
+
   assert.equal(level.gateC.open, false, 'island C starts sealed');
-  assert.deepEqual(level.gateC.watch.map((e) => e.type).sort(), ['charger', 'sprayer'],
-    'island B\'s Charger must not hold island C shut');
+  // Island C's door now watches the arena floor AND the stair tower (#39 #6): the
+  // two shooters on deck 1 are the other half of the same fight, and they are not
+  // on island C — which is why an arena is a predicate rather than an island key.
+  assert.deepEqual(level.gateC.watch.map((e) => e.type).sort(),
+    ['charger', 'sprayer', 'sprayer', 'sprayer'],
+    'island B\'s Charger must not hold island C shut, and the tower must be included');
 });
 
 test('the island B gate blocks progress until island B is clear (#37)', async () => {
@@ -67,19 +68,20 @@ test('the island B gate blocks progress until island B is clear (#37)', async ()
     'the player should be pressed against the gate itself, not some other wall');
 });
 
-test('the island C gate blocks the way off the platform until island C is clear (#56)', async () => {
+test('the island C gate blocks the arena exit until island C is clear (#56, #39 #6)', async () => {
   const { level } = await buildLevel();
 
-  // Stand on the platform, at the lip: the wall climb is the next step, and the
-  // gate seals it until island C's arena is clear.
-  const player = new Player(level.surfaces, new THREE.Vector3(0, 4, -20));
+  // Stand in the arena, in front of the tower doorway. It seals the way in until
+  // island C's arena is clear — the door is the only route, so the fight has to
+  // be won rather than run past.
+  const player = new Player(level.surfaces, new THREE.Vector3(0, 0, -21));
   player.onGround = true;
   const furthest = walkForward(player, 120);
 
   assert.ok(furthest > gateZ(level.gateC),
-    `the player left the platform past a sealed gate: z=${furthest}`);
+    `the player got into the tower past a sealed gate: z=${furthest}`);
   assert.equal(player.touchingWall?.surface, level.gateC.surface,
-    'the player should be pressed against the gate itself, not the wall');
+    'the player should be pressed against the gate itself, not a tower face');
 });
 
 test('clearing island B opens gate B, and gate C is untouched (#37)', async () => {
@@ -155,8 +157,12 @@ test('island B\'s gate sits on island B\'s exit, full width, taller than a red b
   assert.ok(Math.abs(gateZ(level.gateB) - bFront) < 1e-6,
     `the gate should be island B's exit (${bFront}), got ${gateZ(level.gateB)}`);
 
-  // Full width, so it cannot be walked around: the corridor is 16 wide.
-  assert.equal(level.gateB.surface.width, 16);
+  // Full width, so it cannot be walked around. Read off the corridor's own floor
+  // rather than a literal: the width is a design number that has already changed
+  // once (#39 #5 widened the corridor 16 -> 22), and what this test actually
+  // cares about is that the barrier SPANS it, not what it measures.
+  assert.equal(level.gateB.surface.width, a.width,
+    'a gate narrower than the corridor is a gate you can walk around');
 
   // And tall enough that the red trampoline cannot be used to hop it.
   const apex = (PLAYER.minBounce * PLAYER.minBounce) / (2 * -PLAYER.gravity);
@@ -164,25 +170,58 @@ test('island B\'s gate sits on island B\'s exit, full width, taller than a red b
     `gate is ${level.gateB.surface.height} m but a red bounce reaches ${apex.toFixed(2)} m`);
 });
 
-test('island C\'s gate sits on the platform lip and leaves no gap to crawl under (#56)', async () => {
+test('island C\'s gate is the tower doorway and leaves no gap to crawl under (#56, #39 #6)', async () => {
   const { level } = await buildLevel();
-  const platform = platformFloor(level);
-  const lip = platform.mesh.position.z - platform.height / 2;
 
-  // The launch off island C cannot be gated (see `_gate()`), so the gate sits on
-  // the next horizontal choke point: the far lip of the platform.
-  assert.ok(Math.abs(gateZ(level.gateC) - lip) < 1e-6,
-    `the gate should be the platform's lip (${lip}), got ${gateZ(level.gateC)}`);
-  assert.equal(level.gateC.surface.width, 16, 'full width, like every corridor barrier');
+  // It sits on the arena's own back edge, at the foot of the tower — a DOORWAY,
+  // with the structure either side of it, rather than a pane standing in mid-air
+  // on a platform lip. That change is #39 #3 and #6 together.
+  const [a, b, c] = level.surfaces
+    .filter((s) => s.isFloor && s.mesh.position.y === 0)
+    .sort((s1, s2) => s2.mesh.position.z - s1.mesh.position.z);
+  const cBack = c.mesh.position.z - c.height / 2;
+  assert.ok(Math.abs(gateZ(level.gateC) - cBack) < 1e-6,
+    `the gate should be island C's back edge (${cBack}), got ${gateZ(level.gateC)}`);
 
-  // Its base must meet the platform: a gap underneath would be a crawl-through.
-  assert.ok(Math.abs(panelBottom(level.gateC) - platform.mesh.position.y) < 1e-6,
-    `the panel floats ${panelBottom(level.gateC)} above a platform at ${platform.mesh.position.y}`);
+  // Full width, like every corridor barrier — again read off the corridor itself.
+  const corridorWidth = Math.max(...level.surfaces.filter((s) => s.isFloor).map((s) => s.width));
+  assert.equal(level.gateC.surface.width, corridorWidth,
+    'full width, like every corridor barrier');
 
-  // Taller than a red bounce taken from the platform itself.
+  // Its base must meet the arena floor: a gap underneath would be a crawl-through.
+  assert.ok(Math.abs(panelBottom(level.gateC) - c.mesh.position.y) < 1e-6,
+    `the panel floats ${panelBottom(level.gateC)} above a floor at ${c.mesh.position.y}`);
+
+  // Taller than a red bounce taken from the floor.
   const apex = (PLAYER.minBounce * PLAYER.minBounce) / (2 * -PLAYER.gravity);
   assert.ok(level.gateC.surface.height > apex,
     `gate is ${level.gateC.surface.height} m but a red bounce reaches ${apex.toFixed(2)} m`);
+});
+
+/**
+ * #39 #3: the bypass that the old gate doc comment admitted to and papered over.
+ *
+ * Every barrier in this game is a PaintSurface, and every PaintSurface used to be
+ * paintable — so painting a gate green made it climbable and a determined player
+ * could go over the top. `unpaintable` closes that at the source, and this pins
+ * it: a gate must refuse paint AND therefore report grey's rules (not climbable).
+ */
+test('a gate cannot be painted green and climbed over (#39 #3)', async () => {
+  const { level } = await buildLevel();
+
+  for (const gate of level.gates) {
+    const surface = gate.surface;
+    const point = new THREE.Vector3(0, surface.mesh.position.y, gateZ(gate));
+
+    for (const colour of ['green', 'blue', 'red']) {
+      assert.equal(surface.splat(point, colour, 30), false,
+        `a ${colour} splat was accepted by a gate — the door is climbable again`);
+    }
+
+    assert.equal(surface.paintIdAtWorld(point), 0, 'a gate must stay grey');
+    assert.equal(surface.surfaceAtWorld(point).climbable, false,
+      'grey is the one rule set with climbable false, and that is what unpaintable means');
+  }
 });
 
 test('the extraction only fires once island C is clear — the climb-proof check (#56)', async () => {
@@ -190,31 +229,31 @@ test('the extraction only fires once island C is clear — the climb-proof check
   let wins = 0;
   game.onWin = () => { wins += 1; };
 
-  const atExtraction = { position: new THREE.Vector3(0, 9, -27) };
+  const atExtraction = { position: new THREE.Vector3(7, 6.2, -35.5) };
 
-  // The lip panel can be green-climbed over (climbing only needs green paint on
-  // it), so standing in the extraction is NOT enough on its own (#56).
+  // The arena is what gates the win, and it is checked separately from the door's
+  // collision entirely: `_arenaCleared` cannot be painted, climbed or walked
+  // around, so it is the enforcement whatever happens to the geometry (#56).
   level.update(1 / 60, atExtraction);
   assert.equal(wins, 0, 'island C was not fought, so there is no win');
 
   clearArena(level, level.gateC);
-  assert.equal(level.gateC.open, true, 'clearing island C opens the way to the wall');
+  assert.equal(level.gateC.open, true, 'clearing island C opens the door');
   assert.equal(level.gateC.light.material.color.getHex(), PAINT.green.hex);
 
   level.update(1 / 60, atExtraction);
   assert.equal(wins, 1, 'once island C is clear, the extraction fires');
 });
 
-test('clearing island C opens the lip, and the way past it is genuinely open (#56)', async () => {
+test('clearing island C opens the door, and the way past it is genuinely open (#56)', async () => {
   const { level } = await buildLevel();
 
   clearArena(level, level.gateC);
-  assert.equal(level.gateC.open, true, 'clearing island C must open the lip');
+  assert.equal(level.gateC.open, true, 'clearing island C must open the door');
 
-  // Open to the player, not just to the flag: walking off the platform now gets
-  // past the lip and down onto island C below it (the wall climb is the route
-  // on from there), instead of stopping dead at z=-23.
-  const player = new Player(level.surfaces, new THREE.Vector3(0, 4, -20));
+  // Open to the player, not just to the flag: walking into the doorway now gets
+  // through it and on down the tower's ground floor, instead of stopping dead.
+  const player = new Player(level.surfaces, new THREE.Vector3(0, 0, -21));
   player.onGround = true;
   const furthest = walkForward(player, 120);
 
@@ -236,8 +275,12 @@ test('restart rebuilds both gates sealed, not left open (#37, #56, R)', async ()
   assert.equal(fresh.gateC.open, false, 'both gates start sealed');
   assert.equal(fresh.gateB.surface.mesh.position.y, fresh.gateB.surface.height / 2,
     'the island B panel must be back in the corridor, not left dropped below the world');
-  assert.ok(Math.abs(panelBottom(fresh.gateC) - platformFloor(fresh).mesh.position.y) < 1e-6,
-    'the island C panel must be back on its lip');
+
+  // Island C's door sits on the arena floor now, not on a platform lip (#39 #6).
+  const arenaC = fresh.surfaces.find((s) => s.isFloor && s.mesh.position.y === 0
+    && Math.abs(s.mesh.position.z - (-20)) < 1e-6);
+  assert.ok(Math.abs(panelBottom(fresh.gateC) - arenaC.mesh.position.y) < 1e-6,
+    'the island C panel must be back on the arena floor');
   assert.equal(fresh.gateB.light.material.color.getHex(), PAINT.red.hex);
   assert.equal(fresh.gateC.light.material.color.getHex(), PAINT.red.hex);
 });
