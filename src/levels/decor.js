@@ -188,41 +188,6 @@ export const KINDS = {
     step: 1.3, spacing: 0.9, edge: 1.6, inset: 0.6, seed: 0x9e11e5,
   },
 
-  // The pack's RockPath pieces: flat rock slabs, 1.0-2.1m wide and only
-  // 0.11-0.18m tall natively. They were skipped the first time round because I
-  // read them as pieces for assembling a walkway; they are really the ONLY
-  // thing in the pack that breaks up a flat floor, which is exactly what the
-  // level needed once the forest was dense enough to make the bare plane look
-  // artificial.
-  //
-  // They lie ON the paint surface rather than replacing it, so the floor stays
-  // one mesh and one draw call, physics is untouched, and a slab is grey until
-  // the ground under it is painted — same as every other prop.
-  ground: {
-    models: [
-      './assets/megakit/RockPath_Square_Small_1.glb',
-      './assets/megakit/RockPath_Square_Small_2.glb',
-      './assets/megakit/RockPath_Square_Small_3.glb',
-      './assets/megakit/RockPath_Round_Small_1.glb',
-    ],
-    maxVariants: 4,
-    // Normalising a FLAT object by its height turns tiny height differences into
-    // big footprint differences — these spread 0.11-0.17 tall, so they land
-    // between 0.7m and 1.7m wide, which is the variety ground cover wants.
-    height: 0.15,
-    // 1cm up. A slab's underside would otherwise sit exactly on the floor plane;
-    // the bottom faces are back-facing from most angles so it usually hides, and
-    // "usually" is not a reason to leave a z-fighting class of bug in.
-    lift: 0.01,
-    fallback: 'blob',
-    scale: [1.3, 2.2],
-    // flat, so it can sit right in the route without hiding anything, and it is
-    // the one kind that WANTS to be walked on. Denser and larger than the first
-    // pass: at ~1m across and 2m apart the floor was only about a tenth covered,
-    // which is not enough to stop it reading as a plane.
-    step: 1.4, spacing: 1.0, edge: 1.0, inset: 0.5, seed: 0x9709ad,
-  },
-
   grass: {
     models: [
       './assets/megakit/Grass_Common_Short.glb',
@@ -372,7 +337,6 @@ export class Decor {
     this.parent.add(this.root);
 
     this.palette = palette;
-    this.lift = config.lift ?? 0;   // see KINDS.ground: flat props must not sit ON the floor plane
 
     this.props = [];      // position, colour and floor — no meshes
     this.geometries = []; // every geometry this kind owns, so dispose() can free it
@@ -839,10 +803,7 @@ export class Decor {
   }
 
   _writeInstance(bucket, index, prop) {
-    // `lift` keeps flat props off the floor plane; see KINDS.ground. It affects
-    // only where the prop is DRAWN — `prop.y` stays the true floor height, so
-    // the paint lookup and the crowding checks are unaffected.
-    this._position.set(prop.x, prop.y + this.lift, prop.z);
+    this._position.set(prop.x, prop.y, prop.z);
     this._quaternion.setFromAxisAngle(this._axisY, prop.rotY);
     // Both the code shapes and the GLB variants are modelled from the ground up
     // after baking, so the instance scale IS the prop scale.
