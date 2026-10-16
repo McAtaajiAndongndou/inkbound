@@ -29,7 +29,12 @@ export class PaintSurface {
     const rows = Math.max(2, Math.round(height * cells));
 
     this.map = createPaintMap(cols, rows);
-    this.material = createPaintMaterial(this.map);
+    // The VISIBLE grid is one world metre per square, whatever the paint
+    // resolution is. `cells` is cells per world unit, so that is exactly `cells`
+    // paint cells per square -- which decouples readability from resolution.
+    // They used to be the same number, and at 4 cells/unit that meant a line
+    // every 25cm: 64 lines across L1's corridor, which reads as graph paper.
+    this.material = createPaintMaterial(this.map, Math.max(1, Math.round(cells)));
 
     const geometry = new THREE.PlaneGeometry(width, height, 1, 1);
     this.mesh = new THREE.Mesh(geometry, this.material);

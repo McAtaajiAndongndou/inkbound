@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Input } from "./core/input.js";
 import { Player } from "./core/player.js";
 import { Avatar } from "./shaders/avatar.js";
@@ -52,8 +53,20 @@ hud.onColourClick((i) => gun && gun.selectColour(i));
 window.addEventListener("pointerdown", () => audio.unlock());
 window.addEventListener("keydown", () => audio.unlock());
 
+// Levels read the scene and report a win back through this object.
+// `game` stays the integration point until core swaps in game.js.
+//
+// `loadGLB` is the ONE glTF loader for the game. MECHANICS.md:196 puts the
+// GLB/animation pipeline in `shaders/`, and the levels lane must not grow a
+// second one -- so a level that wants a model asks for it here instead of
+// importing GLTFLoader itself. Levels treat it as optional: with no loader they
+// build their own fallback geometry, which is what keeps `node --test` (no DOM,
+// no server) from dialling out on every level load.
+const gltfLoader = new GLTFLoader();
+
 const game = {
   scene,
+  loadGLB: (url) => gltfLoader.loadAsync(url),
   onWin: () => {
     hud.showEnd("win");
     audio.play("win");
@@ -207,13 +220,36 @@ function animate() {
   renderer.setViewport(0, 0, w, h);
   renderer.render(scene, rig.camera);
 
+  // --- minimap, bottom-right, orthographic (Viewing rubric) ---
+  // Two things have to come off for this pass, and both were needed:
+  //
+  //   1. scene.fog. Fog is scaled for the player's camera, which sits ~6 units
+  //      off the ground, but the minimap camera sits 60 units up -- well past
+  //      fogFar -- so every surface would render 100% fogged.
+  //   2. level.atmosphere. That is the level's "air": the sky dome and the mist
+  //      sheets. Those are real geometry, so turning fog off does not touch
+  //      them; without this the mist sheets draw as a grey wash over the map.
+  //
+  // Restored afterwards rather than rebuilt: the level owns both.
+  //
+  // Deliberate tradeoff on the fog toggle: it flips the USE_FOG define, so
+  // three.js switches to the fog-free variant of each program. Programs are
+  // cached after the first two frames, so this is a per-frame program switch,
+  // not a per-frame recompile. If the minimap ever grows expensive, the clean
+  // fix is a separate scene for it -- not worth it at beta.
   const size = Math.round(Math.min(w, h) * 0.2);
   const pad = 16;
+  const fog = scene.fog;
+  const atmosphere = level.atmosphere;
+  scene.fog = null;
+  if (atmosphere) atmosphere.visible = false;
   renderer.setScissorTest(true);
   renderer.setViewport(w - size - pad, h - size - pad, size, size);
   renderer.setScissor(w - size - pad, h - size - pad, size, size);
   renderer.render(scene, rig.minimap);
   renderer.setScissorTest(false);
+  scene.fog = fog;
+  if (atmosphere) atmosphere.visible = true;
 }
 
 

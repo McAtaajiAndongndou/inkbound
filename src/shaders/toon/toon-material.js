@@ -12,12 +12,38 @@ const toonVertexShader = `
   varying vec3 vWorldPos;
 
   void main() {
-    vNormal = normalize(normalMatrix * normal);
-    vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+    // THE INSTANCE TRANSFORM IS NOT FREE, and this shader used to be missing it.
+    //
+    // three.js applies instanceMatrix inside its own project_vertex chunk,
+    // behind #ifdef USE_INSTANCING. A custom ShaderMaterial that builds its own
+    // mvPosition — which this one does, so that fog_vertex has the view-space
+    // depth it needs — replaces that chunk and therefore loses the instance
+    // transform entirely.
+    //
+    // The failure is completely silent. USE_INSTANCING is still defined, the
+    // draw call is still issued, and the renderer still reports every triangle;
+    // the only symptom is that ALL instances render on top of each other at the
+    // mesh's own origin. L1's decor is 377 InstancedMesh instances, so it looked
+    // like one tree floating in an empty level instead of a dressed forest.
+    vec4 localPosition = vec4(position, 1.0);
+    #ifdef USE_INSTANCING
+      localPosition = instanceMatrix * localPosition;
+    #endif
+
+    // The normal has to take the same transform, or a rotated instance is lit as
+    // though it were not rotated. Same order as three.js's <defaultnormal_vertex>:
+    // instance first, then the normal matrix.
+    vec3 localNormal = normal;
+    #ifdef USE_INSTANCING
+      localNormal = mat3(instanceMatrix) * localNormal;
+    #endif
+    vNormal = normalize(normalMatrix * localNormal);
+
+    vWorldPos = (modelMatrix * localPosition).xyz;
 
     // fog needs view-space depth, and modelViewMatrix is already view space,
     // so mvPosition falls out for free here
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vec4 mvPosition = modelViewMatrix * localPosition;
     gl_Position = projectionMatrix * mvPosition;
 
     #include <fog_vertex>
@@ -90,9 +116,17 @@ const outlineVertexShader = `
 
   void main() {
     vec3 inflated = position + normal * uThickness;
-    vWorldPos = (modelMatrix * vec4(inflated, 1.0)).xyz;
 
-    vec4 mvPosition = modelViewMatrix * vec4(inflated, 1.0);
+    // same missing instance transform as the toon shader above, same silent
+    // failure — see the long note there before removing this
+    vec4 localPosition = vec4(inflated, 1.0);
+    #ifdef USE_INSTANCING
+      localPosition = instanceMatrix * localPosition;
+    #endif
+
+    vWorldPos = (modelMatrix * localPosition).xyz;
+
+    vec4 mvPosition = modelViewMatrix * localPosition;
     gl_Position = projectionMatrix * mvPosition;
 
     #include <fog_vertex>

@@ -54,6 +54,7 @@ const fragmentShader = /* glsl */ `
 
   uniform sampler2D uPaintMap;   // r channel = paint id / 255
   uniform vec2      uGridSize;   // cells across, cells down
+  uniform float     uGridStep;   // paint cells per VISIBLE grid square
   uniform vec3      uColours[4]; // grey, blue, red, green
   uniform float     uTime;
   uniform vec3      uLightDir;
@@ -99,16 +100,28 @@ const fragmentShader = /* glsl */ `
     float pulse = painted ? 0.06 * sin(uTime * 2.0 + vWorldPos.x * 0.6 + vWorldPos.z * 0.6) : 0.0;
 
     // --- grid lines -----------------------------------------------------
-    vec2 cell = fract(vUv * uGridSize);
+    // The VISIBLE grid is deliberately coarser than the paint grid.
+    //
+    // Paint resolution and readability are two different problems that used to
+    // share one number. At 4 cells per metre the paint needs a cell every 25cm,
+    // but a 25cm line grid is 64 lines across a 16m corridor -- graph paper, not
+    // a readable play space, which is what this grid is for.
+    //
+    // uGridStep is how many paint cells make one visible square. The line width
+    // is divided by the same step so the lines keep a constant width in WORLD
+    // units; without that, coarsening the grid would also fatten it.
+    vec2 cell = fract(vUv * uGridSize / uGridStep);
     float line = min(min(cell.x, 1.0 - cell.x), min(cell.y, 1.0 - cell.y));
-    float grid = smoothstep(0.0, 0.06, line);
+    float grid = smoothstep(0.0, 0.06 / uGridStep, line);
 
     // --- simple diffuse lighting ---------------------------------------
     float diffuse = max(dot(normalize(vNormal), normalize(uLightDir)), 0.0);
     float light   = 0.35 + 0.65 * diffuse;
 
     vec3 colour = base * (light + pulse);
-    colour = mix(colour * 0.55, colour, grid);          // darken grid lines
+    // 0.75 rather than 0.55: a guide, not a cage. The old value was tuned when
+    // there was nothing else on the floor for the lines to compete with.
+    colour = mix(colour * 0.75, colour, grid);
     colour += vec3(edge) * (painted ? 0.35 : 0.12);      // bright wet rim
 
     gl_FragColor = vec4(colour, 1.0);
@@ -140,7 +153,7 @@ export function createPaintMap(cols, rows) {
   return { texture, data, cols, rows };
 }
 
-export function createPaintMaterial(paintMap) {
+export function createPaintMaterial(paintMap, gridCells = 4) {
   // Fog needs its own uniforms (fogColor / fogNear / fogFar / fogDensity) to
   // exist ON the material, because three.js writes into them every frame from
   // scene.fog (refreshFogUniforms). A missing one throws.
@@ -156,6 +169,9 @@ export function createPaintMaterial(paintMap) {
 
   uniforms.uPaintMap = { value: paintMap.texture };
   uniforms.uGridSize = { value: new THREE.Vector2(paintMap.cols, paintMap.rows) };
+  // How many PAINT cells make one VISIBLE grid square. PaintSurface works this
+  // out so that one square is one world metre -- see the note there.
+  uniforms.uGridStep = { value: Math.max(1, gridCells) };
   uniforms.uColours  = {
     value: [
       new THREE.Color(PAINT.grey.hex),

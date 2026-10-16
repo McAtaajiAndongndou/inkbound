@@ -8,6 +8,7 @@ import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
 import { PAINT, ENEMY, PAINT_GRID } from '../config.js';
 import { Enemy } from '../enemies/enemy.js';
+import { Decor, KINDS, createDecorPalette } from './decor.js';
 
 /**
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
@@ -70,6 +71,52 @@ const L1 = {
     { x: -4, y: 0, z: -21, type: 'sprayer' },
     { x: 5,  y: 0, z: -22, type: 'charger' },
   ],
+
+  // The TREES. Hand-placed, because the rules are not geometric:
+  //
+  //   - every tree must stand ON a floor. A tree over a gap floats, and that is
+  //     the one thing about the mist-free gaps a player will notice instantly.
+  //     `tests/level-01-decor.test.js` checks this for every entry.
+  //   - keep x away from 0. The route runs down the middle of the corridor, and
+  //     trees sit at +/-5.5 to 6.5 so they frame the path without standing in it.
+  //   - trees do not collide (see `_decor()`), so they can never block the Gap 1
+  //     jump or trap the player against the Charger.
+  //   - `scale` gives size variety for free. Nothing else changes per tree.
+  //
+  // y is the floor the tree stands on: 0 for the islands, 4 for the platform,
+  // 9 for the extraction ledge.
+  //
+  // The other kinds — bush, rock, grass, flower, stump — have no table here.
+  // Their placement is scatter, configured in `decor.js` KINDS, because they are
+  // ground cover: their job is density and distribution, not framing a route.
+  tree: [
+    // island A — the approach, and a backdrop behind the spawn
+    { x: -6.0, y: 0, z: 17.0, scale: 1.3 },
+    { x: -6.5, y: 0, z: 13.0, scale: 1.0 },
+    { x: -5.5, y: 0, z:  9.5, scale: 0.85 },
+    { x:  6.0, y: 0, z: 16.0, scale: 1.15 },
+    { x:  6.5, y: 0, z: 11.0, scale: 0.95 },
+
+    // island B — the Charger arena. Edge trees only, so the fight stays readable.
+    { x: -6.5, y: 0, z:  3.0, scale: 1.2 },
+    { x: -6.0, y: 0, z: -1.5, scale: 0.9 },
+    { x: -6.5, y: 0, z: -5.5, scale: 1.05 },
+    { x:  6.5, y: 0, z:  2.0, scale: 1.1 },
+    { x:  6.0, y: 0, z: -3.5, scale: 0.95 },
+    { x:  6.5, y: 0, z: -6.0, scale: 1.25 },
+
+    // island C — the Sprayer's ground
+    { x: -6.0, y: 0, z: -17.5, scale: 1.0 },
+    { x: -6.5, y: 0, z: -21.0, scale: 1.3 },
+    { x:  6.5, y: 0, z: -18.5, scale: 0.9 },
+    { x:  6.0, y: 0, z: -22.5, scale: 1.15 },
+
+    // the platform and the ledge above it — the world does not stop at y 0
+    { x: -3.0, y: 4, z: -21.0, scale: 0.8 },
+    { x:  3.0, y: 4, z: -19.0, scale: 0.8 },
+    { x: -6.0, y: 9, z: -28.0, scale: 1.1 },
+    { x:  6.0, y: 9, z: -26.0, scale: 1.0 },
+  ],
 };
 
 /**
@@ -95,8 +142,17 @@ const MOOD = {
   horizon: 0x8a93a3,   // the haze: what distance fades toward. Matches the sky's horizon band.
   zenith:  0x232a38,   // drained sky overhead — deliberately NOT the haze colour
   void:    0x12141b,   // below the horizon: the pits are dark, not foggy
-  fogNear: 12,         // beyond the TPV camera's 6.5 offset, so the player never fogs
-  fogFar:  60,
+
+  // Distance fog. Tightened from 12/60 once the decor landed, and the reason is
+  // worth recording: 60 was tuned against a corridor that was mostly EMPTY,
+  // because the instanced props were not rendering at all. With the forest
+  // actually in the level, a far plane of 60 means the far half of the corridor
+  // is barely touched and the woods read as crisp, not as somewhere you are
+  // standing inside. 48 puts the back wall (43 from the spawn) at ~95% haze.
+  //
+  // `fogNear` still clears the TPV camera's 6.5 offset, so the player never fogs.
+  fogNear: 9,
+  fogFar:  48,
 
   // Where the drifting mist sheets lie. They are CENTRED on mistZ and
   // mistLength is their full length, so these two numbers decide which parts of
@@ -109,6 +165,33 @@ const MOOD = {
   // level, so mist there is difficulty rather than atmosphere.
   mistZ: -13,
   mistLength: 42,
+
+  // The direction the world is lit from, as ONE value. It mirrors the sun in
+  // main.js (`sun.position.set(18, 30, 12)`), and both the ground and the props
+  // now read it, so they cannot disagree (#57).
+  //
+  // Why the level carries a copy at all: the paint shader and the toon shader
+  // are custom and do NOT read scene lights. Each carries its own `uLightDir`
+  // uniform. The paint shader's built-in default is already very close to this
+  // vector, so matching it is about making drift impossible rather than about a
+  // big visible change today.
+  sunDir: [18, 30, 12],
+
+  // The fill light. Cold, and from the opposite side to the sun so props get
+  // some shape back without flattening the sun's direction.
+  //
+  // HONEST SCOPE: this only affects meshes using three.js's OWN lit materials.
+  // In L1 today that is just the player. The ground, the gates and the enemies
+  // all use custom shaders that ignore scene lights entirely — they read
+  // `sunDir` through their uniforms instead. So this light is close to
+  // invisible right now, and it starts earning its place when the animated GLB
+  // characters land (#49, #50), which must use built-in materials.
+  fillColour: 0x9fb0bb,
+  fillIntensity: 0.45,
+
+  // The trees are NOT here. Their colours and their reaction to paint are the
+  // forest module's business (`./forest.js`), because they are not mood: the
+  // canopy changes while you play, and the sky does not.
 };
 // Deliberately NOT here: the HEIGHT of the mist. That is FOG_FLOOR / FOG_CEIL
 // in src/shaders/fog-height.js, because it has to reach three materials
@@ -191,6 +274,8 @@ export class Level01 extends LevelBase {
     this._beacons();
     this._extraction();
     this._mood();
+    this._light();
+    this._decor();
 
     this.spawn.set(L1.spawn.x, L1.spawn.y, L1.spawn.z);
 
@@ -213,6 +298,11 @@ export class Level01 extends LevelBase {
       const gate = this.gates[i];
       gate.watch = this.enemies.filter((e) => this._inIsland(gate.arena, e.position));
     }
+
+    // Last, once EVERY surface exists — the gates are built just above, and they
+    // are paint surfaces too. Miss them and the gate faces would be lit from a
+    // different direction than the floor they stand on.
+    this._lightDirection();
   }
 
   /**
@@ -354,6 +444,119 @@ export class Level01 extends LevelBase {
     }
   }
 
+  /**
+   * The level's own light rig.
+   *
+   * Read the MOOD note first: the ground and the enemies are custom shaders and
+   * do NOT read scene lights, so this fill only reaches meshes using three.js's
+   * own lit materials — today that is just the player. It is here because #57
+   * asks for it, and because it is what the animated GLB characters will read
+   * (#49, #50), not because it changes much on screen right now.
+   *
+   * Added to `this.root` like every other level object, so it is removed with
+   * the level instead of quietly stacking up on every restart.
+   */
+  _light() {
+    const fill = new THREE.DirectionalLight(MOOD.fillColour, MOOD.fillIntensity);
+    // Opposite side to the sun and a little lower, so props get some shape back
+    // without flattening the sun's own direction.
+    fill.position.set(-18, 12, -12);
+    // The sun is the only shadow caster. A second shadow map is a cost we do not
+    // need for a light that is meant to be soft.
+    fill.castShadow = false;
+    this.root.add(fill);
+    return fill;
+  }
+
+  /**
+   * Point every custom-shaded surface at the same sun the scene uses (#57).
+   *
+   * This is the item that actually matters for "the ground and the props are lit
+   * from the same side", because the ground does not read scene lights at all —
+   * it reads its own `uLightDir` uniform, and its default is only *nearly* the
+   * sun's vector. Two nearly-equal numbers is exactly the kind of thing that
+   * drifts apart over three levels, so it is set from one place now.
+   *
+   * The FOREST used to be missed here, and that was a real bug rather than a
+   * tidy-up: `createToonMaterial`'s own default is (0.5, 1.0, 0.3), which
+   * normalises to (0.431, 0.863, 0.259), and the sun normalises to
+   * (0.485, 0.808, 0.323). Not the same direction — so every tree in the level
+   * was lit from somewhere the ground was not, and the surface-only walk below
+   * was why the test never noticed. The palette is now walked instead, which
+   * covers every kind of decor at once.
+   *
+   * Called at the END of load(), after the gates and the decor exist. Both are
+   * built late — miss one and its faces are lit from a different direction than
+   * the floor they stand on.
+   */
+  _lightDirection() {
+    const dir = new THREE.Vector3(
+      MOOD.sunDir[0], MOOD.sunDir[1], MOOD.sunDir[2],
+    ).normalize();
+    this.sunDir = dir;   // kept: future code (telegraphs, reactions) wants it
+
+    for (let i = 0; i < this.surfaces.length; i++) {
+      const uniform = this.surfaces[i].material.uniforms.uLightDir;
+      if (uniform) uniform.value.copy(dir);
+    }
+
+    // the decor, which is custom-shaded too and was the miss described above
+    for (const material of this.decorMaterials) {
+      material.uniforms.uLightDir.value.copy(dir);
+    }
+  }
+
+  /**
+   * The decor: trees, bushes, rocks, grass, flowers, stumps.
+   *
+   * One `Decor` per kind, each an instance of the same machinery with its own
+   * model set, size and scatter density. Trees differ from grass only in their
+   * numbers, not in their code — which is the point: the paint reaction, the
+   * instancing and the fallback are written once and every kind gets them.
+   *
+   * The palette is built ONCE and shared by every kind, so a blue bush and a blue
+   * tree are the same blue. Per-kind palettes would make "the world comes back to
+   * colour" read as several different colours.
+   */
+  _decor() {
+    this.palette = createDecorPalette();
+
+    // One flat list for `_lightDirection()`: custom shaders do not read scene
+    // lights, so a material missing from here is lit from createToonMaterial's
+    // own default direction and quietly disagrees with the ground (#57).
+    this.decorMaterials = [this.palette.base, ...Object.values(this.palette.tint)];
+
+    // Only walkable surfaces — see Decor.build. The wall is a PaintSurface too,
+    // and a prop that "stands on" the wall stands inside it.
+    const floors = this.surfaces.filter((s) => s.isFloor);
+
+    this.decor = {};
+    for (const [kind, config] of Object.entries(KINDS)) {
+      const props = new Decor(this.root, {
+        kind, config, palette: this.palette, hand: L1[kind] ?? [],
+      });
+      props.build(floors);
+
+      // A kind that overrides its unpainted colour owns a material the shared
+      // palette does not know about (stone is not foliage — see DECOR.stone).
+      // It has to be added here or it is lit from the shader's own default
+      // direction instead of the sun, which is the exact bug `_lightDirection`
+      // exists to prevent. Duplicates in this list are harmless: copying the same
+      // direction twice is idempotent.
+      this.decorMaterials.push(props.unpaintedMaterial);
+
+      // Step 4: upgrade to the real .glb props. NOT awaited, and deliberately so
+      // — `main.js` does not await load(), so the level is playable immediately
+      // and each kind swaps itself in when its files arrive. A failed load leaves
+      // the code shapes standing; see Decor.loadModels.
+      if (this.game.loadGLB) props.loadModels(this.game.loadGLB);
+
+      this.decor[kind] = props;
+    }
+
+    return this.decor;
+  }
+
   update(dt, player) {
     // Pass the position, not the player: Enemy.update does arithmetic on what
     // it receives, and a Player object has no x/y/z.
@@ -374,6 +577,12 @@ export class Level01 extends LevelBase {
       const oy = m.map.offset.y + step * 0.4;
       m.map.offset.x = ox >= 1 ? ox - 1 : (ox < 0 ? ox + 1 : ox);
       m.map.offset.y = oy >= 1 ? oy - 1 : (oy < 0 ? oy + 1 : oy);
+    }
+
+    // The decor wakes up where the player paints. Each kind runs its own
+    // heartbeat (see Decor.update) rather than reading the grid every frame.
+    for (const props of Object.values(this.decor)) {
+      props.update(dt, player.position);
     }
 
     // Encounter gates: an arena's exit opens the moment that arena is clear.
@@ -426,6 +635,9 @@ export class Level01 extends LevelBase {
     // Enemies may own GPU resources not attached to `root` — free them first,
     // then let the base traverse dispose every mesh/material/texture under root.
     for (const enemy of this.enemies) enemy.dispose?.();
+    // Tells any model load still in flight that its level is gone, so it drops
+    // the result instead of attaching decor to a dead level (the "R race").
+    for (const props of Object.values(this.decor ?? {})) props.dispose();
     super.dispose();
   }
 

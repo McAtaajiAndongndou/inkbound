@@ -6,4 +6,9 @@
 export const CREDITS = [
   { what: 'Three.js', source: 'https://threejs.org', licence: 'MIT' },
   { what: 'Rapier',   source: 'https://rapier.rs',   licence: 'Apache-2.0' },
+  {
+    what: 'Stylized Nature MegaKit (L1 decor: trees, twisted trees, dead trees, bushes, rocks, pebbles, grass, flowers, ferns, clover, mushrooms)',
+    source: 'https://quaternius.itch.io/stylized-nature-megakit',
+    licence: 'CC0',
+  },
 ];

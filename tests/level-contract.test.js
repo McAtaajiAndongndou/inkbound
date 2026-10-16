@@ -440,6 +440,48 @@ test('on grey a Charger keeps re-aiming at a sidestepping player', async () => {
     'on grippy ground the Charger must visibly turn to follow a sidestep');
 });
 
+/**
+ * THE CHARGER HAS TO ACTUALLY CHARGE.
+ *
+ * This is not a style test. #40 gave every enemy an `attackRange`, and the
+ * telegraph PLANTS the enemy while it winds up (`_vel.set(0, 0, 0)` in
+ * `startTelegraph`). For the Charger — `canShoot: false`, damage on CONTACT, and
+ * the whole of island B's teaching beat resting on a committed straight-line
+ * charge — a range meant it started winding up the instant the player was within
+ * 8m and stood there instead. It never charged.
+ *
+ * The failure was invisible in every other way: no error, the enemy still
+ * rendered, still faced the player, still dealt damage if you walked into it.
+ * It was caught only because the ice test below reads the Charger's heading
+ * after driving it, and got the zero vector.
+ *
+ * Behavioural on purpose: asserting `config.attackRange === undefined` alone
+ * would pass again the moment someone moved the plant somewhere else.
+ */
+test('the Charger charges — nothing plants it before it gets to you', async () => {
+  const { level } = await buildLevel();
+  const [charger] = level.enemies;                    // island B, the teaching beat
+
+  const islandB = level.surfaces.find((s) => s.isFloor
+    && s.mesh.position.z < 0 && s.mesh.position.z > -5);
+  const midY = islandB.mesh.position.y;
+
+  // stand it well outside contact range and let it come
+  charger.position.set(0, midY, islandB.mesh.position.z + 3);
+  const target = new THREE.Vector3(0, midY, islandB.mesh.position.z);
+
+  let peak = 0;
+  for (let i = 0; i < 30; i++) {
+    charger.update(1 / 60, target);
+    peak = Math.max(peak, charger._vel.length());
+  }
+
+  assert.ok(peak > 1,
+    `the Charger built ${peak.toFixed(2)} m/s in half a second — it is being planted, not charging`);
+  assert.equal(charger.telegraphing, false,
+    'a windup on the Charger must not stop the charge; a plant discards the momentum the charge IS');
+});
+
 test('on blue a Charger commits to its heading and slides past a sidestep', async () => {
   const { level } = await buildLevel();
   const [charger] = level.enemies;
