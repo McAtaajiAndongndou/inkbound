@@ -19,7 +19,10 @@ function setup({ alive }) {
     alive,
     hp: 10,
     hits: 0,
-    takeColourHit() { this.hits++; this.hp -= 10; if (this.hp <= 0) this.alive = false; return true; },
+    takeColourHit() {
+      if (!this.alive) return false;
+      this.hits++; this.hp -= 10; if (this.hp <= 0) this.alive = false; return true;
+    },
   };
   enemy.mesh = new THREE.Group();
   enemy.mesh.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)));
@@ -28,7 +31,7 @@ function setup({ alive }) {
   enemy.mesh.updateMatrixWorld(true);
 
   const gun = new PaintGun([wall], 1, [enemy]);
-  return { gun, camera, enemy, splats };
+  return { gun, camera, enemy, splats, wall };
 }
 
 test('a shot that kills an enemy reports a kill', () => {
@@ -44,4 +47,61 @@ test('a dead enemy does not soak up shots: they reach the wall behind it', () =>
   assert.equal(enemy.hits, 0);
   assert.deepEqual(splats, ['blue']);
   assert.equal(gun.lastShot, 'splat');
+});
+
+test('onImpact reports what each shot did, when it lands', () => {
+  const { gun, camera } = setup({ alive: true });
+  const kinds = [];
+  gun.onImpact = (kind) => kinds.push(kind);
+  gun.tryFire(camera);           // kills the enemy
+  gun.cooldown = 0;
+  gun.tryFire(camera);           // passes the dead enemy, paints the wall
+  assert.deepEqual(kinds, ['kill', 'splat']);
+});
+
+// A stand-in scene: counts what gets added, so pooling can be checked.
+function fakeScene() {
+  return { added: 0, removed: 0, add() { this.added++; }, remove() { this.removed++; } };
+}
+
+test('with a scene, a shot lands after flight and reports on impact', () => {
+  const { camera, enemy } = setup({ alive: true });
+  const scene = fakeScene();
+  const gun = new PaintGun([], 1, [enemy], scene);
+  const kinds = [];
+  gun.onImpact = (kind) => kinds.push(kind);
+
+  assert.equal(gun.tryFire(camera), true);
+  assert.deepEqual(kinds, [], 'nothing reported at the moment of firing');
+  for (let i = 0; i < 60; i++) gun.update(1 / 60);
+  assert.deepEqual(kinds, ['kill']);
+});
+
+test('firing adds nothing to the scene: projectiles and bursts are pooled', () => {
+  const { camera, wall } = setup({ alive: false });
+  const scene = fakeScene();
+  const gun = new PaintGun([wall], 1, [], scene);
+  const pooled = scene.added;
+
+  for (let shot = 0; shot < 40; shot++) {
+    gun.cooldown = 0;
+    gun.ammo.blue = gun.maxAmmo;
+    gun.tryFire(camera);
+    for (let i = 0; i < 10; i++) gun.update(1 / 60);
+  }
+  assert.equal(scene.added, pooled, 'no meshes created after construction');
+  assert.equal(scene.removed, 0);
+});
+
+test('a second shot landing on an enemy the first one killed is not a kill', () => {
+  const { camera, enemy } = setup({ alive: true });
+  const gun = new PaintGun([], 1, [enemy], fakeScene());
+  const kinds = [];
+  gun.onImpact = (kind) => kinds.push(kind);
+
+  gun.tryFire(camera);   // both in flight before either lands
+  gun.cooldown = 0;
+  gun.tryFire(camera);
+  for (let i = 0; i < 60; i++) gun.update(1 / 60);
+  assert.deepEqual(kinds, ['kill']);
 });
