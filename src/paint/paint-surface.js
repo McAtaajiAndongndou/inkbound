@@ -20,10 +20,12 @@ export class PaintSurface {
    * @param {number} opts.width  world size along local X
    * @param {number} opts.height world size along local Y (before rotation)
    * @param {number} opts.cells  cells per world unit (resolution of paint)
+   * @param {boolean} [opts.unpaintable] refuse all paint, permanently grey
    */
-  constructor({ width, height, cells = 2 }) {
+  constructor({ width, height, cells = 2, unpaintable = false }) {
     this.width = width;
     this.height = height;
+    this.unpaintable = unpaintable;
 
     const cols = Math.max(2, Math.round(width * cells));
     const rows = Math.max(2, Math.round(height * cells));
@@ -62,8 +64,20 @@ export class PaintSurface {
     return this._cell;
   }
 
-  /** Paint id at a world point. Returns 0 (grey) if off the surface. */
+  /**
+   * Paint id at a world point. Returns 0 (grey) if off the surface.
+   *
+   * An UNPAINTABLE surface always answers grey, and that is load-bearing rather
+   * than cosmetic. `surfaceAtWorld` is derived from this, and grey's SURFACE
+   * entry is the one with `climbable: false` — so "this cannot be painted" and
+   * "this cannot be climbed" are the same statement. That is the whole reason the
+   * flag exists (#39 #3): EVERY wall in this game is a PaintSurface, and every
+   * PaintSurface is paintable, so before this there was no such thing as an
+   * obstacle the player could not paint green and climb over. The encounter gates
+   * needed one, and so did the block on the tower's first deck.
+   */
   paintIdAtWorld(worldPoint) {
+    if (this.unpaintable) return PAINT_IDS.grey;
     const cell = this.worldToCell(worldPoint);
     if (!cell) return PAINT_IDS.grey;
     return this.map.data[(cell.row * this.map.cols + cell.col) * 4];
@@ -74,8 +88,17 @@ export class PaintSurface {
     return SURFACE[ID_TO_NAME[this.paintIdAtWorld(worldPoint)]];
   }
 
-  /** Splat a circle of paint centred on a world point. */
+  /**
+   * Splat a circle of paint centred on a world point.
+   *
+   * Returns false on an unpaintable surface rather than silently doing nothing,
+   * so the caller (`paint-gun.js`) can tell "refused" from "landed" — the gun
+   * already reports a splat to the HUD from this return value, and a shot that
+   * bounces off a gate should not light up as a hit.
+   */
   splat(worldPoint, colourName, worldRadius) {
+    if (this.unpaintable) return false;
+
     const centre = this.worldToCell(worldPoint);
     if (!centre) return false;
 

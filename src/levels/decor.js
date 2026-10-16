@@ -112,9 +112,11 @@ const BASE_PART = /bark|trunk|wood|stem|berry/i;
  * `step` / `spacing` / `edge` / `inset` are the scatter:
  *   step     metres between candidate positions along the corridor
  *   spacing  no two props of this kind closer than this
- *   edge     never closer than this to the route centre line
+ *   edge     never closer than this to the floor's OWN centre line
  *   inset    never this close to an island's edge
  *   seed     fixed, so the same level is dressed identically every run
+ *   band     which GROUND this kind stands on: 'route' (the corridor, default) or
+ *            'backdrop' (the shelves either side of it). See `backdrop`.
  */
 export const KINDS = {
   tree: {
@@ -129,7 +131,10 @@ export const KINDS = {
     height: 3.4,
     fallback: 'tree',
     scale: [0.8, 1.25],
-    step: 1.1, spacing: 1.35, edge: 3.4, inset: 0.8, seed: 0x5eed1e,
+    // `edge` values across every kind were raised for #39 #5: with the corridor
+    // widened to 22 m the props did not have to sit as close to the route, and a
+    // tall prop standing between you and an incoming Charger is what hides it.
+    step: 1.1, spacing: 1.35, edge: 4.6, inset: 0.8, seed: 0x5eed1e,
   },
 
   // The corrupted landmarks: gnarled, 16-19m native, and by far the heaviest
@@ -144,7 +149,7 @@ export const KINDS = {
     height: 6.5,
     fallback: 'tree',
     scale: [0.85, 1.2],
-    step: 4.5, spacing: 4.0, edge: 5.0, inset: 1.0, seed: 0x7a17e5,
+    step: 4.5, spacing: 4.0, edge: 6.6, inset: 1.0, seed: 0x7a17e5,
   },
 
   // Dead silhouettes, 9-13m native, bark only, so they take the paint whole.
@@ -157,7 +162,7 @@ export const KINDS = {
     height: 5.0,
     fallback: 'tree',
     scale: [0.85, 1.2],
-    step: 3.4, spacing: 2.8, edge: 4.2, inset: 0.9, seed: 0xdead11,
+    step: 3.4, spacing: 2.8, edge: 5.6, inset: 0.9, seed: 0xdead11,
   },
 
   bush: {
@@ -169,7 +174,7 @@ export const KINDS = {
     height: 1.3,
     fallback: 'blob',
     scale: [0.75, 1.3],
-    step: 1.8, spacing: 1.5, edge: 2.4, inset: 0.8, seed: 0xbeef01,
+    step: 1.8, spacing: 1.5, edge: 3.2, inset: 0.8, seed: 0xbeef01,
   },
 
   rock: {
@@ -184,7 +189,7 @@ export const KINDS = {
     unpainted: DECOR.stone,
     fallback: 'blob',
     scale: [0.6, 1.4],
-    step: 2.2, spacing: 1.9, edge: 2.2, inset: 0.8, seed: 0x0c1a11,
+    step: 2.2, spacing: 1.9, edge: 2.9, inset: 0.8, seed: 0x0c1a11,
   },
 
   // Pebbles are 0.1-0.2m native: pure ground detail, and cheap (100-300
@@ -202,7 +207,7 @@ export const KINDS = {
     unpainted: DECOR.stone,
     fallback: 'blob',
     scale: [0.7, 1.6],
-    step: 1.3, spacing: 0.9, edge: 1.6, inset: 0.6, seed: 0x9e11e5,
+    step: 1.3, spacing: 0.9, edge: 2.1, inset: 0.6, seed: 0x9e11e5,
   },
 
   grass: {
@@ -218,7 +223,7 @@ export const KINDS = {
     scale: [0.7, 1.4],
     // grass is the one kind that MAY come close to the route: a corridor with no
     // ground cover at its edges reads as a corridor, not a forest floor
-    step: 0.9, spacing: 0.7, edge: 1.5, inset: 0.7, seed: 0x6a55e5,
+    step: 0.9, spacing: 0.7, edge: 1.9, inset: 0.7, seed: 0x6a55e5,
   },
 
   flower: {
@@ -231,7 +236,7 @@ export const KINDS = {
     height: 0.9,
     fallback: 'tuft',
     scale: [0.7, 1.2],
-    step: 2.4, spacing: 1.6, edge: 2.0, inset: 0.8, seed: 0xf10e12,
+    step: 2.4, spacing: 1.6, edge: 2.6, inset: 0.8, seed: 0xf10e12,
   },
 
   plant: {
@@ -244,7 +249,7 @@ export const KINDS = {
     height: 0.8,
     fallback: 'tuft',
     scale: [0.7, 1.3],
-    step: 1.6, spacing: 1.1, edge: 1.8, inset: 0.7, seed: 0x9ee0aa,
+    step: 1.6, spacing: 1.1, edge: 2.4, inset: 0.7, seed: 0x9ee0aa,
   },
 
   // Mushroom_Laetiporus is deliberately NOT here, and it is the one model the
@@ -260,7 +265,43 @@ export const KINDS = {
     height: 0.45,
     fallback: 'blob',
     scale: [0.7, 1.3],
-    step: 2.6, spacing: 2.0, edge: 2.0, inset: 0.8, seed: 0x5a11a5,
+    step: 2.6, spacing: 2.0, edge: 2.6, inset: 0.8, seed: 0x5a11a5,
+  },
+
+  // THE WORLD BEYOND THE CAUSEWAY (#39 #10).
+  //
+  // This kind exists because of the one rule the decor system has always had:
+  // decor can only stand on a floor, and L1 had 22 m of floor. A 22 m corridor
+  // can never look like more than a corridor with a hedge either side of it.
+  // LEVEL-1-FOREST-POLISH.md diagnosed exactly this and left it open —
+  // "to get past that the LEVEL needs more ground, not the decor module".
+  //
+  // The forest shelves are that ground: two wide, LOWER shelves either side of
+  // the corridor, across a gap nothing can jump. This is what stands on them.
+  //
+  // Deliberately SPARSE and BIG rather than dense: these props are 20-40 m from
+  // the player and mostly inside the haze, so their job is silhouette and depth
+  // rather than detail. `edge: 0` because there is no route out here to keep
+  // clear, and `step` is coarse because 100 extra props at 40 m buy nothing that
+  // 60 larger ones do not.
+  //
+  // They still react to paint, and that is worth knowing: the shelves are only
+  // ~9 m from the corridor edge, which is inside `reactRadius`, and the gun's
+  // 30 m range reaches them. So a player can repaint the forest from the
+  // causeway — the payoff, not a leak.
+  backdrop: {
+    models: [
+      './assets/megakit/CommonTree_5.glb',
+      './assets/megakit/Pine_5.glb',
+      './assets/megakit/TwistedTree_1.glb',
+      './assets/megakit/DeadTree_3.glb',
+    ],
+    maxVariants: 4,
+    height: 4.6,
+    fallback: 'tree',
+    scale: [0.9, 1.7],
+    step: 2.0, spacing: 2.2, edge: 0, inset: 1.4, seed: 0x0ff5ea,
+    band: 'backdrop',
   },
 };
 
@@ -462,16 +503,25 @@ export class Decor {
       const zMin = zCentre - floor.height / 2 + inset;
       const zMax = zCentre + floor.height / 2 - inset;
 
-      // The band this kind may use, on both sides of the route. On the narrow
-      // platform it collapses to a thin strip against the edge, which is right:
-      // the platform is a ledge, not a meadow.
+      // The band this kind may use, on both sides of the floor's OWN centre line.
+      // On the narrow platform it collapses to a thin strip against the edge,
+      // which is right: the platform is a ledge, not a meadow.
+      //
+      // `xCentre` is #39 #10 and it was a latent bug, not a tidy-up. Every floor
+      // in L1 used to be centred on x = 0, so the band could be built around zero
+      // and nobody noticed. The moment ground exists OFF to one side — the forest
+      // shelves outside the corridor — a prop gets placed as if that ground were
+      // centred on zero, i.e. in mid-air beside it. The "every prop stands on a
+      // floor" test cannot catch that: the point still overlaps SOME floor in x/z,
+      // because `worldToCell` never checks height.
+      const xCentre = floor.mesh.position.x;
       const outer = halfWidth - inset;
       const inner = Math.min(edge, outer);
       if (outer <= inner) continue;
 
       for (let z = zMin; z <= zMax; z += step) {
         for (const side of [-1, 1]) {
-          const x = side * (inner + random() * (outer - inner));
+          const x = xCentre + side * (inner + random() * (outer - inner));
           const jitteredZ = z + (random() - 0.5) * step;
 
           if (jitteredZ < zMin || jitteredZ > zMax) continue;
@@ -826,6 +876,18 @@ export class Decor {
     bucket.slots[slot] = moved;
     moved[bucket.slotField] = slot;
     bucket.live = last;
+
+    // Clear the vacated TAIL instead of leaving `moved` referenced twice.
+    //
+    // The duplicate was harmless to the free list itself — the next `_add`
+    // overwrites that index — but it is NOT harmless to anything that asks the
+    // bucket where a prop is: `slots.indexOf(prop)` still finds a prop that has
+    // LEFT the bucket, sitting past the live count. That is exactly what
+    // `tests/level-01-decor.test.js` -> "every prop is in exactly one bucket"
+    // asserts against, and it went red when #39 #5 changed how many props land in
+    // each bucket (the failure needed the removed prop to be the LAST live one,
+    // so it was a coin-flip that had been landing heads for weeks).
+    bucket.slots[last] = undefined;
 
     if (moved !== prop) this._writeInstance(bucket, slot, moved);
     bucket.mesh.count = last;

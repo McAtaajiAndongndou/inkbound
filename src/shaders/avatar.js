@@ -31,9 +31,16 @@ function disposeNode(o) {
 }
 
 export class Avatar {
-  constructor(parent, onLoad = null) {
+  /**
+   * @param {THREE.Object3D} parent usually the player's placeholder mesh
+   * @param {Function|null} onLoad fired once the model is in the scene
+   * @param {Function|null} onFail fired if the model never arrives, so the
+   *                        caller can put its placeholder back on screen
+   */
+  constructor(parent, onLoad = null, onFail = null) {
     this.parent = parent;
     this.onLoad = onLoad;
+    this.onFail = onFail;
     this.root = new THREE.Group();
     this.model = null;
     this.mixer = null;
@@ -52,7 +59,12 @@ export class Avatar {
       MODEL_URL,
       (gltf) => this._onLoaded(gltf),
       undefined,
-      (err) => console.error('avatar load failed', err),
+      (err) => {
+        console.error('avatar load failed', err);
+        // Hand the placeholder back. Without this a failed model leaves the
+        // player invisible forever, which is a worse bug than the pill (#39 #1).
+        this.onFail?.();
+      },
     );
   }
 

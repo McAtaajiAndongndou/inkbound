@@ -50,6 +50,20 @@ test('ground probe finds the same floor as a THREE.Raycaster would', async () =>
   assert.ok(checked > 1000);
 });
 
+/**
+ * Walls are looked up BY Z rather than as "the first surface that is not a floor".
+ *
+ * That shortcut broke the moment the tower landed (#39 #6): the first non-floor
+ * surface became deck 1's 1.2 m face instead of the wall these tests were written
+ * against, and both of them silently started testing nothing.
+ */
+// The PAINTABLE face at z. There are three surfaces stacked at the back wall
+// (the rock base, the rock band and the one green band), so asking by z alone
+// picks the wrong one — and painting an unpaintable surface is a no-op, which
+// made this look like "the wall is not climbable".
+const climbableAt = (level, z) => level.surfaces.find((s) => !s.isFloor && !s.unpaintable
+  && Math.abs(s.mesh.position.z - z) < 1e-6);
+
 test('the per-frame contact objects are reused, not re-created', async () => {
   const { level, player } = await setup();
   const input = { isDown: (c) => c === 'KeyW' };
@@ -61,19 +75,26 @@ test('the per-frame contact objects are reused, not re-created', async () => {
   const b = player._probeGround();
   assert.equal(a, b, 'ground probe should return the same scratch object');
 
-  // walk into the wall twice
-  const wall = level.surfaces.find((s) => !s.isFloor);
-  player.position.set(0, 4, -23.7);
+  // walk into the extraction climb twice — the wall at the top of island C
+  const wall = climbableAt(level, -40);
+  assert.ok(wall, 'expected a climb face at z=-40');
+  player.position.set(7.5, 7.0, -39.6);
   player.update(1 / 60, input, actions);
   const first = player.touchingWall;
-  player.position.set(0, 4, -23.7);
+  player.position.set(7.5, 7.0, -39.6);
   player.update(1 / 60, input, actions);
   assert.ok(first, 'expected to be touching the wall');
-  assert.equal(player.touchingWall, first, 'wall contact should be the same object each frame');
-  assert.equal(player.touchingWall.surface, wall);
+  // IDENTITY, not assert.equal: a PaintSurface reaches the entire level through its
+  // mesh's parent, so a failed deep-ish comparison makes node inspect hundreds of
+  // megabytes of scene graph and take half a minute to say "not equal".
+  assert.ok(player.touchingWall === first,
+    'wall contact should be the same object each frame');
+  assert.ok(player.touchingWall.surface === wall,
+    `expected the wall at z=${wall.mesh.position.z}, hit `
+    + `${player.touchingWall.surface ? 'z=' + player.touchingWall.surface.mesh.position.z : 'nothing'}`);
 
-  const cell1 = wall.worldToCell(new THREE.Vector3(0, 6, -24));
-  const cell2 = wall.worldToCell(new THREE.Vector3(1, 6, -24));
+  const cell1 = wall.worldToCell(new THREE.Vector3(7.5, 9.5, -40));
+  const cell2 = wall.worldToCell(new THREE.Vector3(9.0, 9.5, -40));
   assert.equal(cell1, cell2, 'worldToCell should reuse its result object');
 });
 
@@ -81,12 +102,19 @@ test('player.update allocates (almost) nothing per frame', async () => {
   const { level, player } = await setup();
   const input = { isDown: (c) => c === 'KeyW' };
   const actions = { jump: false, toggleView: false, colour: null, restart: false };
-  level.surfaces.find((s) => !s.isFloor).splat(new THREE.Vector3(0, 6.5, -24), 'green', 50);
+
+  // Paint a climb face green and lean on it, so the CLIMB path is exercised too —
+  // that branch runs `_resolveWalls` AND the wall-contact record every frame.
+  const face = climbableAt(level, -40);
+  assert.ok(face, 'expected a climb face at z=-40');
+  face.splat(new THREE.Vector3(7.5, 9.5, -40), 'green', 50);
+  assert.equal(face.surfaceAtWorld(new THREE.Vector3(7.5, 9.5, -40)).climbable, true,
+    'the face must actually be green, or this test is not exercising the climb');
 
   const run = (n) => {
     for (let i = 0; i < n; i++) {
-      // alternate between open floor and pressed against the green wall
-      if (i % 500 === 0) player.position.set(0, 0, i % 1000 === 0 ? 13 : -23.5);
+      // alternate between open floor and pressed against the green face
+      if (i % 500 === 0) player.position.set(7.5, i % 1000 === 0 ? 7.0 : 7.2, -39.6);
       player.update(1 / 60, input, actions);
     }
   };

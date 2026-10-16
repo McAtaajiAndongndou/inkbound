@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { ENEMY, PAINT, PAINT_IDS } from "../config.js";
+import { ENEMY, ENEMY_NAV, PAINT, PAINT_IDS } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
@@ -28,6 +28,18 @@ const DEFAULT_ATTACK_COOLDOWN = 2;  // seconds; overridden by config.attackCoold
 // --- GLB soldiers (#50) ------------------------------------------------------
 const MODEL_HEIGHT = 1.6;           // world units tall; tune to taste
 
+/**
+ * The rigless gait (#39 #7b). See `Enemy._gait`.
+ *
+ * These numbers are the whole of the fake: the enemy GLBs have no leg bones, so
+ * the body bob and lean ARE the locomotion animation. Tune here.
+ */
+const GAIT = {
+  bob: 0.075,        // metres of rise at full stride
+  maxLean: 0.22,     // radians (~12 deg) forward at full speed
+  leanPerSpeed: 0.035,
+};
+
 const MODEL_URLS = {
   charger: "./assets/soldier-charger.glb",
   sprayer: "./assets/soldier-sprayer.glb",
@@ -40,6 +52,40 @@ const CLIPS = {
   sprayer: { idle: "Rifle@Aim", run: "Rifle@Run.001", attack: "Rifle@Shoot" },
 };
 
+/**
+ * Size a model to `targetHeight` AND find where its feet are.
+ *
+ * Exported so this can be tested without a .glb: `node --test` has no server, so
+ * the asset itself is unloadable in a test, and this was the bug (#39).
+ *
+ * WHY IT IS NOT JUST A SCALE — the bug this exists to kill:
+ * `_tick` glues the enemy's ORIGIN to the floor (`position.y = nextGround.y`),
+ * which is only correct when the model's pivot is between its feet. These
+ * soldiers' pivots are mid-body — measured: min.y −2.695 on a 5.936 m model — so
+ * each one was drawn with its knees and shins buried in the ground. Half the
+ * body gone, no error anywhere, and it reads as "the enemies clip through the
+ * floor" (#39 #2).
+ *
+ * `avatar.js` had already solved this for the player with `-box.min.y * scale`.
+ * This is the same correction, made once and measured rather than assumed.
+ *
+ * @returns {{ scale: number, feetOffset: number }} metres to LIFT the model so
+ *          its lowest vertex sits on the origin.
+ */
+export function fitModelToHeight(object, targetHeight) {
+  const box = new THREE.Box3().setFromObject(object);
+  const height = box.max.y - box.min.y;
+  const scale = height > 0 && Number.isFinite(height) ? targetHeight / height : 1;
+
+  // An EMPTY box is min.y = +Infinity, so `-min.y * scale` is -Infinity and the
+  // model would be flung out of the world. A model with no geometry is a real
+  // possibility (a GLB with an empty scene), so this is guarded rather than
+  // assumed, and the test is `a flat or empty model does not divide by zero`.
+  const feetOffset = Number.isFinite(box.min.y) ? -box.min.y * scale : 0;
+
+  return { scale, feetOffset };
+}
+
 /** Await before spawning enemies. Any model that fails falls back to the box. */
 export async function preloadEnemyModel() {
   const loader = new GLTFLoader();
@@ -47,8 +93,11 @@ export async function preloadEnemyModel() {
     Object.entries(MODEL_URLS).map(async ([type, url]) => {
       try {
         const gltf = await loader.loadAsync(url);
-        const size = new THREE.Box3().setFromObject(gltf.scene).getSize(new THREE.Vector3());
-        MODELS[type] = { scene: gltf.scene, clips: gltf.animations, scale: MODEL_HEIGHT / size.y };
+        MODELS[type] = {
+          scene: gltf.scene,
+          clips: gltf.animations,
+          ...fitModelToHeight(gltf.scene, MODEL_HEIGHT),
+        };
       } catch (e) {
         console.warn(`Enemy model "${type}" failed to load, using box fallback`, e);
       }
@@ -116,6 +165,13 @@ export class Enemy {
     // Animation state. Must exist BEFORE _buildMesh: _buildModel fills it in.
     this._anim = null;
 
+    // Rigless gait state. `_model` is set by _buildModel only; `_stride` counts
+    // METRES of travel, which is what keeps the bob in step with the movement
+    // rather than with the frame rate.
+    this._model = null;
+    this._feetOffset = 0;
+    this._stride = 0;
+
     this.mesh = this._buildMesh();
     this.mesh.position.copy(position);
     this.position = this.mesh.position;   // alias, not a copy
@@ -135,6 +191,13 @@ export class Enemy {
 
     const model = cloneSkinned(m.scene);
     model.scale.setScalar(m.scale);
+    // ...and LIFT it so its feet are on the origin, because `_tick` glues the
+    // origin to the floor. See `fitModelToHeight` for the measurement (#39 #2).
+    model.position.y = m.feetOffset;
+    // Kept so `_gait` can move the body without disturbing the group's facing
+    // (`mesh.rotation.y`) or the telegraph's swell (`mesh.scale`).
+    this._model = model;
+    this._feetOffset = m.feetOffset;
 
     // Keep the model's own colours/textures; tint via emissive (see _setColour).
     const mats = new Map();
@@ -236,10 +299,57 @@ export class Enemy {
     this._anim.mixer.update(dt);
   }
 
-  /** Per-frame entry point: logic first, then animation. */
+  /** Per-frame entry point: logic first, then animation/gait. */
   update(dt, playerPos) {
     this._tick(dt, playerPos);
     if (this.alive) this._animate(dt);
+    // The gait is NOT part of `_animate`, because `_animate` returns immediately
+    // when there is no clip mixer — which is the case in every test (no GLB
+    // loader) and for the box fallback. Keeping it separate is what lets it be
+    // tested with a stand-in model.
+    this._gait(dt);
+  }
+
+  /**
+   * Rigless locomotion: the body bobs and leans as it moves.
+   *
+   * WHY THIS EXISTS. The shipped enemy GLBs have **no leg, hip or spine bones** —
+   * the rig is arms only (see #39 #7b, and the `fitModelToHeight` note above), so
+   * a run cycle is not possible with these files no matter what the code does. A
+   * body that translates perfectly smoothly does not read as "no animation" from
+   * the player's seat; it reads as GLIDING, which is worse.
+   *
+   * So this fakes the part a rig would have given us, and it is honest about being
+   * a fake: a vertical bob and a forward lean, driven by DISTANCE TRAVELLED rather
+   * than by time, so it stays in step with the movement instead of drifting against
+   * it. Lean is proportional to speed, so a Charger at 5 m/s leans like a sprinter
+   * and a Sprayer at 2.5 leans gently.
+   *
+   * It does nothing when `_model` is absent, which is the box fallback and every
+   * Node test — the box already has a readable shape and no pivot offset.
+   *
+   * Allocation-free by construction: local numbers only, and every write is to a
+   * field that already exists.
+   */
+  _gait(dt) {
+    if (!this._model) return;
+
+    const vx = this._vel.x;
+    const vz = this._vel.z;
+    const speed = Math.sqrt(vx * vx + vz * vz);
+
+    // 2.4 radians per metre of travel: about 1.3 steps per metre, which reads as a
+    // run. The same constant for every enemy, so one enemy type is not visibly
+    // steeping faster than another at the same speed.
+    this._stride += speed * dt;
+    const bob = Math.abs(Math.sin(this._stride * 2.4)) * GAIT.bob * Math.min(1, speed / 2);
+
+    // The windup PLANTS the feet, so a telegraphing enemy must not lean or bob —
+    // otherwise the tell looks like it is still travelling.
+    const lean = this._windupTimer > 0 ? 0 : Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed);
+
+    this._model.position.y = this._feetOffset + bob;
+    this._model.rotation.x = lean;
   }
 
   /**
@@ -302,11 +412,25 @@ export class Enemy {
     // Guard against a non-Vector3 argument. `.copy()` of an object without
     // x/y/z yields NaN, and `NaN > anything` is false — so a wrong argument
     // used to freeze the enemy in place with no error at all.
-    if (Number.isFinite(dist) && dist > 0.001) {
+    //
+    // `stopDistance` is the other reason not to steer: a MELEE enemy stops ON the
+    // player instead of walking through them. There is no enemy-versus-player
+    // collision in this engine, so a Charger simply crossed the player's position,
+    // flipped 180 degrees to come back, and repeated every few frames at 5 m/s —
+    // Renda: "when the charger collides with the player they start tweaking"
+    // (#39). The stop has to be behaviour, because there is nothing else to stop it.
+    //
+    // ...EXCEPT ON ICE, and that exception is the whole of island B's lesson. A
+    // stop is a brake, and the design says a Charger on blue paint CANNOT brake: it
+    // commits to its heading and slides straight past. Holding here would quietly
+    // turn the level's main teaching beat into "ice is slightly slippery", and the
+    // test that caught it is
+    // `on blue a Charger commits to its heading and slides past a sidestep`.
+    const icy = rules.friction < 1;
+    const holding = !icy && this.config.stopDistance > 0 && dist < this.config.stopDistance;
+
+    if (Number.isFinite(dist) && dist > 0.001 && !holding) {
       const inv = 1 / dist;
-      // Only blue has friction below 1 (grey/red 10.0, green 14.0), so this is
-      // a clean read of "am I standing on ice" straight off the grid.
-      const icy = rules.friction < 1;
 
       if (icy) {
         // Can shove off, but cannot change course. A heading is picked once,
@@ -341,15 +465,25 @@ export class Enemy {
     // us over a gap there is no floor to stand on, so the move is refused.
     // This is what keeps an enemy on its own island without a leash radius or
     // any knowledge of the level layout.
+    //
+    // It also refuses a step DOWN more than `ENEMY_NAV.maxStepDown`. Without that
+    // second rule an enemy walk off the edge of any raised platform and drops to
+    // whatever is below — which is what the shooters on island C's pillars did
+    // (#39). The probe only ever asked "is there a floor", never "is it the same
+    // floor I am on".
     const nextGround = this._probe.down(this._next);
-    if (nextGround) {
+    if (nextGround && nextGround.y >= this.position.y - ENEMY_NAV.maxStepDown) {
       this.position.x = this._next.x;
       this.position.z = this._next.z;
       this.position.y = nextGround.y;      // stay glued to the floor
 
-      const vx = this._vel.x;
-      const vz = this._vel.z;
-      if (vx * vx + vz * vz > 1e-6) {
+    // ...and only turn the body when it is actually TRAVELLING. The threshold used
+    // to be 1e-6 (0.001 m/s), which meant an enemy pressed up against something
+    // kept re-aiming its facing on the jitter of its own damping — reading as
+    // vibration rather than as standing still (#39).
+    const vx = this._vel.x;
+    const vz = this._vel.z;
+    if (vx * vx + vz * vz > 0.04) {
         // Face the direction of travel, not the player — on ice the heading is
         // the whole point, and watching it plough past aimed the wrong way
         // would read as broken.
