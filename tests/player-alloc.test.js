@@ -71,20 +71,20 @@ test('the per-frame contact objects are reused, not re-created', async () => {
   const b = player._probeGround();
   assert.equal(a, b, 'ground probe should return the same scratch object');
 
-  // walk into deck 2's climb face twice — a real wall on the tower
-  const wall = wallAt(level, -31);
-  assert.ok(wall, 'expected a climb face at z=-31');
-  player.position.set(6.75, 1.2, -30.7);
+  // walk into the extraction climb twice — the wall at the top of island C
+  const wall = wallAt(level, -40);
+  assert.ok(wall, 'expected a climb face at z=-40');
+  player.position.set(6.75, 5.5, -39.6);
   player.update(1 / 60, input, actions);
   const first = player.touchingWall;
-  player.position.set(6.75, 1.2, -30.7);
+  player.position.set(6.75, 5.5, -39.6);
   player.update(1 / 60, input, actions);
   assert.ok(first, 'expected to be touching the wall');
   assert.equal(player.touchingWall, first, 'wall contact should be the same object each frame');
   assert.equal(player.touchingWall.surface, wall);
 
-  const cell1 = wall.worldToCell(new THREE.Vector3(6.75, 2.45, -31));
-  const cell2 = wall.worldToCell(new THREE.Vector3(8.0, 2.45, -31));
+  const cell1 = wall.worldToCell(new THREE.Vector3(6.75, 7.25, -40));
+  const cell2 = wall.worldToCell(new THREE.Vector3(8.0, 7.25, -40));
   assert.equal(cell1, cell2, 'worldToCell should reuse its result object');
 });
 
@@ -95,16 +95,16 @@ test('player.update allocates (almost) nothing per frame', async () => {
 
   // Paint a climb face green and lean on it, so the CLIMB path is exercised too —
   // that branch runs `_resolveWalls` AND the wall-contact record every frame.
-  const face = wallAt(level, -31);
-  assert.ok(face, 'expected a climb face at z=-31');
-  face.splat(new THREE.Vector3(6.75, 2.45, -31), 'green', 50);
-  assert.equal(face.surfaceAtWorld(new THREE.Vector3(6.75, 2.45, -31)).climbable, true,
+  const face = wallAt(level, -40);
+  assert.ok(face, 'expected a climb face at z=-40');
+  face.splat(new THREE.Vector3(6.75, 7.25, -40), 'green', 50);
+  assert.equal(face.surfaceAtWorld(new THREE.Vector3(6.75, 7.25, -40)).climbable, true,
     'the face must actually be green, or this test is not exercising the climb');
 
   const run = (n) => {
     for (let i = 0; i < n; i++) {
       // alternate between open floor and pressed against the green face
-      if (i % 500 === 0) player.position.set(6.75, i % 1000 === 0 ? 1.2 : 1.5, -30.6);
+      if (i % 500 === 0) player.position.set(6.75, i % 1000 === 0 ? 5.5 : 5.7, -39.6);
       player.update(1 / 60, input, actions);
     }
   };

@@ -229,7 +229,7 @@ test('the extraction only fires once island C is clear — the climb-proof check
   let wins = 0;
   game.onWin = () => { wins += 1; };
 
-  const atExtraction = { position: new THREE.Vector3(7, 6.2, -35.5) };
+  const atExtraction = { position: new THREE.Vector3(6, 9, -43.5) };
 
   // The arena is what gates the win, and it is checked separately from the door's
   // collision entirely: `_arenaCleared` cannot be painted, climbed or walked

@@ -145,10 +145,9 @@ test('isFloor splits surfaces the way the player controller will (floors vs wall
   const floors = level.surfaces.filter((s) => s.isFloor);
   const walls = level.surfaces.filter((s) => !s.isFloor);
 
-  // islands A/B/C + the tower's vestibule + deck 1/2/3 + the two forest shelves
-  // (#39 #6, #10)
+  // islands A/B/C + the ascent''s ground floor, lower deck, side platform and\n  // extraction ledge + the two forest shelves (#39 #6, #10)
   assert.equal(floors.length, 9);
-  // 2 gates + 3 climb faces + the block you walk around on deck 1
+  // 2 gates + 2 climb faces + the rock band and the rock base under it
   assert.equal(walls.length, 6);
   assert.equal(floors.every((s) => s.isFloor === true), true);
   assert.equal(walls.every((s) => s.isFloor === false), true);
@@ -212,7 +211,7 @@ test('extraction is a Box3 on the tower top, reachable at standing height', asyn
   assert.ok(top, 'expected the tower to have a top deck');
 
   // a player standing on the top deck, inside the win zone
-  assert.equal(level.extraction.containsPoint(new THREE.Vector3(6, top.mesh.position.y, -35.5)), true);
+  assert.equal(level.extraction.containsPoint(new THREE.Vector3(6, top.mesh.position.y, -43.5)), true);
   // the start island is not
   assert.equal(level.extraction.containsPoint(new THREE.Vector3(0, 2, 13)), false);
 });
@@ -239,15 +238,18 @@ test('every green climb has a deck overhanging it by enough to land on (#39 #4, 
   const { level } = await buildLevel();
 
   const apex = (PLAYER.jumpSpeed * PLAYER.jumpSpeed) / (2 * -PLAYER.gravity);
-  const ableToJump = apex;                      // 1.39 m
   const drift = PLAYER.wallJumpPush * (PLAYER.jumpSpeed / -PLAYER.gravity);
 
-  // the tower's climb faces: paintable, vertical, and taller than a jump. The
-  // gates and the block are unpaintable; deck 1's face is only 1.2 m.
-  const climbs = level.surfaces.filter((s) => !s.isFloor && !s.unpaintable && s.height > ableToJump);
-  assert.equal(climbs.length, 2, 'expected exactly two green climbs (decks 2 and 3)');
+  // The level's climbable faces: paintable, vertical, taller than a jump. The
+  // gates and the rock are unpaintable, which is the whole of `unpaintable`.
+  const climbs = level.surfaces.filter((s) => !s.isFloor && !s.unpaintable);
+  assert.equal(climbs.length, 2, 'expected two green climbs: to the lower deck, and to the extraction');
 
   for (const face of climbs) {
+    assert.ok(face.height > apex,
+      `the face at z=${face.mesh.position.z} is ${face.height} m — shorter than a ${apex.toFixed(2)} m `
+      + 'jump, so the paint is optional and it teaches nothing');
+
     const top = face.mesh.position.y + face.height / 2;
     const deck = level.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - top) < 1e-6);
     assert.ok(deck, `nothing walkable at the top of the face at z=${face.mesh.position.z}`);
@@ -259,16 +261,164 @@ test('every green climb has a deck overhanging it by enough to land on (#39 #4, 
       + `jump-off drifts ${drift.toFixed(2)} m plus the ${PLAYER.radius} m the collider pushes you out, `
       + 'so the climb cannot land');
   }
+});
 
-  // ...and the jumpable face must NOT have a lip
-  const low = level.surfaces.find((s) => !s.isFloor && !s.unpaintable && s.height <= ableToJump);
-  assert.ok(low, 'expected deck 1 to be reachable by a plain jump');
-  const top = low.mesh.position.y + low.height / 2;
-  const deck = level.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - top) < 1e-6);
-  const lowOverhang = (deck.mesh.position.z + deck.height / 2) - low.mesh.position.z;
-  assert.ok(lowOverhang <= 0,
-    `deck 1 overhangs its face by ${lowOverhang.toFixed(2)} m, but the clearance under a lip is only `
-    + `${(low.height - PLAYER.height).toFixed(2)} m — it would cut through the player at chest height`);
+/**
+ * #39 #6, Renda's sketch — THE TEST THAT MATTERS FOR ISLAND C.
+ *
+ * The route is a chain of three gates, each one the only way past the last:
+ *
+ *   green climb -> red pad -> BOUNCE -> walk round the rock -> green climb -> win
+ *
+ * Every link is load-bearing and none of it is covered by anything else. A bounce
+ * that lands 20 cm short, a rock in the wrong place, or a lip that is 10 cm too
+ * thin all produce a level that is simply impossible, silently. So this plays it.
+ *
+ * Each stage re-seats the player before retrying, so what this pins is that each
+ * TRANSITION is possible from a legal standing position rather than that one exact
+ * script of keypresses works.
+ */
+test('island C is completable: green, bounce, round the rock, green, extract (#39 #6)', async () => {
+  const { level, game } = await buildLevel();
+  let wins = 0;
+  game.onWin = () => { wins += 1; };
+
+  // Clear the arena so the door opens (that is the gate's job, tested separately).
+  for (const gate of level.gates) {
+    for (const enemy of gate.watch) enemy.takeColourHit(1, 999);
+  }
+  level.update(1 / 60, { position: new THREE.Vector3(0, 0, 20) });
+  assert.equal(level.gateC.open, true, 'the door must open before the ascent can be entered');
+
+  const deckAt = (y) => level.surfaces.find((s) => s.isFloor && s.tower && Math.abs(s.mesh.position.y - y) < 1e-6);
+  const wallAt = (z, x) => level.surfaces.find((s) => !s.isFloor
+    && Math.abs(s.mesh.position.z - z) < 1e-6 && x >= s.mesh.position.x - s.width / 2 && x <= s.mesh.position.x + s.width / 2);
+
+  const lower = deckAt(2.2);
+  const upper = deckAt(5.5);
+  const ledge = deckAt(9);
+  const face1 = wallAt(-27, 6.75);
+  const rock = wallAt(-40, 0);
+  const green = wallAt(-40, 6.75);
+  for (const [name, s] of [['lower deck', lower], ['upper deck', upper], ['ledge', ledge],
+    ['face1', face1], ['rock', rock], ['green band', green]]) {
+    assert.ok(s, `island C is missing its ${name}`);
+  }
+  assert.equal(rock.unpaintable, true, 'the rock band must be the unpaintable one');
+  assert.equal(green.unpaintable, false, 'the climbable band must be paintable');
+
+  const input = { isDown: (k) => k === 'KeyW' };   // forward is -z, away from the arena
+  const player = new Player(level.surfaces, new THREE.Vector3(6.75, 0, -25.5));
+  player.onGround = true;
+  const on = (deck) => player.onGround && Math.abs(player.position.y - deck.mesh.position.y) < 0.05;
+
+  // The pad's radius, read off the level rather than repeated: the red it paints
+  // reaches `radius` metres either side of its centre, and the overlap assertion
+  // below is only meaningful if that number is the real one.
+  const pad = level.pad;
+  const L1_PAD_RADIUS_FOR_TEST = pad.radius;
+
+  /**
+   * Paint a face green and climb it, jumping at the top where a climb always ends.
+   *
+   * `standY` is the deck BELOW the face, and it is what the re-seat check has to be
+   * relative to — not the target height. An earlier version re-seated whenever the
+   * player was more than 3 m below the top, which is above where a 3.5 m climb
+   * STARTS, so it teleported them back to the bottom on every frame and the climb
+   * never happened at all.
+   */
+  const climb = (face, deck, standY, standZ, label) => {
+    const top = deck.mesh.position.y;
+    let climbed = false;
+    for (let i = 0; i < 900 && !climbed; i++) {
+      if (player.position.y < standY - 1 || player.position.z > face.mesh.position.z + 2.5) {
+        player.position.set(6.75, standY, standZ);
+        player.velocity.set(0, 0, -1);
+      }
+      face.splat(new THREE.Vector3(6.75, face.mesh.position.y, face.mesh.position.z), 'green', 30);
+      const jump = player.climbing && player.position.y > top - 1.2;
+      player.update(1 / 60, input, { jump });
+      climbed = on(deck);
+    }
+    assert.ok(climbed,
+      `never reached the ${label} at y=${top} — the climb at z=${face.mesh.position.z} is not landable `
+      + `(ended at y=${player.position.y.toFixed(2)}, z=${player.position.z.toFixed(2)})`);
+  };
+
+  // --- 1: GREEN up to the lower deck ---------------------------------------
+  climb(face1, lower, 0, -26.6, 'lower deck');
+
+  // --- 2: the RED PAD, and the bounce it is the only source of -------------
+  // Walk the length of the lower deck onto the pad. Nothing else gets you up:
+  // the upper deck is 3.3 m above and has no face, which the rock test below
+  // depends on.
+  //
+  // Retried as a whole rather than re-seated during the flight: a bounce leaves the
+  // ground for ~1 s, and a per-frame "if it is not on the deck, put it back" check
+  // cancels the launch on the very first frame of it.
+  let bounced = false;
+  for (let attempt = 0; attempt < 6 && !bounced; attempt++) {
+    player.position.set(6.75, lower.mesh.position.y, -28);
+    player.velocity.set(0, 0, -4);
+    player.onGround = true;
+
+    for (let i = 0; i < 200 && !bounced; i++) {
+      player.update(1 / 60, input, { jump: false });
+      bounced = on(upper);
+      if (player.position.y < lower.mesh.position.y - 1) break;   // fell off the side
+    }
+  }
+  assert.ok(bounced,
+    `the red pad did not deliver the player to the upper deck `
+    + `(ended at y=${player.position.y.toFixed(2)}, z=${player.position.z.toFixed(2)})`);
+  assert.equal(lower.surfaceAtWorld(new THREE.Vector3(6.75, 2.2, -33)).restitution > 0, true,
+    'the pad must be red, or there is no way up at all');
+
+  // ...and the upper deck has to OVERLAP the pad, or the bounce launches from
+  // outside its own footprint and there is nothing to land on. That is not a
+  // hypothetical: it is what the first version of this layout did, and the player
+  // rose to the apex and dropped straight back onto the pad, forever.
+  const padFront = -33 + L1_PAD_RADIUS_FOR_TEST;
+  assert.ok(upper.mesh.position.z + upper.height / 2 >= padFront,
+    `the upper deck starts at z=${(upper.mesh.position.z + upper.height / 2).toFixed(1)} but the `
+    + `pad's red begins at z=${padFront.toFixed(1)} — the bounce lands on nothing`);
+
+  // --- 3: the ROCK blocks, the green band is the way round ----------------
+  {
+    const blocked = new Player(level.surfaces, new THREE.Vector3(0, 5.5, -37));
+    blocked.onGround = true;
+    let furthest = blocked.position.z;
+    const left = { isDown: (k) => k === 'KeyW' };
+    for (let i = 0; i < 240; i++) {
+      blocked.update(1 / 60, left, { jump: false });
+      furthest = Math.min(furthest, blocked.position.z);
+    }
+    assert.ok(furthest > rock.mesh.position.z,
+      `the player walked through the rock: reached z=${furthest}, the rock faces z=${rock.mesh.position.z}`);
+    assert.equal(blocked.touchingWall?.surface, rock,
+      'walking the left half of the platform must run into the rock, not stop short of it');
+
+    // ...and painting it does nothing, which is the whole job of `unpaintable`
+    for (const colour of ['green', 'blue', 'red']) {
+      assert.equal(rock.splat(new THREE.Vector3(0, 7, -40), colour, 30), false,
+        `a ${colour} splat was accepted by the rock — the way round is no longer forced`);
+    }
+  }
+
+  // --- 4: GREEN up the last band, on the far side of the rock -------------
+  // The player has to WALK to x > 2.5 first: they are on the upper deck at x 6.75
+  // after the bounce, which is already the right side, and the rock test above
+  // proves the other side is closed.
+  climb(green, ledge, upper.mesh.position.y, -39.6, 'extraction ledge');
+
+  // --- 5: walk into the extraction and win --------------------------------
+  for (let i = 0; i < 400 && wins === 0; i++) {
+    player.update(1 / 60, input, { jump: false });
+    level.update(1 / 60, player);
+  }
+  assert.equal(wins, 1,
+    `walking the ledge did not reach the extraction `
+    + `(y=${player.position.y.toFixed(2)}, z=${player.position.z.toFixed(2)})`);
 });
 
 test('dispose removes root from the scene and is repeatable (no leak on R)', async () => {
@@ -467,110 +617,6 @@ test('a colour hit tints the body and reports that it landed', async () => {
   // ...and it fades back rather than staying stuck on the hit colour.
   for (let i = 0; i < 200; i++) enemy.update(1 / 60, new THREE.Vector3(999, 999, 999));
   assert.equal(uniform.getHex(), resting, 'the tint must fade back to the base colour');
-});
-
-/**
- * #39 #6 — THE TEST THAT MATTERS FOR THE TOWER.
- *
- * The old route's hardest step was a green wall climb, and the only thing that
- * proved it worked was `playGap` landing on island C. The tower is a longer
- * sequence — a jump, then two climbs — and none of it is covered by anything else
- * in this suite. Getting the arithmetic subtly wrong produces a tower that is
- * simply impossible, silently, and nobody would find out until a playtest.
- *
- * So this plays it: walk in through the door, jump onto deck 1, green-climb to
- * deck 2, green-climb to deck 3, and stand in the extraction.
- *
- * Each climb re-seats the player on the deck below before trying again, so what
- * this pins is that the TRANSITION is possible from a legal standing position
- * rather than that one exact script of keypresses works. That is the property the
- * level has to have; a perfect playthrough is a human's job.
- */
-test('island C is completable: the door opens, the decks are reachable, the extraction fires (#39 #6)', async () => {
-  const { level, game } = await buildLevel();
-  let wins = 0;
-  game.onWin = () => { wins += 1; };
-
-  // Clear the arena so the door opens (that is the arena gate's job, tested above).
-  for (const gate of level.gates) {
-    for (const enemy of gate.watch) enemy.takeColourHit(1, 999);
-  }
-  level.update(1 / 60, { position: new THREE.Vector3(0, 0, 20) });
-  assert.equal(level.gateC.open, true, 'the door must open before the tower can be entered');
-
-  const deckAt = (y) => level.surfaces.find((s) => s.isFloor && s.tower && Math.abs(s.mesh.position.y - y) < 1e-6);
-  const faceAt = (z) => level.surfaces.find((s) => !s.isFloor && Math.abs(s.mesh.position.z - z) < 1e-6);
-
-  const deck1 = deckAt(1.2);
-  const deck2 = deckAt(3.7);
-  const deck3 = deckAt(6.2);
-  const face2 = faceAt(-31);
-  const face3 = faceAt(-34);
-  for (const [name, s] of [['deck 1', deck1], ['deck 2', deck2], ['deck 3', deck3],
-    ['face 2', face2], ['face 3', face3]]) {
-    assert.ok(s, `the tower is missing its ${name}`);
-  }
-
-  const input = { isDown: (k) => k === 'KeyW' };   // forward is -z, down the corridor
-  const player = new Player(level.surfaces, new THREE.Vector3(4, 0, -21));
-  player.onGround = true;
-
-  const standingOn = (deck) => player.onGround
-    && Math.abs(player.position.y - deck.mesh.position.y) < 0.05;
-
-  // --- step 1: the JUMP onto deck 1 -----------------------------------------
-  const jumpable = deck1.mesh.position.y;
-  let reached = false;
-  for (let i = 0; i < 400 && !reached; i++) {
-    // press at the last moment: the deck's own face blocks you at z = -26.6
-    const jump = player.onGround && player.position.z <= -26.2;
-    player.update(1 / 60, input, { jump });
-    reached = standingOn(deck1);
-  }
-  assert.ok(reached,
-    `never got onto deck 1 by jumping — a ${jumpable} m lip must be a plain jump `
-    + `(ended at y=${player.position.y.toFixed(2)}, z=${player.position.z.toFixed(2)})`);
-
-  // --- steps 2 and 3: the GREEN CLIMBS -------------------------------------
-  for (const [face, deck, standZ] of [[face2, deck2, -30.6], [face3, deck3, -33.6]]) {
-    const top = deck.mesh.position.y;
-    assert.equal(face.height > 1.39, true,
-      `the face at z=${face.mesh.position.z} is jumpable, so the climb is optional`);
-
-    // paint it every attempt: the green is the route, not a decoration
-    face.splat(new THREE.Vector3(6.75, face.mesh.position.y, face.mesh.position.z), 'green', 30);
-    assert.equal(face.surfaceAtWorld(new THREE.Vector3(6.75, face.mesh.position.y, face.mesh.position.z)).climbable,
-      true, 'the face must be green to be climbable');
-
-    let climbed = false;
-    for (let i = 0; i < 900 && !climbed; i++) {
-      // Re-seat on the deck below, facing the face, whenever the last attempt fell
-      // short. See the note above: this tests the transition, not the playthrough.
-      if (player.position.y < top - 2.6 || player.position.z > face.mesh.position.z + 2) {
-        player.position.set(6.75, face.mesh.position.y - face.height / 2, standZ);
-        player.velocity.set(0, 0, -1);
-      }
-      // The climb always ends in a jump: wall contact is tested at chest height,
-      // so the top ~0.85 m of a face is unreachable and you have to jump the rest.
-      const jump = player.climbing && player.position.y > top - 1.2;
-      player.update(1 / 60, input, { jump });
-      climbed = standingOn(deck);
-    }
-    assert.ok(climbed,
-      `never reached the deck at y=${top} — the face at z=${face.mesh.position.z} is not climbable `
-      + `(ended at y=${player.position.y.toFixed(2)}, z=${player.position.z.toFixed(2)})`);
-  }
-
-  // --- step 4: walk into the extraction and win ----------------------------
-  // `level.update` is what fires the win, not `player.update` — the extraction
-  // check is the level's.
-  for (let i = 0; i < 400 && wins === 0; i++) {
-    player.update(1 / 60, input, { jump: false });
-    level.update(1 / 60, player);
-  }
-  assert.equal(wins, 1,
-    `walking the top deck did not reach the extraction `
-    + `(y=${player.position.y.toFixed(2)}, z=${player.position.z.toFixed(2)})`);
 });
 
 test('an unknown colour id is rejected rather than silently ignored', async () => {
@@ -789,7 +835,7 @@ test('win fires exactly once when the player enters the extraction volume', asyn
   }
 
   // standing on the tower's top deck, inside the win zone (#39 #6)
-  const player = { position: new THREE.Vector3(7, 6.2, -35.5) };
+  const player = { position: new THREE.Vector3(6, 9, -43.5) };
   level.update(0.016, player);   // inside → fire
   level.update(0.016, player);   // still inside → must NOT re-fire
   assert.equal(wins, 1);
