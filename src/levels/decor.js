@@ -119,11 +119,11 @@ const BASE_PART = /bark|trunk|wood|stem|berry/i;
 export const KINDS = {
   tree: {
     models: [
-      './assets/megakit/CommonTree_1.glb',
-      './assets/megakit/CommonTree_3.glb',
-      './assets/megakit/CommonTree_5.glb',
-      './assets/megakit/Pine_4.glb',
-      './assets/megakit/Pine_5.glb',
+      './assets/megakit/common-tree-1.glb',
+      './assets/megakit/common-tree-3.glb',
+      './assets/megakit/common-tree-5.glb',
+      './assets/megakit/pine-4.glb',
+      './assets/megakit/pine-5.glb',
     ],
     maxVariants: 5,
     height: 3.4,
@@ -137,8 +137,8 @@ export const KINDS = {
   // handful of silhouettes against the haze, not a species.
   twistedTree: {
     models: [
-      './assets/megakit/TwistedTree_1.glb',
-      './assets/megakit/TwistedTree_3.glb',
+      './assets/megakit/twisted-tree-1.glb',
+      './assets/megakit/twisted-tree-3.glb',
     ],
     maxVariants: 2,
     height: 6.5,
@@ -150,8 +150,8 @@ export const KINDS = {
   // Dead silhouettes, 9-13m native, bark only, so they take the paint whole.
   deadTree: {
     models: [
-      './assets/megakit/DeadTree_1.glb',
-      './assets/megakit/DeadTree_3.glb',
+      './assets/megakit/dead-tree-1.glb',
+      './assets/megakit/dead-tree-3.glb',
     ],
     maxVariants: 2,
     height: 5.0,
@@ -162,8 +162,8 @@ export const KINDS = {
 
   bush: {
     models: [
-      './assets/megakit/Bush_Common.glb',
-      './assets/megakit/Bush_Common_Flowers.glb',
+      './assets/megakit/bush-common.glb',
+      './assets/megakit/bush-common-flowers.glb',
     ],
     maxVariants: 2,
     height: 1.3,
@@ -174,9 +174,9 @@ export const KINDS = {
 
   rock: {
     models: [
-      './assets/megakit/Rock_Medium_1.glb',
-      './assets/megakit/Rock_Medium_2.glb',
-      './assets/megakit/Rock_Medium_3.glb',
+      './assets/megakit/rock-medium-1.glb',
+      './assets/megakit/rock-medium-2.glb',
+      './assets/megakit/rock-medium-3.glb',
     ],
     maxVariants: 3,
     height: 0.8,
@@ -191,10 +191,10 @@ export const KINDS = {
   // vertices), so they are allowed to be dense and close to the route.
   pebble: {
     models: [
-      './assets/megakit/Pebble_Round_1.glb',
-      './assets/megakit/Pebble_Round_3.glb',
-      './assets/megakit/Pebble_Square_1.glb',
-      './assets/megakit/Pebble_Square_5.glb',
+      './assets/megakit/pebble-round-1.glb',
+      './assets/megakit/pebble-round-3.glb',
+      './assets/megakit/pebble-square-1.glb',
+      './assets/megakit/pebble-square-5.glb',
     ],
     maxVariants: 4,
     height: 0.22,
@@ -207,10 +207,10 @@ export const KINDS = {
 
   grass: {
     models: [
-      './assets/megakit/Grass_Common_Short.glb',
-      './assets/megakit/Grass_Common_Tall.glb',
-      './assets/megakit/Grass_Wispy_Short.glb',
-      './assets/megakit/Grass_Wispy_Tall.glb',
+      './assets/megakit/grass-common-short.glb',
+      './assets/megakit/grass-common-tall.glb',
+      './assets/megakit/grass-wispy-short.glb',
+      './assets/megakit/grass-wispy-tall.glb',
     ],
     maxVariants: 4,
     height: 0.9,
@@ -223,9 +223,9 @@ export const KINDS = {
 
   flower: {
     models: [
-      './assets/megakit/Flower_3_Group.glb',
-      './assets/megakit/Flower_4_Group.glb',
-      './assets/megakit/Flower_4_Single.glb',
+      './assets/megakit/flower-3-group.glb',
+      './assets/megakit/flower-4-group.glb',
+      './assets/megakit/flower-4-single.glb',
     ],
     maxVariants: 3,
     height: 0.9,
@@ -236,9 +236,9 @@ export const KINDS = {
 
   plant: {
     models: [
-      './assets/megakit/Fern_1.glb',
-      './assets/megakit/Plant_1.glb',
-      './assets/megakit/Clover_2.glb',
+      './assets/megakit/fern-1.glb',
+      './assets/megakit/plant-1.glb',
+      './assets/megakit/clover-2.glb',
     ],
     maxVariants: 3,
     height: 0.8,
@@ -254,7 +254,7 @@ export const KINDS = {
   // model. Mushroom_Common is 555 vertices and does the same job.
   mushroom: {
     models: [
-      './assets/megakit/Mushroom_Common.glb',
+      './assets/megakit/mushroom-common.glb',
     ],
     maxVariants: 1,
     height: 0.45,
