@@ -123,8 +123,13 @@ export const AMMO = {
 };
 
 // One enemy class, five configs. Not five systems. (Week 2.)
-// One enemy class, five configs. Not five systems. (Week 2.)
+//
 // windup / attackRange / attackCooldown drive the attack telegraph (#40).
+//
+// attackRange is for enemies that ATTACK FROM RANGE. `_updateAttack` starts a
+// windup as soon as the player is inside it, and `startTelegraph` PLANTS the
+// enemy while it winds up — which is right for a shooter and fatal for a
+// charger. See the note on `charger` below.
 export const ENEMY = {
   sprayer: {
     hp: 40,
@@ -138,6 +143,27 @@ export const ENEMY = {
     attackRange: 12,
     attackCooldown: 2.5,
   },
+
+  // NO attackRange, deliberately — and this is the one stat here that is not a
+  // taste call.
+  //
+  // The Charger's attack IS its charge: `canShoot` is false, it deals
+  // `contactDamage` on touch, and DESIGN.md's teaching beat for island B is
+  // "paint blue and it slides straight past you". Giving it an attackRange of 8
+  // meant it began winding up the moment the player got within 8m, and a windup
+  // PLANTS the enemy (`this._vel.set(0, 0, 0)` in startTelegraph) — so it stood
+  // still at range and never charged at all. Island B's Charger fight, the
+  // level's main teaching beat, silently stopped happening.
+  //
+  // That was caught by `tests/level-contract.test.js` -> "on blue a Charger
+  // commits to its heading and slides past a sidestep", which was failing on
+  // main. The test drives the Charger for 30 frames and then reads its heading;
+  // with the plant it never had one, so the heading was the zero vector.
+  //
+  // The Charger still telegraphed in spirit: a fast grey soldier in a committed
+  // straight line is its own tell. If #40 wants a windup on it, the windup must
+  // not stop the charge — a plant that discards momentum is the wrong primitive
+  // for a chaser. windup/attackCooldown are left in place for that.
   charger: {
     hp: 30,
     speed: 5.0,
@@ -147,7 +173,6 @@ export const ENEMY = {
     drainsPaint: false,
     contactDamage: 25,
     windup: 0.5,
-    attackRange: 8,
     attackCooldown: 3,
   },
   wallCrawler: {
