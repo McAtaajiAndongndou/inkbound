@@ -312,3 +312,51 @@ canvas {
 }
 
 .menu-controls dd { margin: 0; color: var(--ink-dim); }
+
+/* Credits view inside the menu card (menu.js renders it from credits.js). */
+.credits-list,
+.credits-ours {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.credits-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+}
+
+.credits-list li:first-child { padding-top: 0; }
+.credits-list b { color: var(--ink-fg); font-weight: 600; }
+.credits-list span { color: var(--ink-dim); }
+.credits-note { font-style: italic; font-size: 12px; }
+.credits-src { overflow-wrap: anywhere; }
+
+.menu-card a {
+  color: #62b9ff;
+  text-decoration: none;
+}
+
+.menu-card a:hover { text-decoration: underline; }
+.menu-card a:focus-visible { outline: 2px solid #3aa7ff; outline-offset: 2px; border-radius: 2px; }
+
+.credits-ours li {
+  color: var(--ink-dim);
+  padding: 3px 0 3px 14px;
+  position: relative;
+}
+
+.credits-ours li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ee08a;
+}
