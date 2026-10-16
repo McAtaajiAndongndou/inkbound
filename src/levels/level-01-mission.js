@@ -133,12 +133,18 @@ const L1 = {
     C: { yTop: 7 },    // island C's back edge, at the foot of the tower
   },
 
-  beacons: [                  // colour-coded to the paint each step asks for
-    { colour: 'blue',  x: 0, y: 2,   z: -4.5 },    // island B — the blue run-up
-    { colour: 'red',   x: 0, y: 2,   z: -11.5 },   // Gap 2 — the launch colour
-    { colour: 'green', x: 6, y: 1.4, z: -28.5 },   // deck 1 — the first climb
-    { colour: 'green', x: 6, y: 4.1, z: -31.5 },   // deck 2 — the second climb
-  ],
+  // NO BEACONS (#39). There used to be four free-floating unlit boxes here —
+  // blue, red and two green — marking where the player was meant to paint what.
+  // Two of them hung in mid-air over a gap with nothing under them, and Renda
+  // read them, fairly, as leftover gate furniture: "remove the floating coloured
+  // marker boxes".
+  //
+  // If the tower turns out not to explain itself in playtest, the fix is NOT to
+  // put them back. DESIGN.md is explicit that guidance should be environmental,
+  // and a box floating in the void is the opposite of that. The diegetic options
+  // are a green stain already on the climb face, a drain-pipe running up it, or
+  // the sound the field makes — all of which say "this wall is part of the machine
+  // you paint" without a signpost.
 
   // DESIGN.md teaching beats, not just spawn points:
   //   Charger  — island B. 5 m/s, 25 contact. The answer is paint BLUE: it
@@ -490,7 +496,6 @@ export class Level01 extends LevelBase {
 
     this._tower();
     this._shoulders();
-    this._beacons();
     this._extraction();
     this._mood();
     this._waste();
@@ -1268,8 +1273,8 @@ export class Level01 extends LevelBase {
     curtain.position.set(0, (yBase + yTop) / 2, z);
     this.root.add(curtain);
 
-    // Lock bar above the door. A wide bar, not the 0.7x2.2x0.7 beacon shape:
-    // the beacons mean "paint this colour", and this is not one of those.
+    // Lock bar above the door. A wide bar rather than a marker box: it is part of
+    // the doorway, not a signpost telling you to paint something.
     const light = new THREE.Mesh(
       new THREE.BoxGeometry(6, 0.4, 0.4),
       new THREE.MeshBasicMaterial({ color: PAINT.red.hex }),
@@ -1328,21 +1333,6 @@ export class Level01 extends LevelBase {
     gate.open = true;
     gate.surface.mesh.position.y = -100;
     gate.light.material.color.setHex(PAINT.green.hex);
-  }
-
-  /** Minimal unlit beacons, colour-coded to the paint they ask for. Shared geo + material. */
-  _beacons() {
-    const geo = new THREE.BoxGeometry(0.7, 2.2, 0.7);
-    const mats = {
-      blue:  new THREE.MeshBasicMaterial({ color: PAINT.blue.hex }),
-      red:   new THREE.MeshBasicMaterial({ color: PAINT.red.hex }),
-      green: new THREE.MeshBasicMaterial({ color: PAINT.green.hex }),
-    };
-    for (const { colour, x, y, z } of L1.beacons) {
-      const m = new THREE.Mesh(geo, mats[colour]);
-      m.position.set(x, y, z);
-      this.root.add(m);
-    }
   }
 
   /**
