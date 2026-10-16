@@ -5,8 +5,12 @@
 // and after Escape (paused). main.js reads `menu.open` and freezes the game
 // while it is up, so enemies cannot hurt you behind the menu.
 //
+// Credits (brief: "accessible from within the game") open from the Credits
+// button and render straight from CREDITS in credits.js.
+//
 // Still TODO: loadout select, quality setting, level select.
 import { OPTIONS } from '../config.js';
+import { CREDITS, OURS } from './credits.js';
 
 const STORAGE_KEY = 'inkbound.options';
 
@@ -33,9 +37,11 @@ export class Menu {
         <h1 id="menu-title">INKBOUND</h1>
         <p id="menu-sub">The world is grey. Colour changes physics.</p>
 
+        <div id="menu-main">
         <div class="menu-actions">
           <button id="menu-resume" class="primary" type="button">Play</button>
           <button id="menu-restart" type="button">Restart level</button>
+          <button id="menu-credits-btn" type="button">Credits</button>
         </div>
 
         <section>
@@ -69,6 +75,24 @@ export class Menu {
             <dt>Esc</dt><dd>Pause</dd>
           </dl>
         </section>
+        </div>
+
+        <div id="menu-credits" class="hidden">
+          <div class="menu-actions">
+            <button class="credits-back" type="button">← Back</button>
+          </div>
+          <section>
+            <h2>Credits</h2>
+            <ul class="credits-list">${renderCredits()}</ul>
+          </section>
+          <section>
+            <h2>Made by the team</h2>
+            <ul class="credits-ours">${OURS.map((line) => `<li>${esc(line)}</li>`).join('')}</ul>
+          </section>
+          <div class="menu-actions">
+            <button class="credits-back" type="button">← Back</button>
+          </div>
+        </div>
       </div>
     `;
     parent.appendChild(el);
@@ -83,6 +107,13 @@ export class Menu {
     this.sens = $('#opt-sens');
     this.sensOut = $('#opt-sens-out');
     this.muteBtn = $('#opt-mute');
+    this.mainView = $('#menu-main');
+    this.creditsView = $('#menu-credits');
+
+    $('#menu-credits-btn').addEventListener('click', () => this._showCredits(true));
+    for (const back of el.querySelectorAll('.credits-back')) {
+      back.addEventListener('click', () => this._showCredits(false));
+    }
 
     this.resumeBtn.addEventListener('click', () => this._resume());
     this.restartBtn.addEventListener('click', () => {
@@ -140,8 +171,17 @@ export class Menu {
     if (p && typeof p.catch === 'function') p.catch(() => {});
   }
 
+  _showCredits(show) {
+    this.mainView.classList.toggle('hidden', show);
+    this.creditsView.classList.toggle('hidden', !show);
+    this.el.scrollTop = 0;
+  }
+
   _setOpen(open) {
-    if (!open) this.started = true;
+    if (!open) {
+      this.started = true;
+      this._showCredits(false); // next pause opens on the main view
+    }
     this.el.classList.toggle('hidden', !open);
     // first load reads as a title screen; afterwards it is a pause menu
     this.title.textContent = this.started ? 'Paused' : 'The world is grey. Colour changes physics.';
@@ -181,4 +221,24 @@ export class Menu {
     document.removeEventListener('pointerlockchange', this._onLock);
     this.el.remove();
   }
+}
+
+const esc = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+const link = (url, label = url.replace(/^https?:\/\//, '')) =>
+  `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;
+
+/** One <li> per CREDITS entry: what, author, licence (linked), source(s), changes. */
+function renderCredits() {
+  return CREDITS.map((c) => {
+    const sources = [].concat(c.source).map((url) => link(url)).join(' · ');
+    const licence = c.licenceUrl ? link(c.licenceUrl, c.licence) : esc(c.licence);
+    return `
+      <li>
+        <b>${esc(c.what)}</b>
+        <span>by ${esc(c.author)} · ${licence}</span>
+        <span class="credits-src">${sources}</span>
+        ${c.changes ? `<span class="credits-note">${esc(c.changes)}</span>` : ''}
+      </li>`;
+  }).join('');
 }

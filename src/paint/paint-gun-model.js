@@ -39,7 +39,7 @@ export class PaintGunModel {
         const loader = new GLTFLoader();
 
         loader.load(
-            "/assets/Pistol.glb",
+            "./assets/pistol.glb",
             (gltf) => {
                 if (this.disposed) {
                     return;

@@ -586,6 +586,14 @@ test('on grey a Charger keeps re-aiming at a sidestepping player', async () => {
   const islandB = level.surfaces.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
 
+  // These two tests are about steering on paint, not the attack, so the attack is
+  // held off. The Charger has no `attackRange` today and so never winds up at all
+  // (see the note in config.js — a range made it plant at 8 m and stop charging),
+  // which makes this a no-op guard. Kept deliberately: it costs nothing, and if a
+  // windup is ever given back to the Charger it plants the enemy and these fail in a
+  // misleading way — they read as "paint stopped working" rather than "it stopped".
+  charger._attackCooldown = Infinity;
+
   // Get it moving and committed on grey, then sidestep to +x.
   charger.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 3);
   for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z));
@@ -653,6 +661,14 @@ test('on blue a Charger commits to its heading and slides past a sidestep', asyn
   // enemy now brakes as it arrives (see `stopDistance`), so charging from 3 m away
   // never reaches full speed. 5 m of island B, and the charge is up to its
   // terminal ~4.17 m/s (accel against grey's 10/s friction) before the paint lands.
+  //
+  // `_attackCooldown` is held off as well, carried over from the fix that added it.
+  // It is a NO-OP today — the Charger has no `attackRange` (see the long note in
+  // config.js: a range made it plant at 8 m and never charge at all), so it never
+  // winds up. Kept because the guard costs nothing and the day someone gives the
+  // Charger a windup again, a planted Charger fails this test in a confusing way:
+  // it looks like "ice stopped working" rather than "the enemy stopped moving".
+  charger._attackCooldown = Infinity;
   charger.position.set(0, midY, midZ + 5);
   for (let i = 0; i < 50; i++) charger.update(1 / 60, new THREE.Vector3(0, midY, midZ));
 
