@@ -187,7 +187,11 @@ const L1 = {
   shouldShelf: {
     gap: 8,        // metres of lethal lake between the corridor edge and the shelf
     width: 20,
-    y: -0.6,
+    // ABOVE the waste (-0.45), not below it. The shelves were at -0.6 when the
+    // waste sat at -1.1; raising the river to shin height would have drowned the
+    // forest, so they came up with it. Still lower than the corridor, which is the
+    // point — the causeway, the flood plain either side of it, and the water.
+    y: -0.2,
     zMin: -41,
     zMax: 20,
   },
@@ -353,10 +357,21 @@ const MOOD = {
  * the pool is safe to stand next to.
  */
 const WASTE = {
-  y: -1.1,
+  // WHY SUB-SHIN HEIGHT AND NOT 1.1 m DOWN. At −1.1 the surface was below the
+  // level's bottom edge as the player reads it: you looked DOWN into a pit with
+  // goop at the bottom, rather than ACROSS a channel you are expected to jump.
+  // Renda: "the toxic waste is sitting below the plane's level which isn't making
+  // it look like a river you have to jump over".
+  //
+  // At −0.45 the surface is at a standing player's shins. Look across a 9 m gap
+  // and the far bank is visible just above the waterline, which is what a river
+  // from a bridge actually looks like. The WAVE CREST must still clear the forest
+  // shelves (see `L1.shouldShelf.y`, −0.2), or the trees stand in the water, which
+  // is why the amplitude came down with the height.
+  y: -0.45,
   colour: 0x86b32d,    // toxic green, in the same drained family as the dead ground
   emissive: 0x1d2c07,  // a little self-lit, so it reads as something you should not touch
-  wave: 0.16,          // metres of ripple, under the 0.5 m to the shelves
+  wave: 0.11,          // crests peak at -0.27, comfortably under the shelves
   bob: 0.035,
   bobSpeed: 0.7,
 };

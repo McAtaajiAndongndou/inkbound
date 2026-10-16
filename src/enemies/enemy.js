@@ -28,6 +28,18 @@ const DEFAULT_ATTACK_COOLDOWN = 2;  // seconds; overridden by config.attackCoold
 // --- GLB soldiers (#50) ------------------------------------------------------
 const MODEL_HEIGHT = 1.6;           // world units tall; tune to taste
 
+/**
+ * The rigless gait (#39 #7b). See `Enemy._gait`.
+ *
+ * These numbers are the whole of the fake: the enemy GLBs have no leg bones, so
+ * the body bob and lean ARE the locomotion animation. Tune here.
+ */
+const GAIT = {
+  bob: 0.075,        // metres of rise at full stride
+  maxLean: 0.22,     // radians (~12 deg) forward at full speed
+  leanPerSpeed: 0.035,
+};
+
 const MODEL_URLS = {
   charger: "./assets/soldier-charger.glb",
   sprayer: "./assets/soldier-sprayer.glb",
@@ -153,6 +165,13 @@ export class Enemy {
     // Animation state. Must exist BEFORE _buildMesh: _buildModel fills it in.
     this._anim = null;
 
+    // Rigless gait state. `_model` is set by _buildModel only; `_stride` counts
+    // METRES of travel, which is what keeps the bob in step with the movement
+    // rather than with the frame rate.
+    this._model = null;
+    this._feetOffset = 0;
+    this._stride = 0;
+
     this.mesh = this._buildMesh();
     this.mesh.position.copy(position);
     this.position = this.mesh.position;   // alias, not a copy
@@ -175,6 +194,10 @@ export class Enemy {
     // ...and LIFT it so its feet are on the origin, because `_tick` glues the
     // origin to the floor. See `fitModelToHeight` for the measurement (#39 #2).
     model.position.y = m.feetOffset;
+    // Kept so `_gait` can move the body without disturbing the group's facing
+    // (`mesh.rotation.y`) or the telegraph's swell (`mesh.scale`).
+    this._model = model;
+    this._feetOffset = m.feetOffset;
 
     // Keep the model's own colours/textures; tint via emissive (see _setColour).
     const mats = new Map();
@@ -276,10 +299,57 @@ export class Enemy {
     this._anim.mixer.update(dt);
   }
 
-  /** Per-frame entry point: logic first, then animation. */
+  /** Per-frame entry point: logic first, then animation/gait. */
   update(dt, playerPos) {
     this._tick(dt, playerPos);
     if (this.alive) this._animate(dt);
+    // The gait is NOT part of `_animate`, because `_animate` returns immediately
+    // when there is no clip mixer — which is the case in every test (no GLB
+    // loader) and for the box fallback. Keeping it separate is what lets it be
+    // tested with a stand-in model.
+    this._gait(dt);
+  }
+
+  /**
+   * Rigless locomotion: the body bobs and leans as it moves.
+   *
+   * WHY THIS EXISTS. The shipped enemy GLBs have **no leg, hip or spine bones** —
+   * the rig is arms only (see #39 #7b, and the `fitModelToHeight` note above), so
+   * a run cycle is not possible with these files no matter what the code does. A
+   * body that translates perfectly smoothly does not read as "no animation" from
+   * the player's seat; it reads as GLIDING, which is worse.
+   *
+   * So this fakes the part a rig would have given us, and it is honest about being
+   * a fake: a vertical bob and a forward lean, driven by DISTANCE TRAVELLED rather
+   * than by time, so it stays in step with the movement instead of drifting against
+   * it. Lean is proportional to speed, so a Charger at 5 m/s leans like a sprinter
+   * and a Sprayer at 2.5 leans gently.
+   *
+   * It does nothing when `_model` is absent, which is the box fallback and every
+   * Node test — the box already has a readable shape and no pivot offset.
+   *
+   * Allocation-free by construction: local numbers only, and every write is to a
+   * field that already exists.
+   */
+  _gait(dt) {
+    if (!this._model) return;
+
+    const vx = this._vel.x;
+    const vz = this._vel.z;
+    const speed = Math.sqrt(vx * vx + vz * vz);
+
+    // 2.4 radians per metre of travel: about 1.3 steps per metre, which reads as a
+    // run. The same constant for every enemy, so one enemy type is not visibly
+    // steeping faster than another at the same speed.
+    this._stride += speed * dt;
+    const bob = Math.abs(Math.sin(this._stride * 2.4)) * GAIT.bob * Math.min(1, speed / 2);
+
+    // The windup PLANTS the feet, so a telegraphing enemy must not lean or bob —
+    // otherwise the tell looks like it is still travelling.
+    const lean = this._windupTimer > 0 ? 0 : Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed);
+
+    this._model.position.y = this._feetOffset + bob;
+    this._model.rotation.x = lean;
   }
 
   /**

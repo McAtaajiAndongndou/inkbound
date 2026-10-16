@@ -355,6 +355,51 @@ test('a melee enemy stops at the player instead of walking through them (#39)', 
     `the Charger is still moving ${charger.position.distanceTo(settled).toFixed(3)} m per half second`);
 });
 
+test('a rigless soldier bobs and leans as it moves, and settles when it stops (#39 #7b)', async () => {
+  const { level } = await buildLevel();
+  const enemy = level.enemies[0];
+
+  // The enemy GLBs have no leg bones, so in Node the enemy is the box fallback and
+  // `_model` is null. Stand in for the GLB path the way `_buildModel` would: a
+  // container with the model's feet offset baked into its position.
+  const model = new THREE.Group();
+  const feetOffset = 2.474;
+  model.position.y = feetOffset;
+  enemy._model = model;
+  enemy._feetOffset = feetOffset;
+
+  const islandB = level.surfaces.find((s) => s.isFloor
+    && s.mesh.position.z < 0 && s.mesh.position.z > -5);
+  enemy.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 5);
+
+  // Far enough away that it runs, and long enough to be mid-stride.
+  const target = new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z);
+  let minY = Infinity;
+  let maxY = -Infinity;
+  let maxLean = 0;
+  for (let i = 0; i < 60; i++) {
+    enemy.update(1 / 60, target);
+    minY = Math.min(minY, model.position.y);
+    maxY = Math.max(maxY, model.position.y);
+    maxLean = Math.max(maxLean, model.rotation.x);
+  }
+
+  assert.ok(maxY - minY > 0.01,
+    `the body barely moved (${(maxY - minY).toFixed(4)} m) — it is gliding, not walking`);
+  assert.ok(maxY < feetOffset + 0.2 && minY > feetOffset - 1e-6,
+    `the bob should rise from the feet offset, not sink through it (${minY.toFixed(3)}..${maxY.toFixed(3)})`);
+  assert.ok(maxLean > 0.05 && maxLean <= 0.22,
+    `a running enemy should lean forward, got ${maxLean.toFixed(3)} rad`);
+
+  // ...and a stopped enemy settles back to standing, rather than freezing mid-lean.
+  const stopped = new THREE.Vector3(0, 0, islandB.mesh.position.z + 5);
+  for (let i = 0; i < 180; i++) enemy.update(1 / 60, stopped);
+  assert.ok(Math.abs(model.rotation.x) < 1e-6,
+    `a stopped enemy is still leaning ${model.rotation.x.toFixed(4)} rad`);
+  assert.ok(Math.abs(model.position.y - feetOffset) < 0.01,
+    `a stopped enemy is still bobbing (y=${model.position.y.toFixed(4)}, feet at ${feetOffset})`);
+});
+
 test('the DESIGN.md teaching beats are placed on the right islands', async () => {
   const { level } = await buildLevel();
 
