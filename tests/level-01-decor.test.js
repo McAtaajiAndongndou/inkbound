@@ -154,7 +154,15 @@ test('each kind shares its geometry, and swaps between shared palette materials'
     assert.equal(geometries.size, expected,
       `${kind}: expected ${expected} shared shape(s), found ${geometries.size}`);
 
-    const palette = new Set([level.palette.base, ...Object.values(level.palette.tint)]);
+    // The allowed set is the shared palette PLUS this kind's own unpainted
+    // material, because a kind may legitimately look different before it is
+    // painted (stone is not foliage — see DECOR.stone). What this still catches
+    // is the thing it exists for: a material CLONED per prop.
+    const palette = new Set([
+      level.palette.base,
+      ...Object.values(level.palette.tint),
+      props.unpaintedMaterial,
+    ]);
     for (const material of materials) {
       assert.ok(palette.has(material),
         `${kind} uses a material outside the shared palette — a per-prop clone`);
@@ -229,7 +237,8 @@ test('painting the ground turns every kind of prop standing on it (#57)', async 
     assert.equal(prop.paintName, 'grey', `${kind} should start grey`);
 
     const before = prop.parts[0].material;
-    assert.equal(before, level.palette.tint.grey, `${kind} should start on the grey tint`);
+    assert.equal(before, level.decor[kind].unpaintedMaterial,
+      `${kind} should start on its own unpainted material (the shared tint unless it overrides one)`);
 
     prop.floor.splat(new THREE.Vector3(prop.x, prop.y, prop.z), 'blue', 3);
     level.update(HEARTBEAT, { position: new THREE.Vector3(prop.x, 2, prop.z) });
@@ -702,6 +711,64 @@ test('a warm cache does NOT re-fetch, which is what kills the flicker on R', asy
     'a restart must not touch the loader at all - that reload is what put the fallback cones on screen');
   assert.equal(level.decor.tree.modelCount > 0, true);
   assert.equal(level.decor.tree.fallback.visible, false);
+});
+
+/**
+ * A kind may look different UNPAINTED and must still look the same PAINTED.
+ *
+ * The shared palette makes every unpainted prop the same drained grey-green, and
+ * that is right for foliage and wrong for stone: a green rock reads as a dead
+ * plant that happens to be rock-shaped. So a kind can override its unpainted
+ * colour (DECOR.stone) — but the painted colours stay shared, because paint has
+ * to make everything the same blue.
+ *
+ * The second half of this is the part that would break silently: a per-kind
+ * material that never reaches `level.decorMaterials` is lit from
+ * `createToonMaterial`'s own default direction instead of the sun, which is
+ * exactly the bug that made every tree disagree with the ground it stood on.
+ */
+test('a kind can be stone-grey unpainted, and turns the shared blue when painted', async () => {
+  const level = await buildLevel();
+  const props = level.decor.rock;
+
+  assert.notEqual(props.unpaintedMaterial, level.palette.tint.grey,
+    'rock should not use the shared foliage tint when unpainted');
+
+  const rock = props.props[0];
+  assert.equal(rock.parts[0].material, props.unpaintedMaterial,
+    'an unpainted rock must use its own stone material');
+
+  // stone means stone: not green-dominant
+  const hex = props.unpaintedMaterial.uniforms.uColour.value.getHex();
+  const r = (hex >> 16) & 0xff, g = (hex >> 8) & 0xff, b = hex & 0xff;
+  assert.ok(g <= Math.max(r, b) + 2,
+    `stone is 0x${hex.toString(16)} — green is its strongest channel, which is the `
+    + 'drained-foliage colour a rock must not share');
+
+  // and paint still unifies it with everything else
+  rock.floor.splat(new THREE.Vector3(rock.x, rock.y, rock.z), 'blue', 3);
+  level.update(DECOR.reactInterval + 0.01, { position: new THREE.Vector3(rock.x, 2, rock.z) });
+
+  assert.equal(rock.parts.every((p) => p.material === level.palette.tint.blue), true,
+    'a painted rock must use the SHARED blue, not a stone-blue of its own');
+});
+
+test('every non-shared decor material is wired to the sun, not left on the default', async () => {
+  const level = await buildLevel();
+  const expected = new THREE.Vector3(18, 30, 12).normalize();
+  const fallback = new THREE.Vector3(0.5, 1.0, 0.3).normalize();
+
+  const owned = Object.values(level.decor)
+    .map((props) => props.unpaintedMaterial)
+    .filter((m) => m !== level.palette.tint.grey);
+  assert.ok(owned.length > 0, 'expected at least one kind to override its unpainted colour');
+
+  for (const material of owned) {
+    assert.ok(level.decorMaterials.includes(material),
+      'a per-kind material missing from level.decorMaterials is lit from the shader default');
+    assert.ok(material.uniforms.uLightDir.value.distanceTo(expected) < 1e-6);
+    assert.ok(material.uniforms.uLightDir.value.distanceTo(fallback) > 1e-6);
+  }
 });
 
 /**

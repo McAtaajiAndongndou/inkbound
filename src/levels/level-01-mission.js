@@ -537,6 +537,14 @@ export class Level01 extends LevelBase {
       });
       props.build(floors);
 
+      // A kind that overrides its unpainted colour owns a material the shared
+      // palette does not know about (stone is not foliage — see DECOR.stone).
+      // It has to be added here or it is lit from the shader's own default
+      // direction instead of the sun, which is the exact bug `_lightDirection`
+      // exists to prevent. Duplicates in this list are harmless: copying the same
+      // direction twice is idempotent.
+      this.decorMaterials.push(props.unpaintedMaterial);
+
       // Step 4: upgrade to the real .glb props. NOT awaited, and deliberately so
       // — `main.js` does not await load(), so the level is playable immediately
       // and each kind swaps itself in when its files arrive. A failed load leaves

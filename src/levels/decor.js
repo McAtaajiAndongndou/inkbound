@@ -46,8 +46,21 @@ import { createToonMaterial } from '../shaders/toon/toon-material.js';
  */
 export const DECOR = {
   base: 0x413c36,     // bark, wood, stems — stays dark whatever the paint
-  tint: 0x4f5a4d,     // leaves, moss, grass, stone — takes the paint
+  tint: 0x4f5a4d,     // leaves, moss, grass — takes the paint
   paintMix: 0.55,
+
+  // STONE is not drained foliage, and that distinction arrived late.
+  //
+  // Every prop used to share one unpainted colour, which was fine while that
+  // colour was a neutral grey and stopped being fine when it became a grey-GREEN
+  // (see `tint` above). A green rock does not read as a rock — it reads as a
+  // dead plant that happens to be rock-shaped. Renda: "can we give them a grey
+  // colour, to look like rocks".
+  //
+  // A neutral grey, very slightly warm so it does not re-introduce the blue that
+  // the ground's old 0x5a5a66 had. This is the UNPAINTED colour only: paint still
+  // makes every kind the same blue, because the painted palette is shared.
+  stone: 0x5e5e5a,
 
   reactRadius: 15,     // metres; props past this keep whatever colour they had
   reactInterval: 0.25, // seconds between refreshes
@@ -167,6 +180,8 @@ export const KINDS = {
     ],
     maxVariants: 3,
     height: 0.8,
+    // stone, not foliage — see DECOR.stone
+    unpainted: DECOR.stone,
     fallback: 'blob',
     scale: [0.6, 1.4],
     step: 2.2, spacing: 1.9, edge: 2.2, inset: 0.8, seed: 0x0c1a11,
@@ -183,6 +198,8 @@ export const KINDS = {
     ],
     maxVariants: 4,
     height: 0.22,
+    // stone, not foliage — see DECOR.stone
+    unpainted: DECOR.stone,
     fallback: 'blob',
     scale: [0.7, 1.6],
     step: 1.3, spacing: 0.9, edge: 1.6, inset: 0.6, seed: 0x9e11e5,
@@ -337,6 +354,17 @@ export class Decor {
     this.parent.add(this.root);
 
     this.palette = palette;
+
+    // The colour this kind is while NOT painted. Shares the level's palette by
+    // default, which is what makes every unpainted bush and tree the same
+    // drained grey-green. A kind may override it — see DECOR.stone — and then it
+    // owns a material of its own.
+    //
+    // The painted colours are NEVER per-kind: paint has to make everything the
+    // same blue, or "the world comes back to colour" reads as several colours.
+    this.unpaintedMaterial = config.unpainted
+      ? createToonMaterial(config.unpainted)
+      : palette.tint.grey;
 
     this.props = [];      // position, colour and floor — no meshes
     this.geometries = []; // every geometry this kind owns, so dispose() can free it
@@ -505,7 +533,7 @@ export class Decor {
       group.add(mesh);
     }
     if (tint) {
-      const mesh = new THREE.Mesh(tint, this.palette.tint.grey);
+      const mesh = new THREE.Mesh(tint, this.unpaintedMaterial);
       group.add(mesh);
       tintParts.push(mesh);
     }
@@ -714,7 +742,12 @@ export class Decor {
       }
       for (const colour of colours) {
         if (variant.tint) {
-          bucketSet[colour] = this._newBucket(variant.tint, this.palette.tint[colour], colour, 'tintSlot');
+          bucketSet[colour] = this._newBucket(
+          variant.tint,
+          colour === 'grey' ? this.unpaintedMaterial : this.palette.tint[colour],
+          colour,
+          'tintSlot',
+        );
         }
       }
 
@@ -907,7 +940,11 @@ export class Decor {
     }
 
     if (prop.parts) {
-      for (const part of prop.parts) part.material = this.palette.tint[name];
+      for (const part of prop.parts) {
+      // 'grey' is the unpainted state, and a kind may have its own idea of that
+      // (stone is not foliage) — so it cannot just index the painted palette.
+      part.material = name === 'grey' ? this.unpaintedMaterial : this.palette.tint[name];
+    }
     }
   }
 
