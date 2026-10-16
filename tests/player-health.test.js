@@ -92,6 +92,47 @@ test('contact ignores enemies that do not expose position/config yet', () => {
   assert.equal(p.health, HEALTH.max);
 });
 
+/**
+ * #39 — "sometimes I die at 50 HP".
+ *
+ * `Enemy.takeColourHit` sets `alive = false` and `dispose()` detaches the MESH,
+ * but nothing removes the enemy from the level's `enemies` array and `position`
+ * keeps pointing at the spot where it died. This loop used to read only `position`
+ * and `config`, so every corpse remained a live hazard for the rest of the level:
+ * walk over the body of the Charger you just killed and eat 25 damage with nothing
+ * on screen to explain it.
+ */
+test('a dead enemy is not a hazard, at the spot where it died (#39)', () => {
+  const p = makePlayer();
+
+  const corpse = fakeEnemy(0, 0, 0, ENEMY.charger);
+  corpse.alive = false;
+
+  p.checkEnemyContact([corpse]);
+  assert.equal(p.health, HEALTH.max, 'a corpse must deal no contact damage');
+
+  // ...and it stays harmless on every later frame, not just the first
+  p.update(HEALTH.hurtCooldown + 0.01, noInput, noActions);
+  p.position.set(0, 0, 0);   // update() runs gravity, and contact is height-sensitive
+  p.checkEnemyContact([corpse]);
+  assert.equal(p.health, HEALTH.max, 'the corpse must stay harmless');
+
+  // a LIVING enemy in the same spot still hurts — the check is `alive`, not "skip"
+  const living = fakeEnemy(0, 0, 0, ENEMY.charger);
+  living.alive = true;
+  p.checkEnemyContact([living]);
+  assert.equal(p.health, HEALTH.max - ENEMY.charger.contactDamage);
+});
+
+test('an enemy that does not report `alive` is still treated as alive', () => {
+  // The stand-ins above have no `alive` field at all. Skipping anything falsy
+  // rather than an explicit `false` would silently make every one of them inert
+  // and turn this whole file into a no-op.
+  const p = makePlayer();
+  p.checkEnemyContact([fakeEnemy(0, 0, 0)]);
+  assert.equal(p.health, HEALTH.max - ENEMY.sprayer.contactDamage);
+});
+
 test('every enemy type has a contactDamage number in config', () => {
   for (const [name, cfg] of Object.entries(ENEMY)) {
     assert.equal(typeof cfg.contactDamage, 'number', `ENEMY.${name}.contactDamage`);

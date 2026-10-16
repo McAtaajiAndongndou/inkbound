@@ -98,10 +98,26 @@ export class Player {
    * HEALTH.contactRange (horizontally) and HEALTH.contactHeight (vertically)
    * of the player hurts for its config.contactDamage.
    * Expects each enemy to expose `position` (Vector3) and `config` (an ENEMY entry).
+   *
+   * DEAD ENEMIES ARE SKIPPED, and that check was missing (#39). It is not
+   * hygiene: `Enemy.takeColourHit` sets `alive = false` and `dispose()` detaches
+   * the MESH, but nothing removes the enemy from the level's `enemies` array, and
+   * `position` keeps pointing at the spot where it died. This loop only ever
+   * looked at `position` and `config` — so every corpse stayed a live hazard for
+   * the rest of the level, dealing its full contactDamage to anyone who walked
+   * over it. Invisible damage from a body that is not on screen any more.
+   *
+   * That is the "I died at 50 HP": a Charger corpse deals 25 a hit, on a 0.8 s
+   * cooldown, and nothing on screen explains where it came from.
+   *
+   * `alive === false`, not `!enemy.alive`, so a stand-in enemy without the field
+   * (the tests, and anything not yet an Enemy) is still a hazard rather than
+   * being silently skipped.
    */
   checkEnemyContact(enemies) {
     if (this.dead) return;
     for (const enemy of enemies) {
+      if (enemy.alive === false) continue;      // a corpse is not a hazard
       if (!enemy.position || !enemy.config) continue;
       const dx = enemy.position.x - this.position.x;
       const dz = enemy.position.z - this.position.z;

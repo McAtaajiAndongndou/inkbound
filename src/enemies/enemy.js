@@ -342,11 +342,25 @@ export class Enemy {
     // Guard against a non-Vector3 argument. `.copy()` of an object without
     // x/y/z yields NaN, and `NaN > anything` is false — so a wrong argument
     // used to freeze the enemy in place with no error at all.
-    if (Number.isFinite(dist) && dist > 0.001) {
+    //
+    // `stopDistance` is the other reason not to steer: a MELEE enemy stops ON the
+    // player instead of walking through them. There is no enemy-versus-player
+    // collision in this engine, so a Charger simply crossed the player's position,
+    // flipped 180 degrees to come back, and repeated every few frames at 5 m/s —
+    // Renda: "when the charger collides with the player they start tweaking"
+    // (#39). The stop has to be behaviour, because there is nothing else to stop it.
+    //
+    // ...EXCEPT ON ICE, and that exception is the whole of island B's lesson. A
+    // stop is a brake, and the design says a Charger on blue paint CANNOT brake: it
+    // commits to its heading and slides straight past. Holding here would quietly
+    // turn the level's main teaching beat into "ice is slightly slippery", and the
+    // test that caught it is
+    // `on blue a Charger commits to its heading and slides past a sidestep`.
+    const icy = rules.friction < 1;
+    const holding = !icy && this.config.stopDistance > 0 && dist < this.config.stopDistance;
+
+    if (Number.isFinite(dist) && dist > 0.001 && !holding) {
       const inv = 1 / dist;
-      // Only blue has friction below 1 (grey/red 10.0, green 14.0), so this is
-      // a clean read of "am I standing on ice" straight off the grid.
-      const icy = rules.friction < 1;
 
       if (icy) {
         // Can shove off, but cannot change course. A heading is picked once,
@@ -387,9 +401,13 @@ export class Enemy {
       this.position.z = this._next.z;
       this.position.y = nextGround.y;      // stay glued to the floor
 
-      const vx = this._vel.x;
-      const vz = this._vel.z;
-      if (vx * vx + vz * vz > 1e-6) {
+    // ...and only turn the body when it is actually TRAVELLING. The threshold used
+    // to be 1e-6 (0.001 m/s), which meant an enemy pressed up against something
+    // kept re-aiming its facing on the jitter of its own damping — reading as
+    // vibration rather than as standing still (#39).
+    const vx = this._vel.x;
+    const vz = this._vel.z;
+    if (vx * vx + vz * vz > 0.04) {
         // Face the direction of travel, not the player — on ice the heading is
         // the whole point, and watching it plough past aimed the wrong way
         // would read as broken.

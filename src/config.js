@@ -75,9 +75,35 @@ export const CAMERA = {
   tpvDistance: 5.0,        // how far behind the player the third-person camera sits
   tpvShoulder: 0.9,        // right-vector offset, so the player does not block the view
   tpvHeight: 0.45,         // vertical offset above the player's chest
-  minHeightAboveFeet: 0.3, // camera never dips below player.position.y + this
-  pitchMin: -0.6,          // how far down the camera can look (radians)
-  pitchMax: 1.2,           // how far up
+
+  // Tightened for #39 #8 — Renda: "I look at the sky or floor too easily".
+  //
+  // HOW THE RIG USES PITCH, because it is not the usual sign convention and it is
+  // why the old range felt wrong: the camera's own height is
+  // `(sin(pitch) + tpvHeight) * tpvDistance`, and the aim point is
+  // `eyeHeight + tan(pitch) * 12`. So NEGATIVE pitch (looking down) puts the camera
+  // BELOW the player while the aim point dives at the floor.
+  //
+  //   old max  1.20 rad = +69 deg up    -> the camera is flung 6.9 m overhead
+  //                                        aiming nearly straight up
+  //   old min -0.60 rad = -34 deg down  -> the camera is at foot level (the
+  //                                        minHeightAboveFeet clamp below caught
+  //                                        it) aiming steeply into the ground
+  //
+  // Both extremes degenerated, and 69 degrees up is far more sky than a
+  // third-person shooter needs. The new range is a shooter's: roughly 24 degrees
+  // down and 31 degrees up, which keeps the camera behind and above the player at
+  // every angle instead of throwing it over the top or dropping it to the floor.
+  pitchMin: -0.42,         // how far down the camera can look (radians, ~-24 deg)
+  pitchMax: 0.55,          // how far up (radians, ~+31 deg)
+
+  // Raised from 0.3 for the same reason, and this one is the bigger half of the
+  // fix: 0.3 above the feet is a floor-skimming camera, and it is where a
+  // look-down shot always ended up because the offset above goes negative long
+  // before pitchMin does. 1.1 only ever engages on those extremes — at neutral
+  // pitch the camera sits 2.25 m up — so it changes the down-look and nothing else.
+  minHeightAboveFeet: 1.1, // camera never dips below player.position.y + this
+
   adsFov: 45,
   normalFov: 70,
   adsTransitionSpeed: 10,
@@ -142,6 +168,7 @@ export const ENEMY = {
     windup: 0.6,
     attackRange: 12,
     attackCooldown: 2.5,
+    stopDistance: HEALTH.contactRange + 0.2,
   },
 
   // NO attackRange, deliberately — and this is the one stat here that is not a
@@ -174,6 +201,9 @@ export const ENEMY = {
     contactDamage: 25,
     windup: 0.5,
     attackCooldown: 3,
+    // Melee: walk up and STOP at contact range rather than continuing through the
+    // player and turning round. See the `holding` note in _tick (#39).
+    stopDistance: HEALTH.contactRange + 0.2,
   },
   wallCrawler: {
     hp: 45,
@@ -186,6 +216,7 @@ export const ENEMY = {
     windup: 0.6,
     attackRange: 12,
     attackCooldown: 2.5,
+    stopDistance: HEALTH.contactRange + 0.2,
   },
   turret: {
     hp: 70,
@@ -210,6 +241,7 @@ export const ENEMY = {
     windup: 0.5,
     attackRange: 3,
     attackCooldown: 2.5,
+    stopDistance: HEALTH.contactRange + 0.2,
   },
 };
 // Difficulty = new rules, not bigger health bars.

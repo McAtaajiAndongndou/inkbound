@@ -161,6 +161,31 @@ const L1 = {
     { x: 8.5, y: 1.2, z: -30.4, type: 'sprayer' },
   ],
 
+  // --- the world beyond the causeway (#39 #10) -------------------------------
+  //
+  // The forest could never leave the corridor, because decor only stands on a
+  // floor and there were 22 m of floor. These are the shelves either side of it —
+  // the ground the `backdrop` kind stands on.
+  //
+  // Two things about them are load-bearing rather than scenic:
+  //
+  //   LOWER (y −0.6). The corridor's x edges have no walls, so a shelf level with
+  //   it would be a way around both gates. 0.6 m is not a gameplay barrier, but it
+  //   makes "this is not the route" legible at a glance: the corridor becomes a
+  //   causeway over a drowned forest rather than a wide room.
+  //
+  //   UNREACHABLE, which the gap does. A jump covers 4.6 m and a blue jump 7.3 m
+  //   (measured in `tests/speed-cap.test.js`), so 8 m of lake cannot be crossed
+  //   from either side. If anything ever reduces that jump distance, these stop
+  //   being scenery and become a skip — that is the number to check first.
+  shouldShelf: {
+    gap: 8,        // metres of lethal lake between the corridor edge and the shelf
+    width: 20,
+    y: -0.6,
+    zMin: -41,
+    zMax: 20,
+  },
+
   // The TREES. Hand-placed, because the rules are not geometric:
   //
   //   - every tree must stand ON a floor. A tree over a gap floats, and that is
@@ -285,47 +310,87 @@ const MOOD = {
 // (paint, toon, outline) and the enemies, not just this level's surfaces.
 
 /**
- * THE LAKE — what is at the bottom of the world (#39 #9).
+ * THE TOXIC WASTE in the chasms (#39 #9, reworked).
  *
- * Until now a gap was an absence: the floor stopped, and the corridor's width of
- * black void with some mist over it was the only signal that stepping off kills
- * you. Renda: "maybe add water or toxic waste for the gaps to make it clear that
- * they are deadly".
+ * WHAT CHANGED AND WHY. The first version was ONE translucent sheet spanning the
+ * whole level footprint, with a dark bed underneath it to stop you seeing through.
+ * Renda: "I only want it over the gaps, it shouldn't be transparent". Both halves
+ * of that are right, and the second is the one that mattered: a translucent
+ * surface over a black void reads as a grey smear, which is why it needed a second
+ * opaque mesh underneath just to be legible. One OPAQUE surface needs no bed, and
+ * reads as a solid thing rather than as a filter over nothing.
  *
- * ONE LAKE UNDER EVERYTHING, not one pool per gap, and that turned out to be both
- * simpler and better. The islands and the tower decks are thin planes with
- * nothing beneath them, so a single sheet spanning the level's whole footprint
- * puts liquid under every hole at once — the two gaps, the world's edges, and the
- * far end of the tower's vestibule, where a player who walks the wrong way used
- * to fall into featureless black. Two meshes and two draw calls for the lot.
+ * It is now exactly the holes and nothing else — computed from the level's own
+ * layout rather than from numbers written here, so moving an island moves its pool:
  *
- * It is TOXIC WASTE rather than water, and the story made that call rather than a
- * preference: the world's colour has been siphoned out and sold, so what pools at
- * the bottom of it is drained, sickly and green — the same drained grey-GREEN
- * family as the unpainted ground and foliage (see `PAINT.grey`, `DECOR.tint`). A
- * blue lake would be the one clean, living thing in a dead world.
+ *   - the two GAPS, the jumps
+ *   - the two TRENCHES either side of the causeway, which the forest shelves
+ *     stand across (#39 #10). Not one of the jumps, but the same chasm: leaving
+ *     them black would make the shelves float over a void.
  *
- * THE HEIGHT IS THE WHOLE READABILITY TRICK. The surface sits 1.1 m below the
- * floor and NOT at the bottom of the pit, so from the causeway you see liquid
- * almost immediately under your feet. Push it down to the bottom and it stops
- * being a threat you can see and becomes a floor you fall towards — which is
- * exactly the problem this fixes.
+ * NO DOWNLOAD, deliberately. The art direction is flat toon and this project
+ * strips textures out of every model it ships (tools/strip-glb-textures.mjs) —
+ * a downloaded toxic-waste texture would be the one textured surface in the game,
+ * and would need attribution to match. `createWasteSurface` builds a low-poly,
+ * flat-shaded, gently rippling slab instead: a handful of vertices, no texture, no
+ * licence, and it shades with the scene's sun like everything else. If it ever
+ * wants more detail the upgrade is a code-built noise map like the mist's, not an
+ * asset.
  *
- * It is NOT lethal on touch: it does not collide, and `PLAYER.killY` (−20) is
- * still what kills you. The lake is the signpost; the void is the damage. That
- * split is deliberate — a kill volume per gap would also have to explain why the
- * EDGE of the pool is safe to stand next to.
+ * The surface sits 1.1 m below the floor and NOT at the bottom of the pit, because
+ * the point is that you can SEE it under your feet. Push it down and it stops being
+ * a threat you notice and becomes a floor you fall towards.
+ *
+ * It is NOT lethal on touch: it does not collide, and `PLAYER.killY` (−20) is still
+ * what kills you. The waste is the signpost; the void is the damage. That split is
+ * deliberate — a kill volume per pool would also have to explain why the EDGE of
+ * the pool is safe to stand next to.
  */
-const LAKE = {
-  surfaceY: -1.1,
-  bedY: -2.6,          // opaque, so the lake never shows the nothing underneath
-  surface: 0x86b32d,   // toxic green, in the drained family
-  bed: 0x141c0c,       // near-black olive
-  opacity: 0.9,
-  scroll: 0.035,       // texture drift, so it moves like a liquid
-  overhang: 6,         // metres past the corridor edge, each side
-  padding: 4,          // metres past the first and last floor, so no seam shows
+const WASTE = {
+  y: -1.1,
+  colour: 0x86b32d,    // toxic green, in the same drained family as the dead ground
+  emissive: 0x1d2c07,  // a little self-lit, so it reads as something you should not touch
+  wave: 0.16,          // metres of ripple, under the 0.5 m to the shelves
+  bob: 0.035,
+  bobSpeed: 0.7,
 };
+
+/**
+ * A rippling slab of waste, built in code.
+ *
+ * Integer-frequency sines rather than `Math.random`, for the same reason
+ * `createMistTexture` uses them: the level is then identical every run, and nothing
+ * shimmers between reloads. Displacement is in local Z, which the mesh's
+ * `rotation.x = -PI/2` turns into world Y — so this is height, not depth.
+ */
+function createWasteSurface(width, depth, amplitude) {
+  const geo = new THREE.PlaneGeometry(
+    width, depth,
+    Math.max(2, Math.round(width / 2)),
+    Math.max(2, Math.round(depth / 2)),
+  );
+
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const h = Math.sin(x * 0.55 + y * 0.31) * amplitude
+            + Math.sin(x * 0.23 - y * 0.71) * amplitude * 0.6;
+    pos.setZ(i, h);
+  }
+  pos.needsUpdate = true;
+
+  // FACETED, which on this material has to be done by splitting the vertices
+  // rather than by asking for it: `MeshToonMaterial` has no `flatShading` option
+  // in three r169 (setting it only prints a warning and does nothing). Dropping
+  // the index and recomputing normals gives every triangle its own, which is the
+  // same result and works on any material. A rippled surface needs the facets —
+  // smoothly interpolated normals make it look like a painted floor again.
+  const faceted = geo.toNonIndexed();
+  geo.dispose();
+  faceted.computeVertexNormals();
+  return faceted;
+}
 
 /**
  * The tower's look: concrete, undersides, and the drain field's colour (#39 #6,
@@ -424,10 +489,11 @@ export class Level01 extends LevelBase {
     this._floor(L1.tower.vestibule.zMin, L1.tower.vestibule.zMax, 0);
 
     this._tower();
+    this._shoulders();
     this._beacons();
     this._extraction();
     this._mood();
-    this._lake();
+    this._waste();
     this._light();
     this._decor();
 
@@ -605,66 +671,57 @@ export class Level01 extends LevelBase {
   }
 
   /**
-   * The toxic lake under the whole causeway (#39 #9). See LAKE for why it exists,
-   * why it is one sheet rather than one pool per gap, and why it sits where it
-   * does.
+   * The toxic waste, exactly where the holes are (#39 #9). See WASTE.
    *
-   * Two planes, and both are needed:
-   *   - a dark BED that is opaque, so the lake never shows the void underneath
-   *     (a translucent pool over a black background reads as a grey smear)
-   *   - a translucent, drifting SURFACE just below floor level
+   * The rectangles are DERIVED from the level's own layout — the island table and
+   * the shelf table — rather than written as numbers here, so an island that moves
+   * takes its pool with it. Four slabs, tiled so there is no gap between them:
    *
-   * Both are plain unlit meshes — not level geometry, not PaintSurfaces — so they
-   * cost no collision, no paint grid and no light uniform. `main.js` hides this
-   * group for the minimap pass, like the mist.
-   *
-   * Note what the mist texture is doing here: it is white RGB with all of its
-   * variation in the ALPHA channel, so as a `map` it produces a UNIFORM tint with
-   * a mottled, soft-edged transparency rather than a mottled colour. That is
-   * exactly the read wanted — liquid, uneven, and with no hard rectangle at the
-   * edges of the sheet.
+   *   gap 1   the jump off island A
+   *   gap 2   the jump off island B
+   *   trench  the void either side of the causeway, under the forest shelves
    */
-  _lake() {
-    this.lake = new THREE.Group();
+  _waste() {
+    this.waste = new THREE.Group();
     // Its OWN group under root, NOT inside `atmosphere`. That distinction is
     // load-bearing: `atmosphere` means "air" (the sky dome and the mist sheets),
     // and `tests/level-contract.test.js` reads that group to assert the MIST stops
     // before the spawn island. Waste left in there would be measured as mist.
-    this.root.add(this.lake);
-    this.lakeMaps = [];
+    this.root.add(this.waste);
+    this._wasteTime = 0;
 
-    const zMax = L1.islands.A.zMax + LAKE.padding;
-    const zMin = L1.tower.vestibule.zMin - LAKE.padding;
-    const length = zMax - zMin;
-    const width = L1.corridorHalf * 2 + LAKE.overhang * 2;
-    const z = (zMin + zMax) / 2;
+    // One material for every slab: it never changes, so four slabs cost one.
+    const material = new THREE.MeshToonMaterial({
+      color: WASTE.colour,
+      emissive: WASTE.emissive,
+    });
 
-    const bed = new THREE.Mesh(
-      new THREE.PlaneGeometry(width, length),
-      new THREE.MeshBasicMaterial({ color: LAKE.bed }),
-    );
-    bed.rotation.x = -Math.PI / 2;
-    bed.position.set(0, LAKE.bedY, z);
-    this.lake.add(bed);
+    const inner = L1.corridorHalf;
+    const outer = inner + L1.shouldShelf.gap;
+    const shelf = L1.shouldShelf;
 
-    const map = createMistTexture(96);
-    map.repeat.set(4, 9);      // the sheet is ~60 m long; one tile is a smear
-    const surface = new THREE.Mesh(
-      new THREE.PlaneGeometry(width, length),
-      new THREE.MeshBasicMaterial({
-        map,
-        color: LAKE.surface,
-        transparent: true,
-        opacity: LAKE.opacity,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      }),
-    );
-    surface.rotation.x = -Math.PI / 2;
-    surface.position.set(0, LAKE.surfaceY, z);
-    this.lake.add(surface);
+    const holes = [
+      { xMin: -inner, xMax: inner, zMin: L1.islands.B.zMax, zMax: L1.islands.A.zMin },
+      { xMin: -inner, xMax: inner, zMin: L1.islands.C.zMax, zMax: L1.islands.B.zMin },
+      { xMin: -outer, xMax: -inner, zMin: shelf.zMin, zMax: shelf.zMax },
+      { xMin: inner, xMax: outer, zMin: shelf.zMin, zMax: shelf.zMax },
+    ];
 
-    this.lakeMaps.push({ map });
+    this.wasteSlabs = [];
+    for (const hole of holes) {
+      const mesh = new THREE.Mesh(
+        createWasteSurface(hole.xMax - hole.xMin, hole.zMax - hole.zMin, WASTE.wave),
+        material,
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(
+        (hole.xMin + hole.xMax) / 2,
+        WASTE.y,
+        (hole.zMin + hole.zMax) / 2,
+      );
+      this.waste.add(mesh);
+      this.wasteSlabs.push({ mesh, y: WASTE.y });
+    }
   }
 
   /**
@@ -749,12 +806,13 @@ export class Level01 extends LevelBase {
     // own default direction and quietly disagrees with the ground (#57).
     this.decorMaterials = [this.palette.base, ...Object.values(this.palette.tint)];
 
-    // Only walkable surfaces — see Decor.build. The wall is a PaintSurface too,
-    // and a prop that "stands on" the wall stands inside it.
-    const floors = this._decorFloors();
-
     this.decor = {};
     for (const [kind, config] of Object.entries(KINDS)) {
+      // Only walkable surfaces — see Decor.build. The wall is a PaintSurface too,
+      // and a prop that "stands on" the wall stands inside it. `config.band` picks
+      // WHICH ground: the corridor, or the forest shelves outside it (#39 #10).
+      const floors = this._decorFloors(config.band);
+
       const props = new Decor(this.root, {
         kind, config, palette: this.palette, hand: L1[kind] ?? [],
       });
@@ -781,24 +839,30 @@ export class Level01 extends LevelBase {
   }
 
   /**
-   * The floors the DECOR SCATTER may use — the corridor, and nothing else.
+   * The floors the DECOR SCATTER may use, by BAND.
    *
-   * The tower decks are walkable PaintSurfaces, so they are floors, so they would
-   * be handed to every `Decor` and scattered onto. They must not be, and the
-   * reason is a genuine trap rather than tidiness: `Decor._spots` scatters around
-   * the CENTRE LINE of a floor (`side * (inner + random * (outer - inner))`) and
-   * treats that as a world x. The decks sit off to one side at x 2.5..11, so a
-   * scattered prop on one would be placed as if the deck were centred on x = 0 —
-   * standing in mid-air beside the tower, which is exactly the artefact the
-   * "every prop stands on a floor" test exists to prevent but cannot catch, since
-   * it asks whether ANY floor covers the point and every deck overlaps the
-   * vestibule in x/z.
+   * Two separate reasons a floor must be kept out of the route kinds:
    *
-   * So: the structure carries no ground cover. That is a decision, not an
-   * oversight.
+   * 1. THE TOWER DECKS would be scattered onto if they were not excluded, and
+   *    `Decor._spots` scatters around a floor's CENTRE LINE and treats that as a
+   *    world x. The decks sit off to one side at x 2.5..11, so a prop on one is
+   *    placed as if the deck were centred on x = 0 — standing in mid-air beside
+   *    the tower. The "every prop stands on a floor" test cannot catch that,
+   *    because it asks whether ANY floor covers the point and every deck overlaps
+   *    the vestibule in x/z.
+   *
+   * 2. THE FOREST SHELVES should be dressed by `backdrop` ONLY. A corridor kind
+   *    scattered across them would put trees in the lake between the two, since
+   *    the shelf bands are built from the shelf's own centre line.
+   *
+   * So the structure and the far shelves are separated by band rather than by
+   * accident, and a kind declares which band it belongs to (`KINDS[kind].band`).
    */
-  _decorFloors() {
-    return this.surfaces.filter((s) => s.isFloor && !s.tower);
+  _decorFloors(band = 'route') {
+    if (band === 'backdrop') {
+      return this.surfaces.filter((s) => s.isFloor && s.shoulder);
+    }
+    return this.surfaces.filter((s) => s.isFloor && !s.tower && !s.shoulder);
   }
 
   update(dt, player) {
@@ -823,14 +887,12 @@ export class Level01 extends LevelBase {
       m.map.offset.y = oy >= 1 ? oy - 1 : (oy < 0 ? oy + 1 : oy);
     }
 
-    // Drift the toxic lake too. Same idea as the mist above, and the same reason
-    // for it: one texture offset per layer, so it allocates nothing.
-    for (let i = 0; i < this.lakeMaps.length; i++) {
-      const map = this.lakeMaps[i].map;
-      const ox = map.offset.x + LAKE.scroll * dt;
-      const oy = map.offset.y + LAKE.scroll * 0.55 * dt;
-      map.offset.x = ox >= 1 ? ox - 1 : ox;
-      map.offset.y = oy >= 1 ? oy - 1 : oy;
+    // The waste breathes, so it reads as a liquid rather than as a painted floor.
+    // A phase per slab keeps the four from pumping in lockstep.
+    this._wasteTime += dt;
+    for (let i = 0; i < this.wasteSlabs.length; i++) {
+      const slab = this.wasteSlabs[i];
+      slab.mesh.position.y = slab.y + Math.sin(this._wasteTime * WASTE.bobSpeed + i * 1.7) * WASTE.bob;
     }
 
     // The decor wakes up where the player paints. Each kind runs its own
@@ -1008,23 +1070,55 @@ export class Level01 extends LevelBase {
   }
 
   /**
-   * A walkable surface that is NOT centred on x = 0.
+   * The two forest shelves either side of the corridor (#39 #10). See
+   * `L1.shouldShelf` for why they exist and why they are lower and unreachable.
    *
-   * `_floor` assumes the corridor's centre line, and every deck on the tower is
-   * against the +x wall. This is the same thing with its own footprint, and it
-   * carries `tower: true` so the decor scatter can tell the two apart — see
-   * `_decorFloors`, which is a real bug waiting to happen rather than tidiness.
+   * Marked `shoulder` so `_decorFloors` can hand the right band of ground to the
+   * right kind of prop: the corridor kinds dress the route, and only `backdrop`
+   * dresses these.
    */
-  _deck({ y, zMin, zMax, xMin = L1.tower.xMin, xMax = L1.tower.xMax }) {
+  _shoulders() {
+    const s = L1.shouldShelf;
+    const inner = L1.corridorHalf + s.gap;
+    const outer = inner + s.width;
+
+    for (const side of [-1, 1]) {
+      this._platform({
+        y: s.y,
+        zMin: s.zMin,
+        zMax: s.zMax,
+        xMin: side === 1 ? inner : -outer,
+        xMax: side === 1 ? outer : -inner,
+        mark: 'shoulder',
+      });
+    }
+  }
+
+  /**
+   * A walkable surface with its own footprint, for anything that is not the
+   * corridor: the tower decks (against the +x wall) and the forest shelves (well
+   * outside it) both need one. `_floor` assumes the corridor's centre line.
+   *
+   * `mark` tags the surface with the band of ground it belongs to, which is what
+   * `_decorFloors` reads. It is not decoration on the object: the decor scatter
+   * assumes a floor's centre line is at x = 0 (see `_decorFloors`), so getting a
+   * prop onto the wrong one is a silent mid-air placement.
+   */
+  _platform({ y, zMin, zMax, xMin, xMax, mark }) {
     const s = new PaintSurface({ width: xMax - xMin, height: zMax - zMin, cells: L1.cells });
     s.mesh.rotation.x = -Math.PI / 2;
     s.mesh.position.set((xMin + xMax) / 2, y, (zMin + zMax) / 2);
     s.mesh.receiveShadow = true;
     s.isFloor = true;
-    s.tower = true;
+    s[mark] = true;
     this.root.add(s.mesh);
     this.surfaces.push(s);
     return s;
+  }
+
+  /** The tower's decks: `_platform` pinned to the tower's footprint. */
+  _deck({ y, zMin, zMax, xMin = L1.tower.xMin, xMax = L1.tower.xMax }) {
+    return this._platform({ y, zMin, zMax, xMin, xMax, mark: 'tower' });
   }
 
   /**

@@ -281,10 +281,10 @@ function animate() {
   const pad = 16;
   const fog = scene.fog;
   const atmosphere = level.atmosphere;
-  const lake = level.lake;
+  const waste = level.waste;
   scene.fog = null;
   if (atmosphere) atmosphere.visible = false;
-  if (lake) lake.visible = false;
+  if (waste) waste.visible = false;
   renderer.setScissorTest(true);
   renderer.setViewport(w - size - pad, h - size - pad, size, size);
   renderer.setScissor(w - size - pad, h - size - pad, size, size);
@@ -292,7 +292,7 @@ function animate() {
   renderer.setScissorTest(false);
   scene.fog = fog;
   if (atmosphere) atmosphere.visible = true;
-  if (lake) lake.visible = true;
+  if (waste) waste.visible = true;
 }
 
 

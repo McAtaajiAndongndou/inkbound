@@ -4,7 +4,7 @@ import * as THREE from 'three';
 
 import { Level01 } from '../src/levels/level-01-mission.js';
 import { Player } from '../src/core/player.js';
-import { ENEMY, PLAYER, SURFACE } from '../src/config.js';
+import { ENEMY, HEALTH, PLAYER, SURFACE } from '../src/config.js';
 
 function makeGame() {
   return { scene: new THREE.Scene(), onWin: null };
@@ -145,8 +145,9 @@ test('isFloor splits surfaces the way the player controller will (floors vs wall
   const floors = level.surfaces.filter((s) => s.isFloor);
   const walls = level.surfaces.filter((s) => !s.isFloor);
 
-  // islands A/B/C + the tower's vestibule + deck 1/2/3 (#39 #6)
-  assert.equal(floors.length, 7);
+  // islands A/B/C + the tower's vestibule + deck 1/2/3 + the two forest shelves
+  // (#39 #6, #10)
+  assert.equal(floors.length, 9);
   // 2 gates + 3 climb faces + the block you walk around on deck 1
   assert.equal(walls.length, 6);
   assert.equal(floors.every((s) => s.isFloor === true), true);
@@ -316,6 +317,44 @@ test('enemy.position is the same Vector3 as mesh.position, so they cannot drift'
  * the lesson: the Charger teaches "paint blue to make it slide past" on island B,
  * and the Sprayer pressures the red pad on island C.
  */
+/**
+ * #39 — "when the charger collides with the player they start tweaking".
+ *
+ * There is no enemy-versus-player collision in this engine, so a Charger used to
+ * walk straight THROUGH the player, flip 180 degrees to come back, and repeat every
+ * few frames at 5 m/s. The stop has to be behaviour.
+ *
+ * The ice test below depends on the counterpart of this: a melee enemy that brakes
+ * on arrival cannot build speed from a short runway, and the SAME brake must not
+ * apply on blue paint or island B's lesson disappears.
+ */
+test('a melee enemy stops at the player instead of walking through them (#39)', async () => {
+  const { level } = await buildLevel();
+  const [charger] = level.enemies;
+  const islandB = level.surfaces.find((s) => s.isFloor
+    && s.mesh.position.z < 0 && s.mesh.position.z > -5);
+
+  const target = new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z);
+  charger.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 5);
+
+  // Give it long enough to arrive and settle: twice the runway, ten times over.
+  for (let i = 0; i < 300; i++) charger.update(1 / 60, target);
+
+  const dist = Math.hypot(target.x - charger.position.x, target.z - charger.position.z);
+  assert.ok(dist > 0.5,
+    `the Charger ended up ${dist.toFixed(2)} m from the player — it walked through them`);
+  assert.ok(dist <= HEALTH.contactRange + 0.5,
+    `the Charger stopped ${dist.toFixed(2)} m away, too far to be a melee threat`);
+  assert.ok(charger._vel.length() < 0.5,
+    `it should have settled, but is still moving at ${charger._vel.length().toFixed(2)} m/s`);
+
+  // It did not oscillate: the position at the end is where it was 30 frames ago.
+  const settled = charger.position.clone();
+  for (let i = 0; i < 30; i++) charger.update(1 / 60, target);
+  assert.ok(charger.position.distanceTo(settled) < 0.05,
+    `the Charger is still moving ${charger.position.distanceTo(settled).toFixed(3)} m per half second`);
+});
+
 test('the DESIGN.md teaching beats are placed on the right islands', async () => {
   const { level } = await buildLevel();
 
@@ -648,14 +687,18 @@ test('on blue a Charger commits to its heading and slides past a sidestep', asyn
   const midZ = islandB.mesh.position.z;
   const midY = islandB.mesh.position.y;
 
-  // Same setup as above: committed, moving, aimed down -z at the player.
-  charger.position.set(0, midY, midZ + 3);
-  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(0, midY, midZ));
+  // Same setup as above — aimed down -z at the player, committed and moving —
+  // but with MORE RUNWAY, and that is a consequence of the stop below: a melee
+  // enemy now brakes as it arrives (see `stopDistance`), so charging from 3 m away
+  // never reaches full speed. 5 m of island B, and the charge is up to its
+  // terminal ~4.17 m/s (accel against grey's 10/s friction) before the paint lands.
+  charger.position.set(0, midY, midZ + 5);
+  for (let i = 0; i < 50; i++) charger.update(1 / 60, new THREE.Vector3(0, midY, midZ));
 
   const speedBefore = charger._vel.length();
 
   // The player paints the floor under it, then sidesteps to +x.
-  islandB.splat(new THREE.Vector3(0, midY, midZ + 3), 'blue', 60);
+  islandB.splat(new THREE.Vector3(0, midY, midZ + 5), 'blue', 80);
   const heading = charger._vel.clone().setY(0).normalize();
   for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(4, midY, midZ));
   const drifted = charger._vel.clone().setY(0).normalize();
