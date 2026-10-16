@@ -47,12 +47,12 @@ test('each gate watches only the enemies that belong to its own arena (#37, #56)
     'island C\'s enemies must not hold island B shut');
 
   assert.equal(level.gateC.open, false, 'island C starts sealed');
-  // Island C's door now watches the arena floor AND the stair tower (#39 #6): the
-  // two shooters on deck 1 are the other half of the same fight, and they are not
-  // on island C — which is why an arena is a predicate rather than an island key.
+  // Island C's door watches the ARENA FLOOR only — the two that rush you. The two
+  // shooters up the right-hand pillar are not part of it: they stand on the only
+  // landing you can bounce to, so there is nothing to run past.
   assert.deepEqual(level.gateC.watch.map((e) => e.type).sort(),
-    ['charger', 'sprayer', 'sprayer', 'sprayer'],
-    'island B\'s Charger must not hold island C shut, and the tower must be included');
+    ['charger', 'sprayer'],
+    `island C's door watches the arena floor only, got ${level.gateC.watch.map((e) => e.type)}`);
 });
 
 test('the island B gate blocks progress until island B is clear (#37)', async () => {
@@ -229,7 +229,7 @@ test('the extraction only fires once island C is clear — the climb-proof check
   let wins = 0;
   game.onWin = () => { wins += 1; };
 
-  const atExtraction = { position: new THREE.Vector3(6, 9, -43.5) };
+  const atExtraction = { position: new THREE.Vector3(6, 12, -43.5) };
 
   // The arena is what gates the win, and it is checked separately from the door's
   // collision entirely: `_arenaCleared` cannot be painted, climbed or walked

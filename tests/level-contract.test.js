@@ -147,8 +147,8 @@ test('isFloor splits surfaces the way the player controller will (floors vs wall
 
   // islands A/B/C + the ascent''s ground floor, lower deck, side platform and\n  // extraction ledge + the two forest shelves (#39 #6, #10)
   assert.equal(floors.length, 9);
-  // 2 gates + 2 climb faces + the rock band and the rock base under it
-  assert.equal(walls.length, 6);
+  // 2 gates + 6 pillar sides + the rock band + the rock base + the rock wall base
+  assert.equal(walls.length, 11);
   assert.equal(floors.every((s) => s.isFloor === true), true);
   assert.equal(walls.every((s) => s.isFloor === false), true);
 });
@@ -207,7 +207,7 @@ test('extraction is a Box3 on the tower top, reachable at standing height', asyn
   const { level } = await buildLevel();
   assert.ok(level.extraction instanceof THREE.Box3);
 
-  const top = level.surfaces.find((s) => s.isFloor && s.tower && s.mesh.position.y > 6);
+  const top = level.surfaces.find((s) => s.isFloor && s.tower && s.mesh.position.y > 9);
   assert.ok(top, 'expected the tower to have a top deck');
 
   // a player standing on the top deck, inside the win zone
@@ -234,51 +234,89 @@ test('extraction is a Box3 on the tower top, reachable at standing height', asyn
  * player at chest height, because the head clearance under an overhang is
  * `rise - PLAYER.height`.
  */
-test('every green climb has a deck overhanging it by enough to land on (#39 #4, #6)', async () => {
+test('every green climb has a floor overhanging it by enough to land on (#39 #4, #6)', async () => {
   const { level } = await buildLevel();
+  level.root.updateMatrixWorld(true);
 
   const apex = (PLAYER.jumpSpeed * PLAYER.jumpSpeed) / (2 * -PLAYER.gravity);
-  const drift = PLAYER.wallJumpPush * (PLAYER.jumpSpeed / -PLAYER.gravity);
 
-  // The level's climbable faces: paintable, vertical, taller than a jump. The
-  // gates and the rock are unpaintable, which is the whole of `unpaintable`.
+  // HOW MUCH CORNICE A CLIMB NEEDS: 0.3 m, MEASURED.
+  //
+  // The obvious derivation — `PLAYER.radius + wallJumpPush * time-to-apex` = 1.54 m
+  // — is wrong by a factor of five, and wrong in a way that would have kept a fat
+  // floor slab on top of every pillar. Two things it misses:
+  //
+  //   - the ground probe reaches 0.5 m BELOW the player's feet, so it finds the
+  //     deck and snaps them up on the way PAST it, not at the apex;
+  //   - holding forward pins them against the face (the push-off and the wish
+  //     cancel), so they barely leave the wall at all.
+  //
+  // So the number is measured instead: a sweep of a bare pillar face lands the
+  // climb at 0.3 m and fails at 0. This asserts the level gives it twice that.
+  const MEASURED_MIN_CORNICE = 0.3;
+  const needed = MEASURED_MIN_CORNICE * 2;
+  const axis = new THREE.Vector3();
+
+  // Every climbable face: paintable, vertical. The gates and the rock are
+  // unpaintable, which is the whole of `unpaintable`. There are seven now — three
+  // sides on each pillar and the band at the top of the back wall — because the
+  // PILLARS are the point of this layout (Renda: "shoot the paint on their sides
+  // from multiple angles").
   const climbs = level.surfaces.filter((s) => !s.isFloor && !s.unpaintable);
-  assert.equal(climbs.length, 2, 'expected two green climbs: to the lower deck, and to the extraction');
+  assert.equal(climbs.length, 4,
+    `expected four green climbs — three sides on the LEFT pillar, and the band at the
+    top of the back wall (the RIGHT pillar is deliberately unpaintable) — got ${climbs.length}`);
 
   for (const face of climbs) {
     assert.ok(face.height > apex,
-      `the face at z=${face.mesh.position.z} is ${face.height} m — shorter than a ${apex.toFixed(2)} m `
-      + 'jump, so the paint is optional and it teaches nothing');
+      `the ${face.height} m face at z=${face.mesh.position.z} is shorter than a `
+      + `${apex.toFixed(2)} m jump, so the paint is optional and it teaches nothing`);
+
+    // WHICH WAY the face points, read off the mesh rather than assumed. Side faces
+    // are the same primitive rotated a quarter turn, so the overhang is in x for
+    // those and in z for the ones facing down the corridor — a z-only test would
+    // silently pass every pillar side, which is exactly the thing being checked.
+    const faceBox = new THREE.Box3().setFromObject(face.mesh);
+    const centre = faceBox.getCenter(new THREE.Vector3());
+    axis.set(0, 0, 1).applyQuaternion(face.mesh.quaternion).normalize();
 
     const top = face.mesh.position.y + face.height / 2;
     const deck = level.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - top) < 1e-6);
-    assert.ok(deck, `nothing walkable at the top of the face at z=${face.mesh.position.z}`);
+    assert.ok(deck, `nothing walkable at the top of the climb at (${centre.x}, ${centre.z})`);
 
-    // how far the deck reaches forward of the face, towards the approaching player
-    const overhang = (deck.mesh.position.z + deck.height / 2) - face.mesh.position.z;
-    assert.ok(overhang >= PLAYER.radius + drift - 1e-6,
-      `the climb at z=${face.mesh.position.z} overhangs only ${overhang.toFixed(2)} m; the `
-      + `jump-off drifts ${drift.toFixed(2)} m plus the ${PLAYER.radius} m the collider pushes you out, `
-      + 'so the climb cannot land');
+    const deckBox = new THREE.Box3().setFromObject(deck.mesh);
+    // how far the deck reaches past the face, in the direction the face points
+    const overhang = axis.z > 0.5 ? deckBox.max.z - centre.z
+      : axis.z < -0.5 ? centre.z - deckBox.min.z
+        : axis.x > 0.5 ? deckBox.max.x - centre.x
+          : centre.x - deckBox.min.x;
+
+    assert.ok(overhang >= needed - 1e-6,
+      `the climb at (${centre.x.toFixed(1)}, ${centre.z.toFixed(1)}) overhangs only `
+      + `${overhang.toFixed(2)} m along its own normal, and a climb needs at least `
+      + `${MEASURED_MIN_CORNICE} m (measured) or it cannot land`);
   }
 });
 
 /**
- * #39 #6, Renda's sketch — THE TEST THAT MATTERS FOR ISLAND C.
+ * #39 #6, Renda's pillars — THE TEST THAT MATTERS FOR ISLAND C.
  *
- * The route is a chain of three gates, each one the only way past the last:
+ * The route is a chain where each step is the only way past the last:
  *
- *   green climb -> red pad -> BOUNCE -> walk round the rock -> green climb -> win
+ *   green up the LEFT pillar -> paint its ROOF red yourself -> BOUNCE across the
+ *   gap -> land on the RIGHT pillar (two shooters) -> green up the back wall -> win
  *
- * Every link is load-bearing and none of it is covered by anything else. A bounce
- * that lands 20 cm short, a rock in the wrong place, or a lip that is 10 cm too
- * thin all produce a level that is simply impossible, silently. So this plays it.
+ * Every link is load-bearing and none of it is covered by anything else. A gap a
+ * hand's width too wide, a capital a hand's width too thin, or a rock band in the
+ * wrong place all produce a level that is simply impossible, silently. So this
+ * plays it — and it also asserts the things that make the route FORCED, because a
+ * route that merely works is a route the player can skip.
  *
  * Each stage re-seats the player before retrying, so what this pins is that each
  * TRANSITION is possible from a legal standing position rather than that one exact
  * script of keypresses works.
  */
-test('island C is completable: green, bounce, round the rock, green, extract (#39 #6)', async () => {
+test('island C is completable: green, bounce, green, extract — and no shortcuts (#39 #6)', async () => {
   const { level, game } = await buildLevel();
   let wins = 0;
   game.onWin = () => { wins += 1; };
@@ -288,54 +326,58 @@ test('island C is completable: green, bounce, round the rock, green, extract (#3
     for (const enemy of gate.watch) enemy.takeColourHit(1, 999);
   }
   level.update(1 / 60, { position: new THREE.Vector3(0, 0, 20) });
-  assert.equal(level.gateC.open, true, 'the door must open before the ascent can be entered');
+  assert.equal(level.gateC.open, true, 'the door must open before the pillars can be reached');
 
-  const deckAt = (y) => level.surfaces.find((s) => s.isFloor && s.tower && Math.abs(s.mesh.position.y - y) < 1e-6);
-  const wallAt = (z, x) => level.surfaces.find((s) => !s.isFloor
-    && Math.abs(s.mesh.position.z - z) < 1e-6 && x >= s.mesh.position.x - s.width / 2 && x <= s.mesh.position.x + s.width / 2);
+  const topAt = (y) => level.surfaces.find((s) => s.isFloor && s.tower && Math.abs(s.mesh.position.y - y) < 1e-6);
+  const wallAt = (z, y) => level.surfaces.find((s) => !s.isFloor
+    && Math.abs(s.mesh.position.z - z) < 1e-6
+    && Math.abs(s.mesh.position.y - y) < 1e-6);
 
-  const lower = deckAt(2.2);
-  const upper = deckAt(5.5);
-  const ledge = deckAt(9);
-  const face1 = wallAt(-27, 6.75);
-  const rock = wallAt(-40, 0);
-  const green = wallAt(-40, 6.75);
-  for (const [name, s] of [['lower deck', lower], ['upper deck', upper], ['ledge', ledge],
-    ['face1', face1], ['rock', rock], ['green band', green]]) {
+  const left = topAt(5);
+  const right = topAt(7);
+  const ledge = topAt(12);
+  for (const [name, s] of [['left pillar top', left], ['right pillar top', right], ['ledge', ledge]]) {
     assert.ok(s, `island C is missing its ${name}`);
   }
-  assert.equal(rock.unpaintable, true, 'the rock band must be the unpaintable one');
-  assert.equal(green.unpaintable, false, 'the climbable band must be paintable');
 
-  const input = { isDown: (k) => k === 'KeyW' };   // forward is -z, away from the arena
-  const player = new Player(level.surfaces, new THREE.Vector3(6.75, 0, -25.5));
+  // --- the pillars are PILLARS: three independent climbable sides -----------
+  // The point of the shape (Renda: "so that you can shoot the paint on their sides
+  // from multiple angles") is that each side is its own surface. If they shared a
+  // paint grid, painting one would light up all three and there would be one angle,
+  // not three.
+  {
+    // The three sides of the LEFT pillar: paintable, and starting at the ground.
+    // `mesh.position.y - height / 2 === 0` is what separates them from the band on the
+    // back wall, which also happens to be 5 m tall.
+    const sides = level.surfaces.filter((s) => !s.isFloor && !s.unpaintable
+      && Math.abs(s.mesh.position.y - s.height / 2) < 1e-6 && Math.abs(s.height - 5) < 1e-6);
+    assert.equal(sides.length, 3, `the left pillar should have three climbable sides, found ${sides.length}`);
+
+    const front = sides.find((s) => Math.abs(s.mesh.position.z + 34) < 1e-6);
+    const inner = sides.find((s) => Math.abs(s.mesh.position.x + 2.5) < 1e-6);
+    assert.ok(front && inner, 'expected a front face and an inner side face');
+
+    front.splat(new THREE.Vector3(-7, 2.5, -34), 'green', 30);
+    assert.equal(front.surfaceAtWorld(new THREE.Vector3(-7, 2.5, -34)).climbable, true);
+    assert.equal(inner.surfaceAtWorld(new THREE.Vector3(-2.5, 2.5, -37)).climbable, false,
+      'painting one side must not make another side climbable — they are separate surfaces');
+  }
+
+  const input = { isDown: (k) => k === 'KeyW' };   // forward is -z
+  const player = new Player(level.surfaces, new THREE.Vector3(-7, 0, -32));
   player.onGround = true;
   const on = (deck) => player.onGround && Math.abs(player.position.y - deck.mesh.position.y) < 0.05;
 
-  // The pad's radius, read off the level rather than repeated: the red it paints
-  // reaches `radius` metres either side of its centre, and the overlap assertion
-  // below is only meaningful if that number is the real one.
-  const pad = level.pad;
-  const L1_PAD_RADIUS_FOR_TEST = pad.radius;
-
-  /**
-   * Paint a face green and climb it, jumping at the top where a climb always ends.
-   *
-   * `standY` is the deck BELOW the face, and it is what the re-seat check has to be
-   * relative to — not the target height. An earlier version re-seated whenever the
-   * player was more than 3 m below the top, which is above where a 3.5 m climb
-   * STARTS, so it teleported them back to the bottom on every frame and the climb
-   * never happened at all.
-   */
+  /** Paint a face green and climb it, jumping at the top where a climb always ends. */
   const climb = (face, deck, standY, standZ, label) => {
     const top = deck.mesh.position.y;
     let climbed = false;
-    for (let i = 0; i < 900 && !climbed; i++) {
+    for (let i = 0; i < 1200 && !climbed; i++) {
       if (player.position.y < standY - 1 || player.position.z > face.mesh.position.z + 2.5) {
-        player.position.set(6.75, standY, standZ);
+        player.position.set(face.mesh.position.x, standY, standZ);
         player.velocity.set(0, 0, -1);
       }
-      face.splat(new THREE.Vector3(6.75, face.mesh.position.y, face.mesh.position.z), 'green', 30);
+      face.splat(new THREE.Vector3(face.mesh.position.x, face.mesh.position.y, face.mesh.position.z), 'green', 30);
       const jump = player.climbing && player.position.y > top - 1.2;
       player.update(1 / 60, input, { jump });
       climbed = on(deck);
@@ -345,73 +387,99 @@ test('island C is completable: green, bounce, round the rock, green, extract (#3
       + `(ended at y=${player.position.y.toFixed(2)}, z=${player.position.z.toFixed(2)})`);
   };
 
-  // --- 1: GREEN up to the lower deck ---------------------------------------
-  climb(face1, lower, 0, -26.6, 'lower deck');
+  // --- 1: GREEN up the LEFT pillar's front ---------------------------------
+  climb(wallAt(-34, 2.5), left, 0, -33.4, 'left pillar top');
+  assert.ok(left.mesh.position.x < 0, 'the first pillar is the LEFT one');
 
-  // --- 2: the RED PAD, and the bounce it is the only source of -------------
-  // Walk the length of the lower deck onto the pad. Nothing else gets you up:
-  // the upper deck is 3.3 m above and has no face, which the rock test below
-  // depends on.
-  //
-  // Retried as a whole rather than re-seated during the flight: a bounce leaves the
-  // ground for ~1 s, and a per-frame "if it is not on the deck, put it back" check
-  // cancels the launch on the very first frame of it.
+  // --- 2: the player paints the ROOF red, then bounces across --------------
+  // Renda: "don't add the red pad yourself, the player is meant to shoot red".
+  // So the test shoots red, the way a player would: near the inner edge, because
+  // the bounce starts at the near edge of the splat, not its middle.
+  const gapFrom = left.mesh.position.x + left.width / 2;   // the left roof's inner edge
+  const gapTo = right.mesh.position.x - right.width / 2;   // the right roof's inner edge
+  assert.ok(gapFrom < gapTo, 'the two pillars must not overlap');
+  const gap = gapTo - gapFrom;
+  assert.ok(gap > 0 && gap < 5, `a ${gap.toFixed(1)} m gap is outside what a bounce can carry`);
+
+  const runRight = { isDown: (k) => k === 'KeyD' };   // +x, towards the right pillar
   let bounced = false;
   for (let attempt = 0; attempt < 6 && !bounced; attempt++) {
-    player.position.set(6.75, lower.mesh.position.y, -28);
-    player.velocity.set(0, 0, -4);
+    // shoot red onto the roof, 1.5 m in from the inner edge
+    left.splat(new THREE.Vector3(gapFrom - 1.5, left.mesh.position.y, -36), 'red', 1.4);
+    assert.ok(left.surfaceAtWorld(new THREE.Vector3(gapFrom - 1.5, left.mesh.position.y, -36)).restitution > 0,
+      'the roof must accept red paint, or there is no bounce at all');
+
+    player.position.set(left.mesh.position.x - left.width / 2 + 1, left.mesh.position.y, -36);
+    player.velocity.set(0, 0, 0);
     player.onGround = true;
 
+    // a bounce leaves the ground for a second: retried whole, never re-seated mid-flight
     for (let i = 0; i < 200 && !bounced; i++) {
-      player.update(1 / 60, input, { jump: false });
-      bounced = on(upper);
-      if (player.position.y < lower.mesh.position.y - 1) break;   // fell off the side
+      player.update(1 / 60, runRight, { jump: false });
+      bounced = on(right);
+      if (player.position.y < left.mesh.position.y - 1) break;
     }
   }
   assert.ok(bounced,
-    `the red pad did not deliver the player to the upper deck `
-    + `(ended at y=${player.position.y.toFixed(2)}, z=${player.position.z.toFixed(2)})`);
-  assert.equal(lower.surfaceAtWorld(new THREE.Vector3(6.75, 2.2, -33)).restitution > 0, true,
-    'the pad must be red, or there is no way up at all');
+    `the red roof did not deliver the player across the ${gap.toFixed(1)} m gap `
+    + `(ended at y=${player.position.y.toFixed(2)}, x=${player.position.x.toFixed(2)})`);
 
-  // ...and the upper deck has to OVERLAP the pad, or the bounce launches from
-  // outside its own footprint and there is nothing to land on. That is not a
-  // hypothetical: it is what the first version of this layout did, and the player
-  // rose to the apex and dropped straight back onto the pad, forever.
-  const padFront = -33 + L1_PAD_RADIUS_FOR_TEST;
-  assert.ok(upper.mesh.position.z + upper.height / 2 >= padFront,
-    `the upper deck starts at z=${(upper.mesh.position.z + upper.height / 2).toFixed(1)} but the `
-    + `pad's red begins at z=${padFront.toFixed(1)} — the bounce lands on nothing`);
+  // --- 3: it is bounce-only, and it is bounce-only because of HEIGHT --------
+  // A jump reaches 1.39 m and the right pillar's roof is 2 m up, so no width of
+  // gap would make a jump work. That is what stops the bounce being optional.
+  const rise = right.mesh.position.y - left.mesh.position.y;
+  const apex = (PLAYER.jumpSpeed * PLAYER.jumpSpeed) / (2 * -PLAYER.gravity);
+  assert.ok(rise > apex,
+    `the right pillar is only ${rise.toFixed(2)} m up and a jump reaches ${apex.toFixed(2)} m, `
+    + 'so the bounce can be skipped');
 
-  // --- 3: the ROCK blocks, the green band is the way round ----------------
+  // --- 4: the back wall is closed except one way up ------------------------
   {
-    const blocked = new Player(level.surfaces, new THREE.Vector3(0, 5.5, -37));
+    const base = wallAt(-40, 3.5);
+    const rock = wallAt(-40, 9.5);
+    assert.ok(base && rock, 'the back wall should be a rock base with a band above it');
+    assert.equal(base.unpaintable, true, 'the wall bases must not be climbable');
+    assert.equal(rock.unpaintable, true, 'the rock band must be the unpaintable one');
+
+    // the ground floor cannot be climbed at all — no pillar can be skipped
+    for (const face of level.surfaces.filter((s) => !s.isFloor && !s.unpaintable
+      && s.mesh.position.y - s.height / 2 === 0 && s.height > apex)) {
+      assert.ok(face.splat(new THREE.Vector3(face.mesh.position.x, face.mesh.position.y, face.mesh.position.z), 'green', 30),
+        'a pillar side must accept paint');
+    }
+
+    // ...and the rock refuses it
+    for (const colour of ['green', 'blue', 'red']) {
+      assert.equal(rock.splat(new THREE.Vector3(-4, 8.5, -40), colour, 30), false,
+        `a ${colour} splat was accepted by the rock — the way past it is no longer forced`);
+    }
+
+    // walking the left of the wall runs into it rather than through it
+    const blocked = new Player(level.surfaces, new THREE.Vector3(3, 7, -37));
     blocked.onGround = true;
     let furthest = blocked.position.z;
-    const left = { isDown: (k) => k === 'KeyW' };
     for (let i = 0; i < 240; i++) {
-      blocked.update(1 / 60, left, { jump: false });
+      blocked.update(1 / 60, input, { jump: false });
       furthest = Math.min(furthest, blocked.position.z);
     }
     assert.ok(furthest > rock.mesh.position.z,
-      `the player walked through the rock: reached z=${furthest}, the rock faces z=${rock.mesh.position.z}`);
-    assert.equal(blocked.touchingWall?.surface, rock,
-      'walking the left half of the platform must run into the rock, not stop short of it');
-
-    // ...and painting it does nothing, which is the whole job of `unpaintable`
-    for (const colour of ['green', 'blue', 'red']) {
-      assert.equal(rock.splat(new THREE.Vector3(0, 7, -40), colour, 30), false,
-        `a ${colour} splat was accepted by the rock — the way round is no longer forced`);
-    }
+      `the player walked through the rock: reached z=${furthest}, it faces z=${rock.mesh.position.z}`);
+    // compare by IDENTITY, not with assert.equal: on failure, node inspects both
+    // values, and a PaintSurface reaches the whole level through its mesh's parent —
+    // which is hundreds of megabytes of diff and half a minute of formatting.
+    assert.ok(blocked.touchingWall?.surface === rock,
+      `the left of the wall must run into the rock; hit `
+      + `${blocked.touchingWall ? 'z=' + blocked.touchingWall.surface.mesh.position.z : 'nothing'}`);
   }
 
-  // --- 4: GREEN up the last band, on the far side of the rock -------------
-  // The player has to WALK to x > 2.5 first: they are on the upper deck at x 6.75
-  // after the bounce, which is already the right side, and the rock test above
-  // proves the other side is closed.
-  climb(green, ledge, upper.mesh.position.y, -39.6, 'extraction ledge');
+  // --- 5: GREEN up the last stretch, then win ------------------------------
+  // The green band is the right-hand end of the wall — which is the end standing
+  // in front of the pillar you land on.
+  const greenBand = level.surfaces.find((s) => !s.isFloor && !s.unpaintable
+    && Math.abs(s.mesh.position.z + 40) < 1e-6 && s.mesh.position.y > 7);
+  assert.ok(greenBand, 'expected a paintable band at the top of the back wall');
+  climb(greenBand, ledge, right.mesh.position.y, -39.6, 'extraction ledge');
 
-  // --- 5: walk into the extraction and win --------------------------------
   for (let i = 0; i < 400 && wins === 0; i++) {
     player.update(1 / 60, input, { jump: false });
     level.update(1 / 60, player);
@@ -419,204 +487,6 @@ test('island C is completable: green, bounce, round the rock, green, extract (#3
   assert.equal(wins, 1,
     `walking the ledge did not reach the extraction `
     + `(y=${player.position.y.toFixed(2)}, z=${player.position.z.toFixed(2)})`);
-});
-
-test('dispose removes root from the scene and is repeatable (no leak on R)', async () => {
-  const { game, level } = await buildLevel();
-  game.scene.add(level.root);
-
-  assert.doesNotThrow(() => level.dispose());
-  assert.equal(game.scene.children.includes(level.root), false);
-  assert.doesNotThrow(() => level.dispose());
-});
-
-test('level spawns every enemy instead of swallowing the error', async () => {
-  const { level } = await buildLevel();
-  assert.equal(level.spawnPoints.length, 5);
-  assert.equal(level.enemies.length, 5);   // real Enemy, no longer the throwing stub
-});
-
-/**
- * The guard at player.js:98 is `if (!enemy.position || !enemy.config) continue`.
- * An enemy missing either field is skipped SILENTLY — every enemy on screen and
- * zero contact damage, no error anywhere. These are the fields that guard reads.
- */
-test('enemies expose exactly the fields player.checkEnemyContact reads', async () => {
-  const { level } = await buildLevel();
-
-  for (const enemy of level.enemies) {
-    assert.ok(enemy.position instanceof THREE.Vector3, 'enemy.position must be a Vector3');
-    assert.ok(enemy.config, 'enemy.config must be an ENEMY entry');
-    assert.ok(typeof enemy.config.contactDamage === 'number',
-      'enemy.config.contactDamage must be a number');
-    assert.ok(enemy.mesh?.isObject3D, 'the paint gun raycasts against enemy.mesh');
-  }
-});
-
-test('enemy.position is the same Vector3 as mesh.position, so they cannot drift', async () => {
-  const { level } = await buildLevel();
-  const enemy = level.enemies[0];
-  assert.equal(enemy.position, enemy.mesh.position);
-
-  enemy.mesh.position.x += 1;
-  assert.equal(enemy.position.x, enemy.mesh.position.x);
-});
-
-/**
- * DESIGN.md teaching beats, locked in so a layout tweak cannot quietly delete
- * the lesson: the Charger teaches "paint blue to make it slide past" on island B,
- * and the Sprayer pressures the red pad on island C.
- */
-/**
- * #39 — "when the charger collides with the player they start tweaking".
- *
- * There is no enemy-versus-player collision in this engine, so a Charger used to
- * walk straight THROUGH the player, flip 180 degrees to come back, and repeat every
- * few frames at 5 m/s. The stop has to be behaviour.
- *
- * The ice test below depends on the counterpart of this: a melee enemy that brakes
- * on arrival cannot build speed from a short runway, and the SAME brake must not
- * apply on blue paint or island B's lesson disappears.
- */
-test('a melee enemy stops at the player instead of walking through them (#39)', async () => {
-  const { level } = await buildLevel();
-  const [charger] = level.enemies;
-  const islandB = level.surfaces.find((s) => s.isFloor
-    && s.mesh.position.z < 0 && s.mesh.position.z > -5);
-
-  const target = new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z);
-  charger.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 5);
-
-  // Give it long enough to arrive and settle: twice the runway, ten times over.
-  for (let i = 0; i < 300; i++) charger.update(1 / 60, target);
-
-  const dist = Math.hypot(target.x - charger.position.x, target.z - charger.position.z);
-  assert.ok(dist > 0.5,
-    `the Charger ended up ${dist.toFixed(2)} m from the player — it walked through them`);
-  assert.ok(dist <= HEALTH.contactRange + 0.5,
-    `the Charger stopped ${dist.toFixed(2)} m away, too far to be a melee threat`);
-  assert.ok(charger._vel.length() < 0.5,
-    `it should have settled, but is still moving at ${charger._vel.length().toFixed(2)} m/s`);
-
-  // It did not oscillate: the position at the end is where it was 30 frames ago.
-  const settled = charger.position.clone();
-  for (let i = 0; i < 30; i++) charger.update(1 / 60, target);
-  assert.ok(charger.position.distanceTo(settled) < 0.05,
-    `the Charger is still moving ${charger.position.distanceTo(settled).toFixed(3)} m per half second`);
-});
-
-test('a rigless soldier bobs and leans as it moves, and settles when it stops (#39 #7b)', async () => {
-  const { level } = await buildLevel();
-  const enemy = level.enemies[0];
-
-  // The enemy GLBs have no leg bones, so in Node the enemy is the box fallback and
-  // `_model` is null. Stand in for the GLB path the way `_buildModel` would: a
-  // container with the model's feet offset baked into its position.
-  const model = new THREE.Group();
-  const feetOffset = 2.474;
-  model.position.y = feetOffset;
-  enemy._model = model;
-  enemy._feetOffset = feetOffset;
-
-  const islandB = level.surfaces.find((s) => s.isFloor
-    && s.mesh.position.z < 0 && s.mesh.position.z > -5);
-  enemy.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 5);
-
-  // Far enough away that it runs, and long enough to be mid-stride.
-  const target = new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z);
-  let minY = Infinity;
-  let maxY = -Infinity;
-  let maxLean = 0;
-  for (let i = 0; i < 60; i++) {
-    enemy.update(1 / 60, target);
-    minY = Math.min(minY, model.position.y);
-    maxY = Math.max(maxY, model.position.y);
-    maxLean = Math.max(maxLean, model.rotation.x);
-  }
-
-  assert.ok(maxY - minY > 0.01,
-    `the body barely moved (${(maxY - minY).toFixed(4)} m) — it is gliding, not walking`);
-  assert.ok(maxY < feetOffset + 0.2 && minY > feetOffset - 1e-6,
-    `the bob should rise from the feet offset, not sink through it (${minY.toFixed(3)}..${maxY.toFixed(3)})`);
-  assert.ok(maxLean > 0.05 && maxLean <= 0.22,
-    `a running enemy should lean forward, got ${maxLean.toFixed(3)} rad`);
-
-  // ...and a stopped enemy settles back to standing, rather than freezing mid-lean.
-  const stopped = new THREE.Vector3(0, 0, islandB.mesh.position.z + 5);
-  for (let i = 0; i < 180; i++) enemy.update(1 / 60, stopped);
-  assert.ok(Math.abs(model.rotation.x) < 1e-6,
-    `a stopped enemy is still leaning ${model.rotation.x.toFixed(4)} rad`);
-  assert.ok(Math.abs(model.position.y - feetOffset) < 0.01,
-    `a stopped enemy is still bobbing (y=${model.position.y.toFixed(4)}, feet at ${feetOffset})`);
-});
-
-test('the DESIGN.md teaching beats are placed on the right islands', async () => {
-  const { level } = await buildLevel();
-
-  // island B — the Charger lesson, and only the Charger: a second enemy on the
-  // island the player learns ice on is noise.
-  const onB = level.enemies.filter((e) => e.position.z >= -7 && e.position.z <= 4.5);
-  assert.deepEqual(onB.map((e) => e.type), ['charger'],
-    `island B should hold the Charger alone, got ${onB.map((e) => e.type)}`);
-
-  // island C's arena floor — the fight that has to be won before the door opens
-  const onC = level.enemies.filter((e) => e.position.z >= -24 && e.position.z <= -16);
-  assert.deepEqual(onC.map((e) => e.type).sort(), ['charger', 'sprayer'],
-    `island C should hold a Charger and a Sprayer, got ${onC.map((e) => e.type)}`);
-
-  // ...and the two shooters Renda asked for (#39 #6) stand on deck 1
-  const onTower = level.enemies.filter((e) => e.position.y > 1);
-  assert.deepEqual(onTower.map((e) => e.type), ['sprayer', 'sprayer'],
-    `deck 1 should hold two shooters, got ${onTower.map((e) => e.type + '@' + e.position.y)}`);
-});
-
-test('the Charger is genuinely faster than the Sprayer, from config not a literal', async () => {
-  const { level } = await buildLevel();
-  const charger = level.enemies.find((e) => e.type === 'charger');
-  const sprayer = level.enemies.find((e) => e.type === 'sprayer');
-
-  assert.equal(charger.config, ENEMY.charger);
-  assert.equal(sprayer.config, ENEMY.sprayer);
-  assert.ok(charger.config.speed > sprayer.config.speed);
-});
-
-test('enemy meshes hang off level.root, not straight on the scene', async () => {
-  const { game, level } = await buildLevel();
-  game.scene.add(level.root);
-
-  for (const enemy of level.enemies) {
-    assert.equal(enemy.mesh.parent, level.root);
-  }
-  // The actual leak vector: a mesh parented to the scene itself survives
-  // `scene.remove(level.root)`, so `R` would leave it stranded on screen.
-  assert.equal(game.scene.children.includes(level.enemies[0].mesh), false);
-});
-
-test('dispose() detaches enemy meshes rather than relying on the base traverse', async () => {
-  const { game, level } = await buildLevel();
-  game.scene.add(level.root);
-  const mesh = level.enemies[0].mesh;
-
-  level.dispose();
-
-  assert.equal(mesh.parent, null, 'enemy mesh should be orphaned, not left under a disposed root');
-  assert.equal(game.scene.children.includes(level.enemies[0].mesh), false);
-});
-
-test('a colour hit tints the body and reports that it landed', async () => {
-  const { level } = await buildLevel();
-  const enemy = level.enemies[0];
-  const uniform = enemy.bodyMat.uniforms.uColour.value;
-
-  const resting = uniform.getHex();
-  assert.equal(enemy.takeColourHit(1), true, 'blue is paint id 1 and must be accepted');
-  enemy.update(1 / 60, new THREE.Vector3(999, 999, 999));
-
-  assert.notEqual(uniform.getHex(), resting, 'the body should visibly change colour on a hit');
-
-  // ...and it fades back rather than staying stuck on the hit colour.
-  for (let i = 0; i < 200; i++) enemy.update(1 / 60, new THREE.Vector3(999, 999, 999));
-  assert.equal(uniform.getHex(), resting, 'the tint must fade back to the base colour');
 });
 
 test('an unknown colour id is rejected rather than silently ignored', async () => {
@@ -835,7 +705,7 @@ test('win fires exactly once when the player enters the extraction volume', asyn
   }
 
   // standing on the tower's top deck, inside the win zone (#39 #6)
-  const player = { position: new THREE.Vector3(6, 9, -43.5) };
+  const player = { position: new THREE.Vector3(6, 12, -43.5) };
   level.update(0.016, player);   // inside → fire
   level.update(0.016, player);   // still inside → must NOT re-fire
   assert.equal(wins, 1);

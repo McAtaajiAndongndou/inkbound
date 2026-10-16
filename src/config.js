@@ -141,6 +141,26 @@ export const PAINT_GRID = {
   level1Cells: 4,
 };
 
+/**
+ * Enemy movement rules that are not about one enemy type.
+ *
+ * `maxStepDown` — how far an enemy will step DOWN without refusing the move.
+ *
+ * The probe already refuses a step with NO floor under it, which is what keeps an
+ * enemy on its island. It does not refuse a step onto a floor that happens to be
+ * much lower, and that is a real hole: an enemy standing on a raised platform walks
+ * straight off the edge and drops to whatever is below. Renda, on the two shooters
+ * on island C's pillar: "yeah the shooters do walk off".
+ *
+ * One metre allows a kerb and refuses a storey, which is the distinction that
+ * matters — and knockback still bypasses the probe entirely, so a red hit can still
+ * fling an enemy off a ledge. That is deliberate (the environmental kill the design
+ * asks for) and it is why this is a rule on WALKING rather than a leash.
+ */
+export const ENEMY_NAV = {
+  maxStepDown: 1.0,
+};
+
 // Level 1 plentiful, level 2 starved, level 3 contested.
 export const AMMO = {
   1: { tank: 100 },

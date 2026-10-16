@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { ENEMY, PAINT, PAINT_IDS } from "../config.js";
+import { ENEMY, ENEMY_NAV, PAINT, PAINT_IDS } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
@@ -465,8 +465,14 @@ export class Enemy {
     // us over a gap there is no floor to stand on, so the move is refused.
     // This is what keeps an enemy on its own island without a leash radius or
     // any knowledge of the level layout.
+    //
+    // It also refuses a step DOWN more than `ENEMY_NAV.maxStepDown`. Without that
+    // second rule an enemy walk off the edge of any raised platform and drops to
+    // whatever is below — which is what the shooters on island C's pillars did
+    // (#39). The probe only ever asked "is there a floor", never "is it the same
+    // floor I am on".
     const nextGround = this._probe.down(this._next);
-    if (nextGround) {
+    if (nextGround && nextGround.y >= this.position.y - ENEMY_NAV.maxStepDown) {
       this.position.x = this._next.x;
       this.position.z = this._next.z;
       this.position.y = nextGround.y;      // stay glued to the floor

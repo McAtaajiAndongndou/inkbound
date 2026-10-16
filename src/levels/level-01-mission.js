@@ -38,121 +38,96 @@ const L1 = {
     C: { zMin: -24, zMax: -16 },  // arena — then the stair tower behind its door
   },
 
-  // --- the ascent (#39 #6, revised to Renda's sketch) ------------------------
+  // --- the ascent (#39 #6, third revision — Renda's pillars) -----------------
   //
-  // THE ROUTE, in his words: "reach top here with green only then bounce to where
-  // enemies are" ... "at the top of the side platform you can go around the
-  // obstacle" ... extraction "up here like before".
+  // "I wanted the first platform to be on the left, then you paint its roof red to
+  //  bounce over the gap to the second platform which will be on the right ...
+  //  they must be square pillars ... you must feel like you actually climbed up to
+  //  the first pillar and that the bounce felt like a risk to get to the second ...
+  //  then you must climb up again to reach the extraction, no shortcuts."
   //
-  //   arena (y 0)
-  //     │  GREEN ONLY — 2.2 m is past a 1.39 m jump, so paint is the way up
+  //   hall, ground floor (y 0)
+  //     │  GREEN — paint a SIDE of the pillar, any of three you can reach
   //     ▼
-  //   lower deck (y 2.2)            · red pad at the back
-  //     │  RED BOUNCE — 4.3 m of lift, the only way up
+  //   PILLAR 1, left  (y 5.0)      · you paint the ROOF red yourself
+  //     │  RED BOUNCE across the gap — 2.0 m of lift, ~4.5 m of travel
   //     ▼
-  //   side platform (y 5.5)         · two shooters ... and the OBSTACLE
-  //     │  walk AROUND the rock, then GREEN up
+  //   PILLAR 2, right (y 7.0)      · two shooters
+  //     │  GREEN up the back wall — the rock band blocks everywhere else
   //     ▼
-  //   extraction (y 9.0)            "up here like before"
+  //   extraction (y 10)
   //
-  // WHAT REPLACES WHAT, because this is the third shape island C has had and the
-  // two before it are why the numbers are what they are:
+  // WHY SQUARE PILLARS. Renda: "so that you can shoot the paint on their sides from
+  // multiple angles". A wide deck has one face you can reach; a pillar has three,
+  // and which one you paint is the player's choice. They are columns with a
+  // CAPITAL — the top deck overhangs the base by 2 m on the three climbable sides,
+  // and that overhang is not decoration: a green climb cannot top out on its own
+  // (see LIP below), so the floor above a face has to stick out past it. A flush
+  // pillar would be unclimbable no matter how much paint you put on it.
   //
-  //   v1  a red pad that launched you up THROUGH a platform slab, then a green
-  //       wall, then an extraction ledge hanging 5 m out over the arena. Nothing
-  //       here has ceiling collision, so "up through its own floor" was not a bug
-  //       in the pad — it was the only way that platform could ever be reached.
-  //       Renda saw the ledge as "a mini platform with trees on it" (#4), and it
-  //       was LOAD-BEARING: a green climb cannot top out on its own, so the ledge
-  //       had to overhang the wall by more than the jump-off drift.
-  //   v2  a stair tower: jump, climb, climb.  Renda's sketch instead wants the
-  //       paint and the bounce to be the two steps, and wants the LAST climb
-  //       blocked so the extraction can only be reached the long way round.
+  // THE ARITHMETIC THAT SETS THE GAP, and it is the tightest number in the level:
   //
-  // THE NUMBERS THAT DRIVE THE SHAPE, all forced rather than chosen:
+  //   The player runs across the roof at ~4.6 m/s (accel 55 against friction 10),
+  //   and a bounce off red leaves the ground for ~1.0 s with 2 m to climb. They are
+  //   NOT limited to 4.6 m/s in the air: `PLAYER.airAccel` is 12 and the speed cap
+  //   is 7, so they accelerate mid-flight to ~7 and the bounce carries ~6.6 m.
   //
-  //   JUMP = 1.39 m   (8.5^2 / 2*26). Every rise is set against this.
-  //   BOUNCE = 4.33 m (15^2 / 2*26). The one way from the lower deck to the side
-  //                   platform, and why the lower deck cannot be a jump away.
-  //   LIP = 2.1 m     A green climb NEVER tops out on its own: wall contact is
-  //                   tested at chest height (position.y + 0.85), so the climber
-  //                   loses the wall with their feet ~0.85 m BELOW the deck they
-  //                   were heading for, and the climb ends in a jump. Whatever
-  //                   that jump lands on must be under them, and the jump-off
-  //                   pushes you AWAY from the face — so the floor above a climb
-  //                   has to overhang it. `_face` callers set `deck.zMax` for it.
+  //   A red splat has a 1.4 m radius, so the player LEAVES THE GROUND 1.4 m before
+  //   the splat's centre — they bounce off its near edge, not the middle. So the
+  //   usable strip of roof is the ~5 m nearest the inner edge, and the gap is set
+  //   to 3 m so that strip is comfortably wide. Painting red further back than that
+  //   means a shorter launch and a short bounce, which is a fair thing to lose.
   //
-  // The bounce is a fixed 4.33 m of LIFT; how far it carries you sideways is
-  // whatever speed you ran onto the pad with, 3-7 m/s giving 0.6-2.4 m in the time
-  // it takes to reach the side platform's height. So the side platform OVERLAPS
-  // the lower deck in z — it has to, or a slow approach would fall short of it.
+  //   A jump cannot substitute for the bounce, and not because of the width: the
+  //   second pillar is 2.0 m HIGHER, and a jump reaches 1.39 m. Height, not
+  //   distance, is what makes it bounce-only at any gap.
+  //
+  //   Blue paint on the roof first stretches the same bounce past 11 m, which is
+  //   the Gap 2 lesson reused — and the second pillar's landing is deliberately
+  //   wide so that a long bounce still lands on it.
   ascent: {
-    // The pedestal on the +x side. Doors from gate C, so the corridor's left stays
-    // open and the structure reads as built against the wall.
-    xMin: 2.5,
-    xMax: 11,
-
-    // Green only: 2.2 > 1.39. The lip overhangs `face1` by 2.1 m (-27 -> -24.9).
-    lower: { y: 2.2, zMin: -34, zMax: -24.9 },
-    face1: { yBase: 0, yTop: 2.2, z: -27 },
-
-    // Reached by the bounce, and only by the bounce: nothing here is climbable
-    // from the lower deck, and 3.3 m is two and a half jumps.
-    //
-    // Full width so the bounce cannot miss, and starting at z -29 — it OVERLAPS
-    // the lower deck by five metres, and that overlap is the whole reason the pad
-    // is reliable regardless of entry speed.
-    //
-    // The overlap is not cosmetic either, and this is the number that broke first:
-    // the pad covers a 2.4 m radius, so the player steps onto red at z -30.6. If
-    // the platform's edge were behind that, the bounce would launch from OUTSIDE
-    // its footprint, the ground probe would find nothing above the lower deck to
-    // land on, and the player would rise to the apex and drop straight back down.
-    // Red is a trampoline, so they would then bounce again, forever.
-    upper: { y: 5.5, zMin: -40, zMax: -29 },
-
-    // THE OBSTACLE, and Renda's pick: an unpaintable band standing in the way up.
-    // It spans all but the far +x end of the wall, so the climb you CAN use is
-    // three metres of wall at the end you have to walk to — which is "go around
-    // the obstacle" rather than "climb the wall in front of you".
-    //
-    // Lore to come (Renda: "we can give it a lore reason and reintroduce it in
-    // future levels"), so it is named as a thing rather than described by what it
-    // blocks: `rock` is the Corrupt Corp's own material, and the same material can
-    // do the L2 turret's job without any new machinery.
-    rock: { yBase: 5.5, yTop: 9, z: -40, xMin: -11, xMax: 2.5 },
-    green: { yBase: 5.5, yTop: 9, z: -40, xMin: 2.5, xMax: 11 },
-
-    // The base of that same wall, y 0 -> 5.5. Two jobs, and neither is optional:
-    //   - it CLOSES the ground floor, so the vestibule is a room rather than a
-    //     corridor that ends in a hole you fall into the void through.
-    //   - it stops the obvious bypass. Without it, the ground floor's back wall
-    //     would be a paintable surface, and painting it green would let you climb
-    //     straight from the vestibule to the side platform — skipping the red pad
-    //     entirely, which is the one step the whole layout exists to force.
-    base: { yBase: 0, yTop: 5.5, z: -40, xMin: -11, xMax: 11 },
-
-    // The y0 floor the whole thing stands on, behind the door. Runs the full
-    // depth now, so the ground floor is bounded by the rock rather than by nothing.
+    // The hall behind the door. The pillars stand in it, and the gap between them
+    // is over the FLOOR, not over a pit: a missed bounce drops you to the ground
+    // and costs you the climb again, rather than ending the run.
     vestibule: { zMin: -40, zMax: -24 },
 
-    // The red pad, painted onto the lower deck at build time. Painted rather than
-    // a mesh because a red surface IS a trampoline — `SURFACE.red.restitution`
-    // does the work, so a pad is literally paint. The plate under it is the only
-    // extra geometry, and it is there so the pad reads as equipment rather than as
-    // a spill.
-    pad: { x: 6.75, z: -33, radius: 2.4 },
+    // 6 x 6 bases against the back wall, with a 1 m CORNICE on the climbable sides.
+    // Flush at the back, where the wall is.
+    //
+    // The cornice used to be 2.5 m, which Renda read — correctly — as "floors
+    // stretching out of them". It is now as small as it can safely be: a green climb
+    // cannot top out on its own, so the deck above a face MUST reach past it, but a
+    // measured sweep of a bare pillar face puts the real minimum at 0.3 m — the
+    // ground probe reaches 0.5 m below the player's feet and snaps them up as they
+    // pass it, so the deck only has to be under them a frame or two after the
+    // jump-off. 1 m is three times that, and reads as a moulding.
+    //
+    // ONLY THE LEFT PILLAR IS PAINTABLE (Renda: "the right platform shouldn't be
+    // paintable"). It is the climbing pillar; the right one is reached by the bounce
+    // and nothing else, which is what keeps the bounce from being optional. Its
+    // sides are still colliders — they are solid, you just cannot paint them.
+    pillar1: { xMin: -8.5, xMax: -2.5, zMin: -40, zMax: -34, y: 5.0, overhang: 1.0 },
+    pillar2: { xMin: 2.5, xMax: 8.5, zMin: -40, zMax: -34, y: 7.0, overhang: 1.0, unpaintable: true },
+
+    // The back wall. The base is rock, so nothing on the ground floor can be
+    // climbed to skip a pillar — including the back wall itself.
+    base: { yBase: 0, yTop: 7, z: -40, xMin: -11, xMax: 11 },
+    // ...and above it, the last climb — five metres of it (Renda: "the extraction
+    // wall should be made taller so that you actually climb it"). The rock band
+    // leaves the right-hand end paintable, which is the part standing in front of
+    // the pillar you land on.
+    rock: { yBase: 7, yTop: 12, z: -40, xMin: -11, xMax: 4 },
+    green: { yBase: 7, yTop: 12, z: -40, xMin: 4, xMax: 11 },
   },
 
-  // The win zone: the back of the extraction ledge. A Box3 checked against the
-  // player's position, so it spans the full corridor width.
+  // The win zone: the back of the extraction ledge.
   extraction: { zMin: -45, zMax: -42.5 },
 
-  // The extraction ledge itself, at the height it had in the original design. The
-  // lip overhangs the climb by 2.4 m (-40 -> -37.6), which is what a climb needs:
-  // the top-out jump is pushed AWAY from the face, so it lands ~1.1 m back from
-  // where it started and the floor has to be under it.
-  ledge: { y: 9, zMin: -45, zMax: -37.6 },
+  // The extraction ledge, at the top. Its lip overhangs the last climb by 2.4 m
+  // (-40 -> -37.6), which is what a climb needs: the top-out jump is pushed AWAY
+  // from the face, so it lands back from where it started and the floor has to be
+  // under it.
+  ledge: { y: 12, zMin: -45, zMax: -37.6 },
 
   // Encounter gates (#37 island B, #56 island C): an arena's exit stays sealed
   // until that arena is clear, so the fight has to be won rather than run past.
@@ -190,10 +165,9 @@ const L1 = {
   //              the arena unavoidable now the exit is a door rather than a
   //              launch you could paint past.
   //   Sprayer  — island C. Ranged pressure while you fight the Charger.
-  //   Sprayer x2 — on the side platform (y 5.5), which is the far side of the
-  //              bounce. These are the shooters Renda asked for (#39 #6): you have
-  //              to beat them to cross the platform, and the rock band means the
-  //              only climb up is at the end you have to walk to.
+  //   Sprayer x2 — on the RIGHT pillar's top, which is where the bounce puts you.
+  //              These are the shooters Renda asked for (#39 #6): you land among
+  //              them, and the bounce is the only way up.
   //
   // Spawns are a starting hint, not a hold: there is no aggro radius, so enemies
   // walk at the player from load and freeze where the next step would fall off.
@@ -201,8 +175,8 @@ const L1 = {
     { x: 4,   y: 0,   z: -1,   type: 'charger' },
     { x: -4,  y: 0,   z: -21,  type: 'charger' },
     { x: 0,   y: 0,   z: -19,  type: 'sprayer' },
-    { x: 6,   y: 5.5, z: -36,  type: 'sprayer' },
-    { x: 9,   y: 5.5, z: -37,  type: 'sprayer' },
+    { x: 5,   y: 7.0, z: -37,  type: 'sprayer' },
+    { x: 7.5, y: 7.0, z: -36,  type: 'sprayer' },
   ],
 
   // --- the world beyond the causeway (#39 #10) -------------------------------
@@ -399,22 +373,31 @@ const MOOD = {
  * the pool is safe to stand next to.
  */
 const WASTE = {
-  // WHY SUB-SHIN HEIGHT AND NOT 1.1 m DOWN. At −1.1 the surface was below the
-  // level's bottom edge as the player reads it: you looked DOWN into a pit with
-  // goop at the bottom, rather than ACROSS a channel you are expected to jump.
-  // Renda: "the toxic waste is sitting below the plane's level which isn't making
-  // it look like a river you have to jump over".
+  // WHY IT IS FLUSH AND NOT LOWER. At -1.1 the surface sat below the level's bottom
+  // edge as the player reads it: you looked DOWN into a pit with goop at the bottom
+  // instead of ACROSS a channel you are expected to jump. Renda: "it isn't making it
+  // look like a river you have to jump over."
   //
-  // At −0.45 the surface is at a standing player's shins. Look across a 9 m gap
-  // and the far bank is visible just above the waterline, which is what a river
-  // from a bridge actually looks like. The WAVE CREST must still clear the forest
-  // shelves (see `L1.shouldShelf.y`, −0.2), or the trees stand in the water, which
-  // is why the amplitude came down with the height.
-  y: -0.45,
+  // At -0.45 it was still wrong, for a subtler reason, and this is the number that
+  // matters: "when I stand on the edge of an island I can see underneath the next
+  // island and the green river loses its impact." Every island and shelf in this
+  // level is a ZERO-THICKNESS plane, so any drop at a lip leaves an unfilled sliver
+  // of void at the edge — and a river 45 cm down turned that sliver into a visible
+  // gap you could see the world through. 10 cm is a bank you cannot see past.
+  // Renda: "it must be the same height as the top of the floor (it can be slightly
+  // lower)".
+  //
+  // `tuck` is the other half of the same fix and it is the half that would not have
+  // been guessed: the slabs have to pass UNDER the floors either side, not stop at
+  // their edges. Where the water stops exactly at a lip, the sliver shows void;
+  // where it continues 2.5 m underneath, the same sliver shows water. The river is
+  // visible where the floor is not.
+  y: -0.10,
+  tuck: 2.5,
   colour: 0x86b32d,    // toxic green, in the same drained family as the dead ground
   emissive: 0x1d2c07,  // a little self-lit, so it reads as something you should not touch
-  wave: 0.11,          // crests peak at -0.27, comfortably under the shelves
-  bob: 0.035,
+  wave: 0.05,          // crests peak at -0.02: below the floor, above the shelves
+  bob: 0.03,
   bobSpeed: 0.7,
 };
 
@@ -466,18 +449,9 @@ function createWasteSurface(width, depth, amplitude) {
  * structure big enough for that to read.
  */
 const TOWER = {
+  // The gate frames are the only structure left in the level — everything else is
+  // a PaintSurface. See `_gate`.
   concrete: 0x6b6f73,
-  underside: 0x4a4e52,
-  slab: 0.45,          // how thick a deck's slab looks
-  column: 0.9,
-  parapet: 0.9,
-
-  // The rock the obstacle is cut from — deliberately a different substance from
-  // the concrete, because it is not the Corrupt Corp's building, it is the world
-  // they have been mining. Renda wants it to come back in later levels with a lore
-  // reason, so it is named for itself rather than for what it blocks.
-  rock: 0x5a4f43,
-  rockDepth: 1.8,
 
   field: 0xff3b46,     // the drain field, in PAINT.red's family so it reads as hostile
   fieldOpacity: 0.42,
@@ -555,22 +529,14 @@ export class Level01 extends LevelBase {
     for (const { zMin, zMax } of Object.values(L1.islands)) {
       this._floor(zMin, zMax, 0);
     }
-    // The ground floor behind the door. Marked `tower` so the decor scatter skips
-    // it, for two reasons: the upper deck covers most of it, so it is an interior
-    // under a concrete slab; and the strip that is NOT covered is the run-up to
-    // `face1`, where a tree at x >= 4.6 would stand directly in front of the wall
-    // you are supposed to notice you can paint. Ground cover hiding the route is
-    // exactly what #5 was about, and this is the one place it would matter most.
-    const vestibule = this._floor(L1.ascent.vestibule.zMin, L1.ascent.vestibule.zMax, 0);
-    vestibule.tower = true;
+    // The ground floor behind the door. NOT marked `tower`, so the forest comes back
+    // here, framing the pillars the way it frames every other island (#39: "reintroduce
+    // the forest past the gate of island c, just on the sides like the other islands").
+    this._floor(L1.ascent.vestibule.zMin, L1.ascent.vestibule.zMax, 0);
 
     this._ascent();
     this._shoulders();
     this._extraction();
-
-    // Exposed so the level's own contract test can assert the pad's geometry
-    // against the platform it has to land on (see `tests/level-contract.test.js`).
-    this.pad = L1.ascent.pad;
     this._mood();
     this._waste();
     this._light();
@@ -585,16 +551,17 @@ export class Level01 extends LevelBase {
     // list. A gate waits only on the enemies that SPAWN inside its own arena:
     // island C's must not hold island B's gate shut, or the other way round.
     //
-    // An arena is a PREDICATE, not an island key (#39 #6). Island C's door has to
-    // wait on the two shooters standing on the tower as well as the two on the
-    // arena floor, and the shooters are not on island C — they are up the tower,
-    // which no z-range on the island table describes.
+    // Island C's watches the ARENA FLOOR only — the two that rush you. The two
+    // shooters up the right-hand pillar are NOT part of it (Renda: "the gate should
+    // open after killing the two enemies on island c"). They did not need to be: a
+    // gate is there to stop you RUNNING PAST a fight, and you cannot run past
+    // something standing on the only landing you can bounce to.
     this.gateB = this._gate({
       contains: (p) => this._inIsland('B', p),
       z: L1.islands.B.zMin, yBase: 0, yTop: L1.gates.B.yTop,
     });
     this.gateC = this._gate({
-      contains: (p) => this._inIsland('C', p) || this._inAscent(p),
+      contains: (p) => this._inIsland('C', p),
       z: L1.islands.C.zMin, yBase: 0, yTop: L1.gates.C.yTop,
     });
     this.gates = [this.gateB, this.gateC];
@@ -778,12 +745,17 @@ export class Level01 extends LevelBase {
     const inner = L1.corridorHalf;
     const outer = inner + L1.shouldShelf.gap;
     const shelf = L1.shouldShelf;
+    const tuck = WASTE.tuck;
 
+    // Every rectangle is EXPANDED by `tuck` into the floors it sits between. See
+    // WASTE.tuck: a slab that stops at a lip leaves a sliver of void at the edge of
+    // a zero-thickness floor, and that sliver is what "I can see underneath the
+    // next island" was.
     const holes = [
-      { xMin: -inner, xMax: inner, zMin: L1.islands.B.zMax, zMax: L1.islands.A.zMin },
-      { xMin: -inner, xMax: inner, zMin: L1.islands.C.zMax, zMax: L1.islands.B.zMin },
-      { xMin: -outer, xMax: -inner, zMin: shelf.zMin, zMax: shelf.zMax },
-      { xMin: inner, xMax: outer, zMin: shelf.zMin, zMax: shelf.zMax },
+      { xMin: -inner - tuck, xMax: inner + tuck, zMin: L1.islands.B.zMax - tuck, zMax: L1.islands.A.zMin + tuck },
+      { xMin: -inner - tuck, xMax: inner + tuck, zMin: L1.islands.C.zMax - tuck, zMax: L1.islands.B.zMin + tuck },
+      { xMin: -outer, xMax: -inner + tuck, zMin: shelf.zMin, zMax: shelf.zMax },
+      { xMin: inner - tuck, xMax: outer, zMin: shelf.zMin, zMax: shelf.zMax },
     ];
 
     this.wasteSlabs = [];
@@ -1074,166 +1046,108 @@ export class Level01 extends LevelBase {
    *            ones on the +x side, `_face` for the vertical climb panels.
    *   ROCK     `_rock`, the unpaintable band. The level's first obstacle that is
    *            not a colour question.
-   *   PAD      `_pad`, a painted red trampoline plus the plate that makes it read
-   *            as equipment.
+   *   PILLAR   `_pillar`, a column with three climbable sides and a capital.
    *   STRUCTURE the concrete the player sees. Plain `MeshToonMaterial` meshes, so
    *            they read the SCENE lights and need no `uLightDir` wiring, unlike
    *            every custom-shaded surface. They exist because a PaintSurface is a
    *            ZERO-THICKNESS plane — fine for a floor you stand on, useless for
    *            anything meant to read as a solid object.
    */
+  /**
+   * The ascent (#39 #6, revised) — see the `ascent` block in L1 for the route and
+   * for why every number is what it is.
+   *
+   * EVERYTHING HERE IS A PAINTSURFACE AND NOTHING ELSE. Renda: "why can't you use
+   * the same mesh for the platform, a grid for the sides and for the top, no need to
+   * have any extra stuff." He was right, and the concrete that used to be here was
+   * causing two problems at once:
+   *
+   *   - Z-FIGHTING. A deck is a PaintSurface plane at exactly y, and the slab drawn
+   *     under it had its TOP FACE at exactly y too. Two coplanar surfaces, fighting.
+   *     Every solid in this file had that shape of bug available to it.
+   *   - It read as structure laid on top of a grid rather than AS the grid, which is
+   *     what everything else in this world is. Islands are grid planes with nothing
+   *     under them; a pillar made of grid planes is the same thing stood on end.
+   *
+   * So a pillar is three side planes and a top plane. The rock is a plane. The ledge
+   * is a plane. Nothing is drawn twice, and nothing is coplanar with anything.
+   */
   _ascent() {
     const a = L1.ascent;
 
-    // --- the walkable floors --------------------------------------------------
-    this._deck(a.lower);
-    this._platform({
-      y: a.upper.y, zMin: a.upper.zMin, zMax: a.upper.zMax,
-      xMin: -L1.corridorHalf, xMax: L1.corridorHalf, mark: 'tower',
-    });
+    this._pillar(a.pillar1);
+    this._pillar(a.pillar2);
+
+    // --- the back wall --------------------------------------------------------
+    this._rock(a.base);
+    this._rock(a.rock);
+    this._face(a.green);
+
+    // --- the extraction ledge -------------------------------------------------
     this._platform({
       y: L1.ledge.y, zMin: L1.ledge.zMin, zMax: L1.ledge.zMax,
       xMin: -L1.corridorHalf, xMax: L1.corridorHalf, mark: 'tower',
     });
-
-    // --- the climb faces ------------------------------------------------------
-    // Only these two are paintable. See `_rock`.
-    this._face({ ...a.face1, xMin: a.xMin, xMax: a.xMax });
-    this._face(a.green);
-
-    // --- the obstacle ---------------------------------------------------------
-    this._rock(a.rock);
-    this._rock(a.base);
-
-    // --- the pad --------------------------------------------------------------
-    this._pad(a.pad, a.lower.y);
-
-    // --- the concrete you can see --------------------------------------------
-    const concrete = new THREE.MeshToonMaterial({ color: TOWER.concrete });
-    const dark = new THREE.MeshToonMaterial({ color: TOWER.underside });
-
-    // a slab under each deck, so a deck is a storey rather than a floating sheet
-    const slabs = [
-      { y: a.lower.y, zMin: a.lower.zMin, zMax: a.lower.zMax, xMin: a.xMin, xMax: a.xMax },
-      { y: a.upper.y, zMin: a.upper.zMin, zMax: a.upper.zMax, xMin: -L1.corridorHalf, xMax: L1.corridorHalf },
-      { y: L1.ledge.y, zMin: L1.ledge.zMin, zMax: L1.ledge.zMax, xMin: -L1.corridorHalf, xMax: L1.corridorHalf },
-    ];
-    for (const s of slabs) {
-      const slab = new THREE.Mesh(
-        new THREE.BoxGeometry(s.xMax - s.xMin, TOWER.slab, s.zMax - s.zMin),
-        dark,
-      );
-      slab.position.set(
-        (s.xMin + s.xMax) / 2,
-        s.y - TOWER.slab / 2,
-        (s.zMin + s.zMax) / 2,
-      );
-      this.root.add(slab);
-    }
-
-    // Support columns down the lower deck's open edge, so it reads as carried
-    // rather than cantilevered out of nowhere.
-    for (const z of [a.lower.zMax - 0.4, a.lower.zMin + 0.4]) {
-      const column = new THREE.Mesh(
-        new THREE.BoxGeometry(TOWER.column, a.lower.y, TOWER.column),
-        concrete,
-      );
-      column.position.set(a.xMin + TOWER.column / 2, a.lower.y / 2, z);
-      this.root.add(column);
-    }
-
-    // A parapet along the back of the extraction ledge — without it the win zone
-    // looks like the place the world stops.
-    const parapet = new THREE.Mesh(
-      new THREE.BoxGeometry(L1.corridorHalf * 2, TOWER.parapet, 0.8),
-      concrete,
-    );
-    parapet.position.set(0, L1.ledge.y + TOWER.parapet / 2, L1.ledge.zMin + 0.4);
-    this.root.add(parapet);
   }
 
   /**
-   * The red pad: paint a trampoline onto a floor and put a plate under it.
+   * One square pillar — three side planes and a top plane, and nothing else.
    *
-   * It is PAINT, not a special mesh, and that is the point — `SURFACE.red`
-   * already has `restitution`, so a red surface IS a trampoline and a pad is
-   * literally just red ground. Nothing here needs to know how bouncing works.
+   * Three sides, not four, because the back is against the wall. Renda: "make the
+   * platforms pillar like, so that you can shoot the paint on their sides from
+   * multiple angles." Which side you paint is the player's choice, and each is a
+   * separate PaintSurface with its own paint grid, so painting one does not light up
+   * another. `unpaintable` turns that off, which is how the right-hand pillar is a
+   * solid box you cannot climb (Renda: "the right platform shouldn't be
+   * paintable") — it is reached by the bounce and by nothing else.
    *
-   * The plate is the only new geometry, and it exists so the pad reads as
-   * equipment someone installed rather than as a spill: a thin unlit slab, so it
-   * glows faintly against the drained concrete. It has no collision, so it can
-   * never affect the bounce itself.
+   * THE CORNICE IS LOAD-BEARING, not ornament. A green climb cannot top out on its
+   * own — contact is tested at chest height, so the climber loses the wall with their
+   * feet 0.85 m short and has to jump, and that jump is pushed AWAY from the face.
+   * So the top plane has to reach past the side plane, or the climb lands on nothing.
+   * A pillar with a flush top is unclimbable no matter how much paint you put on it.
+   * Measured minimum: 0.3 m. Ours is 1 m, which is also small enough to read as a
+   * moulding rather than as a floor laid on the box (Renda's original complaint).
    */
-  _pad({ x, z, radius }, y) {
-    const deck = this.surfaces.find((s) => s.isFloor && s.tower
-      && Math.abs(s.mesh.position.y - y) < 1e-6);
-    // Fail loudly: a pad that lands on nothing is a route with a hole in it, and
-    // the failure mode is "the level is unfinishable", which is worth a throw.
-    if (!deck) throw new Error(`[Level01] no deck at y=${y} to paint the red pad onto`);
-
-    if (!deck.splat(new THREE.Vector3(x, y, z), 'red', radius)) {
-      throw new Error('[Level01] the red pad was painted onto a surface that refused it');
+  _pillar({ xMin, xMax, zMin, zMax, y, overhang, unpaintable = false }) {
+    // --- the three sides ------------------------------------------------------
+    // Front (normal +z), then the two sides (normals -x and +x). The side panels
+    // are the same primitive rotated a quarter turn; `_resolveWalls` reads the
+    // normal off the mesh quaternion, so a rotated panel pushes out correctly.
+    for (const spec of [{ z: zMax, xMin, xMax }]) {
+      this._face({ yBase: 0, yTop: y, z: spec.z, xMin: spec.xMin, xMax: spec.xMax, unpaintable });
     }
 
-    const plate = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius, radius, 0.06, 20),
-      new THREE.MeshBasicMaterial({ color: PAINT.red.hex }),
-    );
-    plate.position.set(x, y + 0.03, z);
-    this.root.add(plate);
-    return deck;
+    for (const [x, normalX] of [[xMin, -1], [xMax, 1]]) {
+      this._face({ yBase: 0, yTop: y, x, zMin, zMax, unpaintable, normalX });
+    }
+
+    // --- the top, overhanging every side it can be climbed from --------------
+    this._platform({
+      y, zMin, zMax: zMax + overhang,
+      xMin: xMin - overhang, xMax: xMax + overhang,
+      mark: 'tower',
+    });
   }
 
   /**
-   * A band of UNPAINTABLE rock — the obstacle, and the reason the last climb can
+   * A band of UNPAINTABLE wall — the obstacle, and the reason the last climb can
    * only be used from one side.
    *
-   * Painting a wall green is what makes it climbable (`rules.climbable`), so a
-   * wall that cannot be painted is a wall that cannot be climbed: "normally we
-   * have to use green to get up to extraction, but what if it ... [were] blocked
-   * by a rocks or something that stops u from using green". One flag, and it is
-   * the same flag the gates use — see `paint-surface.js`.
+   * Painting a wall green is what makes it climbable (`rules.climbable`), so a wall
+   * that cannot be painted is a wall that cannot be climbed: "normally we have to
+   * use green to get up to extraction, but what if it ... [were] blocked by a rocks
+   * or something that stops u from using green". One flag, and it is the same flag
+   * the gates use — see `paint-surface.js`.
    *
-   * Drawn as rock rather than concrete on purpose: this is the Corrupt Corp's own
-   * material, and it should read as a different substance from everything they
-   * built around it.
+   * It is the paint grid, standing there, ungreyable. No rock geometry: the grid IS
+   * the wall, the same way the ground is the grid — which is also what removed the
+   * last of the Z-fighting (facets drawn in FRONT of a plane that was still there).
+   * It reads as the Corp's material because it is the one surface in the level the
+   * player can never change.
    */
   _rock({ xMin, xMax, yBase, yTop, z }) {
-    const s = new PaintSurface({
-      width: xMax - xMin, height: yTop - yBase, cells: L1.cells, unpaintable: true,
-    });
-    s.mesh.position.set((xMin + xMax) / 2, (yBase + yTop) / 2, z);
-    s.mesh.visible = false;      // the rock mesh below is what the player sees
-    s.isFloor = false;
-    this.root.add(s.mesh);
-    this.surfaces.push(s);
-
-    // FACETS rather than one slab, so it reads as a rock face and not as more of
-    // the concrete every other wall here is made of. The pieces are deterministic
-    // — fixed fractions and fixed bulges, no noise — so the level looks the same
-    // every run, the same reasoning as `createMistTexture`.
-    const w = xMax - xMin;
-    const h = yTop - yBase;
-    const rockMat = new THREE.MeshToonMaterial({ color: TOWER.rock });
-    const pieces = [
-      { f: 0.0, t: 0.34, bulge: 0.5 },
-      { f: 0.3, t: 0.62, bulge: 0.9 },
-      { f: 0.58, t: 0.78, bulge: 0.3 },
-      { f: 0.74, t: 0.9, bulge: 0.7 },
-      { f: 0.88, t: 1.0, bulge: 0.2 },
-    ];
-    for (const p of pieces) {
-      const depth = TOWER.rockDepth * p.bulge;
-      const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(w * (p.t - p.f), h, depth),
-        rockMat,
-      );
-      // behind the collision plane, so the player is stopped by the face they see
-      mesh.position.set(xMin + w * (p.f + p.t) / 2, (yBase + yTop) / 2, z - depth / 2);
-      this.root.add(mesh);
-    }
-
-    return s;
+    return this._face({ yBase, yTop, z, xMin, xMax, unpaintable: true });
   }
 
   /**
@@ -1263,8 +1177,8 @@ export class Level01 extends LevelBase {
 
   /**
    * A walkable surface with its own footprint, for anything that is not the
-   * corridor: the tower decks (against the +x wall) and the forest shelves (well
-   * outside it) both need one. `_floor` assumes the corridor's centre line.
+   * corridor: the pillars' tops and the forest shelves. `_floor` assumes the
+   * corridor's centre line.
    *
    * `mark` tags the surface with the band of ground it belongs to, which is what
    * `_decorFloors` reads. It is not decoration on the object: the decor scatter
@@ -1283,21 +1197,28 @@ export class Level01 extends LevelBase {
     return s;
   }
 
-  /** The lower deck: `_platform` pinned to the ascent's own footprint. */
-  _deck({ y, zMin, zMax, xMin = L1.ascent.xMin, xMax = L1.ascent.xMax }) {
-    return this._platform({ y, zMin, zMax, xMin, xMax, mark: 'tower' });
-  }
-
   /**
-   * One vertical climb face: the green-climbable panel on the front of a deck.
+   * One vertical climb face: the paint grid standing up.
    *
-   * Same primitive as everything else that collides — a PaintSurface standing up,
-   * normal pointing at the player. Unlike a gate it is PAINTABLE, because being
-   * paint is its entire job.
+   * Same primitive as everything else that collides — a PaintSurface — and the ONLY
+   * thing on a wall. `unpaintable` makes it a solid you cannot paint, which is what
+   * stops a wall being climbable.
+   *
+   * `normalX` rotates it a quarter turn so the same helper serves the pillars' side
+   * faces. `_resolveWalls` reads the normal off the mesh quaternion, so a rotated
+   * panel pushes the player out correctly — no special case anywhere.
    */
-  _face({ yBase, yTop, z, xMin, xMax }) {
-    const s = new PaintSurface({ width: xMax - xMin, height: yTop - yBase, cells: L1.cells });
-    s.mesh.position.set((xMin + xMax) / 2, (yBase + yTop) / 2, z);
+  _face({ yBase, yTop, z = 0, x = 0, xMin, xMax, zMin, zMax, unpaintable = false, normalX = 0 }) {
+    const width = normalX ? zMax - zMin : xMax - xMin;
+    const s = new PaintSurface({ width, height: yTop - yBase, cells: L1.cells, unpaintable });
+
+    if (normalX) {
+      s.mesh.rotation.y = normalX * Math.PI / 2;
+      s.mesh.position.set(x, (yBase + yTop) / 2, (zMin + zMax) / 2);
+    } else {
+      s.mesh.position.set((xMin + xMax) / 2, (yBase + yTop) / 2, z);
+    }
+
     s.isFloor = false;
     this.root.add(s.mesh);
     this.surfaces.push(s);
@@ -1425,21 +1346,6 @@ export class Level01 extends LevelBase {
   _inIsland(key, p) {
     const { zMin, zMax } = L1.islands[key];
     return p.z >= zMin - 0.5 && p.z <= zMax + 0.5 && Math.abs(p.x) <= L1.corridorHalf + 0.5;
-  }
-
-  /**
-   * Is a world point on the ascent — the structure behind island C's door? The
-   * far half of island C's gate watches this as well as the island itself, so the
-   * two shooters up there are part of the same fight.
-   *
-   * One box rather than a footprint per deck: the lower deck, the upper deck and
-   * the extraction ledge all sit inside `xMin..corridorHalf` and
-   * `vestibule.zMin..C.zMin`, and an enemy cannot be inside that box without
-   * being on the structure.
-   */
-  _inAscent(p) {
-    return p.z <= L1.islands.C.zMin + 0.5
-      && Math.abs(p.x) <= L1.corridorHalf + 0.5;
   }
 
   /**
