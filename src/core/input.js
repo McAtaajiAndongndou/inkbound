@@ -16,6 +16,8 @@ export class Input {
     this.mouseDelta = { x: 0, y: 0 };
     this.firing = false;
     this.locked = false;
+    this.aiming = false;
+
 
     // one-shot actions consumed by the game each frame
     this.pending = { ...NO_ACTIONS };
@@ -46,8 +48,25 @@ export class Input {
       this.mouseDelta.y += e.movementY;
     };
 
-    this._onMouseDown = (e) => { if (e.button === 0) this.firing = true; };
-    this._onMouseUp = (e) => { if (e.button === 0) this.firing = false; };
+    this._onMouseDown = (e) => {
+      if (e.button === 0){
+        this.firing = true;
+      }
+      if (e.button === 2){
+        this.aiming = true;
+      }
+    };
+
+    this._onMouseUp = (e) => {
+      if (e.button === 0){
+        this.firing = false;
+      }
+      if (e.button === 2){
+        this.aiming = false;
+      }
+    };
+
+    this._onContextMenu = (e) => e.preventDefault();
 
     this._onClick = () => {
       if (!this.locked) this.dom.requestPointerLock();
@@ -55,7 +74,11 @@ export class Input {
 
     this._onLockChange = () => {
       this.locked = document.pointerLockElement === this.dom;
-      if (!this.locked) { this.keys.clear(); this.firing = false; }
+      if (!this.locked) {
+        this.keys.clear();
+        this.firing = false;
+        this.aiming = false;
+      }
     };
 
     window.addEventListener('keydown', this._onKeyDown);
@@ -65,6 +88,7 @@ export class Input {
     window.addEventListener('mouseup', this._onMouseUp);
     this.dom.addEventListener('click', this._onClick);
     document.addEventListener('pointerlockchange', this._onLockChange);
+    this.dom.addEventListener("contextmenu", this._onContextMenu);
   }
 
   isDown(code) {
@@ -96,5 +120,6 @@ export class Input {
     window.removeEventListener('mouseup', this._onMouseUp);
     this.dom.removeEventListener('click', this._onClick);
     document.removeEventListener('pointerlockchange', this._onLockChange);
+    this.dom.removeEventListener("contextmenu", this._onContextMenu);
   }
 }

@@ -145,32 +145,14 @@ canvas {
   background: rgba(255, 255, 255, .16);
 }
 
-#controls {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+#refill-warning {
+  display: none;
   font-size: 12px;
-  color: var(--ink-dim);
   white-space: nowrap;
 }
 
-#controls b {
-  color: var(--ink-fg);
-}
-
-#click-prompt {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(15, 15, 22, .55);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: .02em;
-}
-
 #refill-warning.critical {
+  display: block;
   color: #ff4d5a;
   animation: refill-blink 0.8s ease-in-out infinite;
 }
@@ -222,31 +204,111 @@ canvas {
   100% { opacity: 0; transform: scale(1); }
 }
 
-/* Options panel — only visible while the pointer is unlocked (paused). */
-#options {
+/* Title / pause menu. Open whenever the pointer is unlocked; the game is
+   frozen behind it (see main.js). Sits above the HUD, below the loading screen. */
+#menu {
   position: fixed;
-  top: 16px;
-  right: 16px;
+  inset: 0;
   z-index: 15;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(15, 15, 22, .85);
-  color: var(--ink-fg);
-  font-size: 13px;
+  padding: 16px;
+  background: rgba(15, 15, 22, .72);
+  backdrop-filter: blur(3px);
+  overflow-y: auto;
+  cursor: pointer; /* the backdrop resumes; the card does not */
 }
-#options label { display: flex; align-items: center; gap: 8px; }
-#options input[type="range"] { width: 120px; accent-color: #3aa7ff; }
-#options output { width: 3ch; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-dim); }
-#options button {
+
+.menu-card {
+  width: min(440px, 100%);
+  margin: auto; /* centres, but still scrolls instead of clipping on short screens */
+  padding: 24px 26px;
+  border-radius: 14px;
+  background: #181822;
+  border: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+  cursor: default;
+}
+
+.menu-card h1 {
+  display: inline-block; /* gradient spans the word, not the card */
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: .08em;
+  /* the four paint colours, so the title reads as the game's own */
+  background: linear-gradient(90deg, #3aa7ff, #ff4d5a 45%, #4ee08a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+#menu-sub {
+  margin: 4px 0 18px;
+  color: var(--ink-dim);
+  font-size: 14px;
+}
+
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.menu-card button {
   border: 0;
-  border-radius: 6px;
-  padding: 5px 10px;
-  background: rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, .1);
   color: var(--ink-fg);
-  font: 600 12px/1 inherit;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
 }
-#options button[aria-pressed="true"] { background: #ff4d5a; }
+
+.menu-card button:hover { background: rgba(255, 255, 255, .18); }
+.menu-card button:focus-visible { outline: 2px solid #3aa7ff; outline-offset: 2px; }
+.menu-card button.primary { background: #3aa7ff; color: #0f0f16; font-size: 16px; padding: 12px 14px; }
+.menu-card button.primary:hover { background: #62b9ff; }
+
+.menu-card section + section { margin-top: 18px; }
+
+.menu-card h2 {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.menu-row {
+  display: grid;
+  grid-template-columns: 1fr 140px 52px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.menu-row input[type="range"] { width: 100%; accent-color: #3aa7ff; }
+.menu-row output { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-dim); font-size: 13px; }
+.menu-row button { grid-column: 2 / 4; padding: 7px 10px; font-size: 13px; }
+.menu-row button[aria-pressed="true"] { background: #ff4d5a; color: #0f0f16; }
+
+.menu-controls {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.menu-controls dt {
+  font-weight: 700;
+  color: var(--ink-fg);
+  white-space: nowrap;
+}
+
+.menu-controls dd { margin: 0; color: var(--ink-dim); }

@@ -56,6 +56,8 @@ export const PLAYER = {
   minBounce: 15, // red is a trampoline: standing on it launches you (~4.3m)
   lookSensitivity: 0.0022,
   killY: -20, // fall below this and you respawn
+  adsSensitivityMultiplier: 0.6,
+  adsSpeedMultiplier: 0.5,
 
   // jump feel (#33)
   coyoteTime: 0.1,        // seconds after leaving a ledge you can still jump (~6 frames at 60fps)
@@ -76,6 +78,9 @@ export const CAMERA = {
   minHeightAboveFeet: 0.3, // camera never dips below player.position.y + this
   pitchMin: -0.6,          // how far down the camera can look (radians)
   pitchMax: 1.2,           // how far up
+  adsFov: 45,
+  normalFov: 70,
+  adsTransitionSpeed: 10,
 };
 
 // Player health. Enemies deal their ENEMY.*.contactDamage on touch.
@@ -91,11 +96,19 @@ export const PAINT_GUN = {
   radius: 1.4, // splat radius in world units
   cost: 4, // ammo per shot
   fireDelay: 0.14, // seconds
+  hipSpread: 0.025,
+  adsSpread: 0.005,
 };
 
 // Starting master volume (0..1). The options menu overrides it per player.
 export const AUDIO = {
   volume: 0.6,
+};
+
+// Options-menu ranges. Sensitivity is a multiplier on PLAYER.lookSensitivity.
+export const OPTIONS = {
+  sensitivityMin: 0.25,
+  sensitivityMax: 3,
 };
 
 export const PAINT_GRID = {
@@ -110,6 +123,8 @@ export const AMMO = {
 };
 
 // One enemy class, five configs. Not five systems. (Week 2.)
+// One enemy class, five configs. Not five systems. (Week 2.)
+// windup / attackRange / attackCooldown drive the attack telegraph (#40).
 export const ENEMY = {
   sprayer: {
     hp: 40,
@@ -119,6 +134,9 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: false,
     contactDamage: 10,
+    windup: 0.6,
+    attackRange: 12,
+    attackCooldown: 2.5,
   },
   charger: {
     hp: 30,
@@ -128,6 +146,9 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: false,
     contactDamage: 25,
+    windup: 0.5,
+    attackRange: 8,
+    attackCooldown: 3,
   },
   wallCrawler: {
     hp: 45,
@@ -137,6 +158,9 @@ export const ENEMY = {
     climbsGreen: true,
     drainsPaint: false,
     contactDamage: 10,
+    windup: 0.6,
+    attackRange: 12,
+    attackCooldown: 2.5,
   },
   turret: {
     hp: 70,
@@ -146,6 +170,9 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: false,
     contactDamage: 0,
+    windup: 0.8,
+    attackRange: 15,
+    attackCooldown: 3,
   },
   drainer: {
     hp: 20,
@@ -155,9 +182,11 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: true,
     contactDamage: 5,
+    windup: 0.5,
+    attackRange: 3,
+    attackCooldown: 2.5,
   },
 };
-
 // Difficulty = new rules, not bigger health bars.
 export const DEFENCE = {
   1: { requiredColour: null, combo: [] },

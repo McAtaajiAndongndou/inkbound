@@ -1,7 +1,11 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
+// ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
 import { ENEMY, PAINT, PAINT_IDS } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
+import { audio } from "../audio/audio-manager.js";
 
 // Paint ids are indices into the grid (see PAINT_IDS in config.js).
 const ID_TO_NAME = ["grey", "blue", "red", "green"];
@@ -12,7 +16,45 @@ const BASE_COLOUR = GREY_TOON;
 
 // How long a colour hit stays fully saturated before fading back, in seconds.
 const TINT_FADE = 1.0;
+const KILL_FLASH_MS = 120;
 
+// Attack telegraph (#40). Yellow is not a paint colour, so the warning can
+// never be mistaken for a paint hit.
+const TELEGRAPH_COLOUR = 0xffe600;
+const TELEGRAPH_SWELL = 0.35;       // body grows by this fraction by the end of the windup
+const DEFAULT_WINDUP = 0.6;         // seconds; overridden by config.windup
+const DEFAULT_ATTACK_COOLDOWN = 2;  // seconds; overridden by config.attackCooldown
+
+// --- GLB soldiers (#50) ------------------------------------------------------
+const MODEL_HEIGHT = 1.6;           // world units tall; tune to taste
+
+const MODEL_URLS = {
+  charger: "./assets/soldier-charger.glb",
+  sprayer: "./assets/soldier-sprayer.glb",
+};
+const MODELS = {};                  // type -> { scene, clips, scale } once loaded
+
+// Both files ship the same 5 rifle clips (no idle/die/melee).
+const CLIPS = {
+  charger: { idle: "Rifle@Aim", run: "Rifle@Run.001", attack: "Rifle@AimShoot" },
+  sprayer: { idle: "Rifle@Aim", run: "Rifle@Run.001", attack: "Rifle@Shoot" },
+};
+
+/** Await before spawning enemies. Any model that fails falls back to the box. */
+export async function preloadEnemyModel() {
+  const loader = new GLTFLoader();
+  await Promise.all(
+    Object.entries(MODEL_URLS).map(async ([type, url]) => {
+      try {
+        const gltf = await loader.loadAsync(url);
+        const size = new THREE.Box3().setFromObject(gltf.scene).getSize(new THREE.Vector3());
+        MODELS[type] = { scene: gltf.scene, clips: gltf.animations, scale: MODEL_HEIGHT / size.y };
+      } catch (e) {
+        console.warn(`Enemy model "${type}" failed to load, using box fallback`, e);
+      }
+    })
+  );
+}
 /**
  * One enemy class, five configs. Behaviour comes from ENEMY.* flags, not from
  * subclassing — see DESIGN.md.
@@ -60,9 +102,19 @@ export class Enemy {
     this._pinnedTimer = 0;                 // green: hard root (movement only)
     this._slipTimer = 0;                   // blue: direct hit slow
 
+    // Attack telegraph (#40)
+    this._windupTimer = 0;                 // > 0 while telegraphing an attack
+    this._windupTotal = 0;
+    this._attackCooldown = 0;
+    this._telegraphColour = new THREE.Color(TELEGRAPH_COLOUR);
+    this.onAttack = null;                  // fired when a windup completes: (enemy) => void
+
     // Without floors we cannot tell ground from void, so the safe fallback is
     // to stand still rather than walk off the edge.
     this._probe = new SurfaceProbe(floors ?? []);
+
+    // Animation state. Must exist BEFORE _buildMesh: _buildModel fills it in.
+    this._anim = null;
 
     this.mesh = this._buildMesh();
     this.mesh.position.copy(position);
@@ -71,9 +123,57 @@ export class Enemy {
     parent.add(this.mesh);
   }
 
-  /** Give the paint gun something to tint. Kept as a field so the fade can
-   *  write the uniform every frame without re-walking the mesh. */
+    /** Model for this enemy type if loaded, otherwise the old box. */
   _buildMesh() {
+    const m = MODELS[this.type];
+    return m ? this._buildModel(m) : this._buildBox();
+  }
+
+  /** GLB soldier. Both enemy types share the one rig; only the attack clip differs. */
+  _buildModel(m) {
+    const group = new THREE.Group();
+
+    const model = cloneSkinned(m.scene);
+    model.scale.setScalar(m.scale);
+
+    // Keep the model's own colours/textures; tint via emissive (see _setColour).
+    const mats = new Map();
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      const src = o.material;
+      if (!mats.has(src)) {
+        mats.set(src, new THREE.MeshToonMaterial({ color: GREY_TOON }));
+      }
+      o.material = mats.get(src);
+      o.frustumCulled = false;
+    });
+    this._mats = [...mats.values()];
+    this.bodyMat = this._mats[0];
+    this._baseColour.set(0x000000);
+    group.add(model);
+
+    const names = CLIPS[this.type] ?? CLIPS.sprayer;
+    const mixer = new THREE.AnimationMixer(model);
+    const act = (n) =>
+      mixer.clipAction(THREE.AnimationClip.findByName(m.clips, `Armature|${n}`));
+
+    const attack = act(names.attack);
+    attack.setLoop(THREE.LoopOnce, 1);
+    attack.clampWhenFinished = true;
+
+    this._anim = { mixer, idle: act(names.idle), run: act(names.run), attack, current: null };
+    this._play("idle");
+
+    group.userData.enemy = this;
+    return group;
+  }
+
+  /**
+   * Fallback body: the old box. Used when no GLB loaded — in Node tests the
+   * assets can't be fetched, and in the browser a load may fail. Spawning
+   * enemies must never throw; this keeps the level playable either way.
+   */
+  _buildBox() {
     const group = new THREE.Group();
 
     const bodyGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
@@ -101,6 +201,48 @@ export class Enemy {
   }
 
   /**
+   * Tint the body. The box swaps its uColour uniform; the GLB tints via
+   * emissive, not material.color: emissive rests at black on every material,
+   * so one blended colour fades back to "no tint" — material.color would have
+   * to restore each material's own shade (navy uniform, black gear, skin).
+   */
+  _setColour(c) {
+    if (this._mats) for (const m of this._mats) m.emissive.copy(c);  // GLB model
+    else this.bodyMat.uniforms.uColour.value.copy(c);                // box fallback
+  }
+
+  /** Crossfade to idle / run / attack. */
+  _play(name) {
+    const a = this._anim;
+    const next = a[name];
+    if (a.current === next) return;
+    next.reset().play();
+    if (a.current) a.current.crossFadeTo(next, 0.15, false);
+    a.current = next;
+  }
+
+  _animate(dt) {
+    if (!this._anim) return;
+    if (this._windupTimer > 0) {
+      // Stretch the clip across the windup so the telegraph and animation line up.
+      const a = this._anim.attack;
+      a.timeScale = a.getClip().duration / this._windupTotal;
+      this._play("attack");
+    } else if (this._vel.x * this._vel.x + this._vel.z * this._vel.z > 0.25) {
+      this._play("run");
+    } else {
+      this._play("idle");
+    }
+    this._anim.mixer.update(dt);
+  }
+
+  /** Per-frame entry point: logic first, then animation. */
+  update(dt, playerPos) {
+    this._tick(dt, playerPos);
+    if (this.alive) this._animate(dt);
+  }
+
+  /**
    * Chase, but obey the paint.
    *
    * The enemy asks the SAME grid the player does — `surfaceAtWorld` on the
@@ -114,15 +256,30 @@ export class Enemy {
    * it slides straight past. That is the DESIGN.md Charger lesson, and it
    * needs no hardcoded ice flag: just read the grid.
    */
-  update(dt, playerPos) {
-    if (!this.alive || !this.config.canMove) return;
+  _tick(dt, playerPos) {
+    if (!this.alive) return;
+
+    // The tint fade runs for EVERY living enemy, movers or not. It used to sit
+    // after the canMove check, so a stationary enemy kept its hit colour
+    // forever. It is called exactly once, here, so no branch below repeats it.
+    this._fadeTint(dt);
+
+    // Attack telegraph (#40). Runs for every living enemy, movers or not. While
+    // winding up the enemy plants its feet so the tell reads; knockback from a
+    // red hit still carries it.
+    this._updateAttack(dt, playerPos);
+    if (this._windupTimer > 0) {
+      this._applyKnockback(dt);
+      return;
+    }
+
+    if (!this.config.canMove) return;
 
     // Green pin: movement stops, threat does not (settled rule). The knockback
     // from a red hit can still carry it while pinned, so apply that first.
     if (this._pinnedTimer > 0) {
       this._pinnedTimer -= dt;
       this._applyKnockback(dt);
-      this._fadeTint(dt);
       return;
     }
     if (this._slipTimer > 0) this._slipTimer -= dt;
@@ -130,7 +287,6 @@ export class Enemy {
     const ground = this._probe.down(this.position);
     if (!ground) {                    // over a gap: no pathfinding, so hold
       this._applyKnockback(dt);
-      this._fadeTint(dt);
       return;
     }
     const rules = ground.surface.surfaceAtWorld(ground.point);
@@ -210,7 +366,6 @@ export class Enemy {
     }
 
     this._applyKnockback(dt);
-    this._fadeTint(dt);
   }
 
   /**
@@ -228,7 +383,7 @@ export class Enemy {
   /**
    * Paint hit. Two jobs now, matching the "painted enemy = active round" rule:
    *
-   *   1. Feedback — the body's toon `uColour` uniform tints, then fades back.
+   *   1. Feedback — the body colour tints, then fades back.
    *   2. Reaction — blue slows, red knocks back, green pins, and enough
    *      damage kills. This is colour-roles Tier 1 (see MECHANICS.md).
    *
@@ -249,6 +404,7 @@ export class Enemy {
     // Feedback first, so a killing hit still reads as coloured.
     this._tintTarget.setHex(PAINT[name].hex);
     this._tintTimer = TINT_FADE;
+    this._setColour(this._tintTarget);
 
     this.hp -= damage;
 
@@ -273,7 +429,11 @@ export class Enemy {
 
     if (this.hp <= 0) {
       this.alive = false;
-      this.dispose();
+      // A dead enemy never lands its attack: cancel the windup. The colour is
+      // left alone so the killing hit still reads as coloured.
+      this._windupTimer = 0;
+      this.mesh.scale.setScalar(1);
+      setTimeout(() => this.dispose(), KILL_FLASH_MS);
     }
 
     return true;
@@ -288,17 +448,89 @@ export class Enemy {
     this._tintBlend
       .copy(this._baseColour)
       .lerp(this._tintTarget, Math.max(0, this._tintTimer / TINT_FADE));
-    this.bodyMat.uniforms.uColour.value.copy(this._tintBlend);
+    this._setColour(this._tintBlend);
+  }
+
+  // --- attack telegraph (#40) -------------------------------------------------
+  // Every attack is announced first: yellow flash + swell + the 'telegraph'
+  // sound, THEN the attack lands. The tell starts before damage, not with it.
+
+  /** True while the enemy is winding up an attack. */
+  get telegraphing() {
+    return this._windupTimer > 0;
+  }
+
+  /**
+   * Begin an attack windup. Returns false if the enemy is dead, already
+   * winding up, or still cooling down from its last attack.
+   * The attack itself lands when the windup ends — see `onAttack`.
+   * Anything that attacks (shooting, a charge, a drain) should go through this.
+   */
+  startTelegraph() {
+    if (!this.alive || this._windupTimer > 0 || this._attackCooldown > 0) return false;
+    this._windupTotal = this.config.windup ?? DEFAULT_WINDUP;
+    this._windupTimer = this._windupTotal;
+    this._vel.set(0, 0, 0);          // plant: the tell has to read
+    audio.play("telegraph");
+    return true;
+  }
+
+  _updateAttack(dt, playerPos) {
+    if (this._attackCooldown > 0) this._attackCooldown -= dt;
+
+    if (this._windupTimer <= 0) {
+      // Enemies with an attackRange start their own windup once the player is
+      // inside it. Guard the argument like update() does: a non-Vector3 gives NaN.
+      const range = this.config.attackRange;
+      if (range && playerPos) {
+        const dx = playerPos.x - this.position.x;
+        const dz = playerPos.z - this.position.z;
+        if (dx * dx + dz * dz <= range * range) this.startTelegraph();
+      }
+      return;
+    }
+
+    this._windupTimer -= dt;
+    if (this._windupTimer <= 0) {
+      this._endTelegraph();
+      this._attackCooldown = this.config.attackCooldown ?? DEFAULT_ATTACK_COOLDOWN;
+      this.onAttack?.(this);
+      return;
+    }
+
+    // p runs 0 -> 1 across the windup. The flicker speeds up as the hit gets
+    // closer, so the last moments read as the most urgent. A colour change on
+    // a small body is easy to miss at ~10 m, so the whole mesh swells too.
+    const p = 1 - this._windupTimer / this._windupTotal;
+    const flicker = 0.5 + 0.5 * Math.sin(p * Math.PI * 2 * (3 + 6 * p));
+    const amount = (0.35 + 0.65 * flicker) * (0.5 + 0.5 * p);
+
+    this._tintBlend.copy(this._baseColour).lerp(this._telegraphColour, amount);
+    this._setColour(this._tintBlend);
+    this.mesh.scale.setScalar(1 + TELEGRAPH_SWELL * p);
+  }
+
+  _endTelegraph() {
+    this._windupTimer = 0;
+    this.mesh.scale.setScalar(1);
+    // A live paint tint rewrites the colour on the next frame; otherwise put
+    // the body back to its resting colour so the yellow does not stick.
+    if (this._tintTimer <= 0) this._setColour(this._baseColour);
   }
 
   /** Frees our own GPU resources. The level still disposes them via its base
    *  traverse — `dispose()` is idempotent, and the level calls us first
-   *  because a future enemy may own pooled resources outside `root`. */
+   *  because a future enemy may own pooled resources outside `root`.
+   *
+   *  Model clones SHARE geometry with each other (and the cached GLB), so only
+   *  the box fallback disposes geometry. The per-enemy material is always ours. */
   dispose() {
-    this.mesh.traverse((obj) => {
-      if (obj.geometry) obj.geometry.dispose();
-      if (obj.material) obj.material.dispose();
-    });
+    (this._mats ?? [this.bodyMat]).forEach((m) => m?.dispose());
+    if (!this._anim) {
+      this.mesh.traverse((obj) => {
+        if (obj.geometry) obj.geometry.dispose();
+      });
+    }
     this.mesh.removeFromParent();
   }
 }

@@ -112,13 +112,23 @@ export class Player {
     }
   }
 
-  look(dx, dy, sensitivity = PLAYER.lookSensitivity) {
-    if (this.dead) return;
+  look(dx,dy,aiming = false){
+    if (this.dead){
+      return;
+    }
+    let sensitivity = PLAYER.lookSensitivity;
+
+    if (aiming){
+      sensitivity *= PLAYER.adsSensitivityMultiplier;
+    }
+
     this.yaw -= dx * sensitivity;
     this.pitch -= dy * sensitivity;
-    // clamp with the same numbers the camera rig reads, so aim and camera
-    // agree about how far down you can look (#34).
-    this.pitch = Math.max(CAMERA.pitchMin, Math.min(CAMERA.pitchMax, this.pitch));
+
+    this.pitch = Math.max(
+      CAMERA.pitchMin,
+      Math.min(CAMERA.pitchMax, this.pitch)
+    );
   }
 
   /**
@@ -301,9 +311,12 @@ export class Player {
     const vx = this.velocity.x;
     const vz = this.velocity.z;
     const planar = Math.sqrt(vx * vx + vz * vz);
-    if (planar > this.speedCap) {
-      this.velocity.x *= this.speedCap / planar;
-      this.velocity.z *= this.speedCap / planar;
+
+    const maxSpeed = this.speedCap * (input.aiming ? PLAYER.adsSpeedMultiplier : 1);
+
+    if(planar > maxSpeed){
+      this.velocity.x *= maxSpeed / planar;
+      this.velocity.z *= maxSpeed / planar;
     }
 
     // ---- jump ------------------------------------------------------------
