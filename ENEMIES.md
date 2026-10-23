@@ -105,10 +105,10 @@ These apply to every enemy unless a section says otherwise:
   https://poly.pizza/m/hThPXDCbwl (both CC0)
 - **Behaviour:** static, tracks the player, burst-fires down a corridor. You go
   around it, not through it.
-- **Deliberate matrix gap:** green pin is useless (it's already stationary), red
-  only matters if it's perched on an edge (fling it off). Teaches: *not every
-  colour works on everything* — the empty cell is the lesson.
-- **Counter:** red knock it off its perch, or blue freeze → crit.
+- **Deliberate matrix gap — no status procs at all.** Freeze, pin and knockback
+  do nothing to it; all three colours simply do damage. Teaches: *not every
+  problem is a paint problem* — the empty cell is the lesson.
+- **Counter:** break line of sight and flank it. Positioning, not paint.
 - **Animation:** idle / track / fire / hit / destroy.
 
 ---
@@ -137,8 +137,12 @@ These apply to every enemy unless a section says otherwise:
 
 **Boss — "Big arm"** — the combo showcase.
 - **Model:** zombie 3, "Big arm" https://poly.pizza/m/KaVJET0WHx (CC-BY)
-- **Behaviour:** high HP pool, **repaints the arena grey** (wipes your territory),
-  spawns waves. Dies to **one scripted colour combo** (sequence TBD).
+- **Role:** the **wave-three arena boss**, not the finale. High HP pool,
+  **repaints the arena grey** (takes your territory), spawns waves, and dies to
+  one scripted colour combo (sequence TBD).
+- **Then the level still has to end:** after Big Arm falls, the **Siphon** is the
+  final exam — a structure dismantled with blue, green and red in sequence. No
+  health bar, no rig and no new animation set.
 - **Note:** the model is literally a big-armed creature — its silhouette reads
   "boss" from across the arena, which is exactly what you want.
 - **Special attacks:** TBD (own design session).

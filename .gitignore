@@ -6,7 +6,5 @@ dist/
 .idea/
 *.log
 
-# Local-only working plans and design decisions (not shipped, not shared)
+# Local-only working plans (not shipped, not shared)
 plans/
-
-AGENTS.md

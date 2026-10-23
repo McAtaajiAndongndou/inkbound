@@ -1,0 +1,43 @@
+# Decision Ledger
+
+Append-only. Every settled design decision goes here, dated, with the reasoning intact.
+
+The three decisions that were **hard to reverse, surprising, and the result of a real trade-off** have their own ADR in `docs/adr/` — this ledger points at them rather than repeating them.
+
+If a decision here contradicts the code, the decision wins and the code is a bug. If two entries here contradict each other, the **later** entry wins and the earlier one should be struck through, not deleted.
+
+---
+
+## 2026-10-06 — enemy and combat rules
+
+- **ADS:** right-click aims — third-person zooms toward first-person, tighter spread, ~50% move speed, lower sensitivity. **V** still toggles free first-person. ADS borrows FPV; it is not a separate mechanic.
+- **Cast per level:** L1 = KolosStudios soldiers (Charger melee, Sprayer ranged). L2 = wall-crawler + turret. L3 = zombies + Big Arm.
+- **Two playable characters:** cosmetic only, no gameplay divergence, shared animations.
+- **Story delivery:** environmental, no text walls. *(Superseded 2026-10-23: the sergeant now speaks.)*
+- **Megabonk movement** (slides, super-jump, bunnyhop): deferred post-beta. Blue ramps already slide, which is the cheap version.
+- **New or combined colours:** three for beta. A single scripted combo may appear on the final boss.
+- **Enemy rules** — green pin removes movement but not threat; red knockback damages on impact; every attack telegraphs; no bullet friendly fire but bodies collide; one class, five configs.
+- **Colour roles** — see `ENEMIES.md` and `GLOSSARY.md` for the canonical table.
+
+## 2026-10-23 — the loop, the world, the campaign
+
+- **One shared tank** across all three colours and all uses, refilled by being in your own paint. No refill button, no trickle. → `ADR-0001`
+- **Grey is enemy paint.** Both sides paint; enemy fire converts your territory to theirs. → `ADR-0002`
+- **All three colours available in normal play**; 2-of-3 is the unlockable hard mode. → `ADR-0003`
+- **Wet state is hybrid:** standing on your paint refills slowly and you can still fire; submerging refills fast, moves faster and hides you, but you cannot fire.
+- **Partial stealth:** submerging halves detection radius and enemies search your last known position. Firing always reveals you.
+- **Grey slows you** and refills nothing. The penalty is live (applies while standing on it), not an accumulated debuff.
+- **Dry out is a real loss state.** No tank and no territory ends the run. The game must declare it rather than leave the player stuck.
+- **Death restarts the level.** Falls are fail-forward; death is not.
+- **Equal paint cost** per shot across all colours. Differentiated cost is a tuning lever, not a pillar.
+- **Instant colour switching.** The tank charges for it; input latency would not.
+- **Turrets have no status procs** — no freeze, no pin, no useful knockback. Positioning is the only answer.
+- **Armour shells are cut.** They existed to serve the 2-of-3 loadout.
+- **The Stalker** is the one new enemy: fast on your paint, slow on grey, always visible, normal procs apply.
+- **Boss sequence:** Big Arm is the wave-three arena boss; the Siphon is the level-ending colour exam.
+- **Sergeant:** one briefing still in the tutorial, then one line per level. Comms bar for text, no portrait system.
+- **Level linking:** diegetic where one exists (the supply lift, L2→L3), title cards elsewhere. No hub.
+- **Scorecard:** coverage, time, and dry time.
+- **Level names:** The Primer, Outskirts, The Ascent, Last Colour.
+- **Paintstreak meter** is built last. If the loop feels complete without it, it is gravy.
+- **Scope posture:** design the full loop, tag every element cheap / medium / expensive, and let the deadline pick the cut list rather than the design.
