@@ -75,6 +75,7 @@ Creative direction sits with Renda + Moses; the mechanics trio build the systems
 |---|---|
 | `AGENTS.md` | This file — rules only |
 | `README.md` | The product: goal, pillars, scope, non-goals, rubric map |
+| `docs/PRD.md` | **What ships** — requirements, owners, status, MoSCoW. The scope authority |
 | `GLOSSARY.md` | Canonical vocabulary. The tie-breaker for naming |
 | `DESIGN.md` | The design doc: concept, story, levels, rubric coverage |
 | `MECHANICS.md` | Mechanics reference |

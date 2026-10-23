@@ -42,7 +42,7 @@ dry  →  paint  →  wet  →  fight  →  claim ground
 
 ### Non-goals
 
-Deliberately **not** building these. If someone proposes one, point them here.
+Deliberately **not** building these. If someone proposes one, point them at the authoritative list in `docs/PRD.md`.
 
 - No new enemy types — add enemy *questions* instead
 - No jetpack, no vehicles, no hub level
@@ -56,6 +56,7 @@ Deliberately **not** building these. If someone proposes one, point them here.
 
 | If you want… | Read |
 |---|---|
+| **What must ship by submission** | **`docs/PRD.md`** — requirements, owners, status |
 | Rules, lanes, definition of done | `AGENTS.md` |
 | Vocabulary — the tie-breaker on naming | `GLOSSARY.md` |
 | The design, story and rubric coverage | `DESIGN.md` |
