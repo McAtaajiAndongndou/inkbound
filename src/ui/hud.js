@@ -1,7 +1,6 @@
 import { PAINT } from '../config.js';
 const HINTS = {
-  Dead: 'Normal ground',
-  Neutral: 'Normal ground',
+  Grey: 'Dead ground: slow, no refill',
   Ice: 'Slide: low friction',
   Bounce: 'Bounce: launches you',
   Grip: 'Grip: climb walls',
@@ -35,7 +34,7 @@ export class Hud {
           <button class="swatch" data-i="0" style="--c:#3aa7ff"><span>1</span>Ice</button>
           <button class="swatch" data-i="1" style="--c:#ff4d5a"><span>2</span>Bounce</button>
           <button class="swatch" data-i="2" style="--c:#4ee08a"><span>3</span>Grip</button>
-          <button class="swatch" data-i="3" style="--c:#5a5a66"><span>4</span>Neutral</button>
+          <button class="swatch" data-i="3" style="--c:#585e54"><span>4</span>Grey</button>
         </div>
       </div>
       <div id="hud-top">

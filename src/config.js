@@ -20,7 +20,7 @@ export const PAINT_IDS = { grey: 0, blue: 1, red: 2, green: 3 };
 // rock slab (which uses the decor tint) still separates from the floor it lies
 // on rather than disappearing into it.
 export const PAINT = {
-  grey: { id: 0, hex: 0x585e54, name: "Dead" },
+  grey: { id: 0, hex: 0x585e54, name: "Grey" },
   blue: { id: 1, hex: 0x3aa7ff, name: "Ice" },
   red: { id: 2, hex: 0xff4d5a, name: "Bounce" },
   green: { id: 3, hex: 0x4ee08a, name: "Grip" },
@@ -29,9 +29,14 @@ export const PAINT = {
 // Colour -> physics. This object IS the game.
 //   friction    how fast ground speed bleeds away (per second)
 //   traction    multiplier on PLAYER.accel while standing here (low = can't turn)
-//   speedScale  how much extra speed this surface grants. You keep it after
-//               you leave, and a lower one never takes it away (red's 1.0
+//   speedScale  how much extra speed this surface grants. You keep a BOOST after
+//               you leave, and a lower value never takes a boost away (red's 1.0
 //               means "no boost", not "back to base"). See #52.
+//
+//               EXCEPTION: grey is a LIVE modifier, not an accumulator. Being on
+//               dead ground slows you now and stops the moment you step off it.
+//               Without that exception the grey penalty would evaporate the first
+//               time the player touched blue.
 //   restitution > 0 makes the surface a trampoline (see PLAYER.minBounce)
 //   climbable   walls of this colour can be climbed
 export const SURFACE = {
