@@ -84,6 +84,7 @@ Creative direction sits with Renda + Moses; the mechanics trio build the systems
 | `docs/levels/` | One document per level |
 | `docs/adr/` | Decisions that were hard to reverse and would look surprising later |
 | `docs/DECISIONS.md` | The decision ledger. Append-only |
+| `docs/issues/` | Draft issues — one per requirement, with lane and acceptance criteria |
 | `BACKLOG.md` | Ideas, playtest findings, parked work, priority order |
 | `docs/ASSETS.md` | Asset pipeline, shopping list, attribution |
 | `INTEGRATION.md` | Cross-lane contracts |
