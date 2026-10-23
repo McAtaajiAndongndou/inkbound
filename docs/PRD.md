@@ -193,6 +193,51 @@ The game is submittable when **all of these are true**:
 
 ---
 
+## M. Models
+
+| ID | Requirement | Pri | Cost | Lane | Status |
+|---|---|---|---|---|---|
+| M1 | Player character, one, animated | MUST | — | shaders | ✅ `soldier-swat.glb` |
+| M2 | Second playable character, cosmetic only | COULD | S | shaders | ❌ Model not in the build |
+| M3 | Charger and Sprayer models | MUST | — | shaders | ✅ Built |
+| M4 | Wall-crawler model | MUST | S | shaders | ❌ Missing |
+| M5 | Turret models | MUST | S | shaders | ❌ Missing |
+| M6 | Drainer model | MUST | S | shaders | ❌ Missing |
+| M7 | Charger zombie model | SHOULD | S | shaders | ❌ Missing |
+| M8 | Big Arm model | SHOULD | S | shaders | ❌ Missing |
+| M9 | Gun viewmodel | MUST | — | paint | ✅ `pistol.glb` |
+| M10 | Military base props | MUST | M | levels | ❌ Nothing exists for Last Colour |
+| M11 | Forest props | MUST | — | levels | ✅ 32 megakit GLBs |
+| M12 | Every CC-BY asset credited in-game | MUST | S | ui | ⚠️ Partial |
+| M13 | One GLB validated before any bulk download | MUST | — | shaders | ⚠️ Done for soldiers, not for zombies or turrets |
+
+**Missing models are the largest single visual risk.** The forest is dressed; every enemy after the first level and the entire final level are not. `docs/ASSETS.md` has the pipeline rule for this: validate one, never bulk.
+
+## N. Animation
+
+The player ships **five clips** and the code wires **two states**. This is why the game reads as unfinished the moment you jump.
+
+| ID | Requirement | Pri | Cost | Lane | Status |
+|---|---|---|---|---|---|
+| AN1 | Player idle and run | MUST | — | shaders | ✅ Built |
+| AN2 | Player armed idle and run | MUST | — | shaders | ✅ Built |
+| AN3 | Player death | MUST | — | shaders | ✅ Built |
+| AN4 | **Player airborne — jump, fall, land** | MUST | S | shaders + core | ❌ Not built: the player runs while falling |
+| AN5 | Player climb | SHOULD | S | shaders | ❌ Not built |
+| AN6 | Player ADS pose or transition | SHOULD | S | shaders | ⚠️ Armed idle only |
+| AN7 | Enemy walk cycle | SHOULD | M | shaders | ⚠️ Faked bob — the GLBs have no leg bones |
+| AN8 | Enemy melee attack | MUST | S | shaders | ❌ The Charger is animated with rifle clips |
+| AN9 | Enemy death | MUST | S | shaders | ❌ No clip exists in the files |
+| AN10 | Enemy hit reaction | MUST | — | shaders | ⚠️ Emissive tint only |
+| AN11 | Gun recoil | MUST | — | paint | ✅ Built |
+| AN12 | Gun movement bob | COULD | S | paint | ❌ Not built |
+
+**Acceptance for AN4:** the player's animation must change when they leave the ground and again when they land, driven by the same ground state the physics already tracks. No new physics, only a new state read.
+
+**Acceptance for AN9:** a killed enemy plays a death reaction before being removed. If no clip exists in the source files, this becomes a rigged fall or a scaled collapse — decided once and applied to every enemy.
+
+---
+
 ## Out of scope
 
 Not shipping, regardless of how good the idea is. If someone proposes one, point here.
@@ -205,6 +250,9 @@ Not shipping, regardless of how good the idea is. If someone proposes one, point
 - Health bars on enemies
 - Cutscenes or exposition walls
 - Paint combining / a fourth colour
+- Mocap, IK, or facial animation — the rigs do not support it and nothing needs it
+- Realistic humanoid retargeting between asset families
+- Bulk asset downloads — one validated GLB at a time, per `docs/ASSETS.md`
 
 ---
 
@@ -216,6 +264,9 @@ Not shipping, regardless of how good the idea is. If someone proposes one, point
 | 2 | Is **paintstreak** in at all? | UI work, and the climax |
 | 3 | Does **Big Arm** ship, or does Last Colour end on the Siphon? | Level 3 scope |
 | 4 | Is **J1's decor reveal** actually working, or does it need building? | A `SHOULD` that may be a `MUST` for the story |
+| 5 | Does the **second playable character** (M2) ship? | Menu work and one model |
+| 6 | Do **enemy walk cycles** ship, given the source GLBs have no leg bones? | Whether AN7 is a retarget job or stays a faked bob |
+| 7 | Which gun model is authoritative — `pistol.glb` or the Sci-Fi Gun Pack? | M9, and the credits entry |
 
 ---
 
