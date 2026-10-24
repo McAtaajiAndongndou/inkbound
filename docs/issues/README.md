@@ -86,6 +86,8 @@ They are **drafts on disk, not published issues.** Publishing is a visible act o
 
 **The loop** — 001 → 002 → 003. The game's identity is still not built: ammo is per colour, refill is a keypress, grey is neutral. Cheaper than any level and changes the game more.
 
+**But first, #55.** Movement friction is frame-rate dependent in `core`. The whole economy is timing-based, so tuning refill, dodge windows and the grey slowdown against a variable speed is wasted work. Fix that, then tune.
+
 **The model spike** — 042 first, then 043 and 044. One afternoon decides whether seven enemy models are achievable or whether the game ships with shaded boxes. Do it before anyone depends on it.
 
 **The animation** — 010 alone. Three clips and one state read, and the game stops looking unfinished the moment you jump.
@@ -96,26 +98,29 @@ They are **drafts on disk, not published issues.** Publishing is a visible act o
 
 ## Publishing
 
-`gh` is authenticated on this machine. Create the labels once:
+**Do not publish these blind.** The repo already has **46 issues** (7 open, 39 closed) and five of these drafts overlap live ones: `045`↔#35, `037`↔#54, `001`–`003`↔#39, `058`↔#47, and ADR-0003↔#46.
 
-```bash
-gh label create "lane:levels"  --color "8B5CF6" --description "Renda"
-gh label create "lane:ui"      --color "3B82F6" --description "Moses"
-gh label create "lane:core"    --color "10B981" --description "Ozuko"
-gh label create "lane:paint"   --color "F59E0B" --description "Dikeledi"
-gh label create "lane:shaders" --color "EF4444" --description "Lethabo"
+The labels already exist and are bare names — **use these, do not create `lane:*`**:
+
+```
+core   paint   shaders   levels   ui
 ```
 
-Publish **in numeric order** so the `Depends on` references stay valid:
+Reconcile first:
+
+1. Close or link the five overlaps above.
+2. Publish into a **milestone** (`gh issue create --milestone "Spec 2026-10"`) so the whole set can be closed in bulk if it is rejected.
+3. Publish **in numeric order** so the `Depends on` references stay valid.
 
 ```bash
 gh issue create \
   --title "Shared tank + positional refill" \
   --body-file docs/issues/001-shared-tank-and-positional-refill.md \
-  --label "lane:paint"
+  --label "paint" \
+  --milestone "Spec 2026-10"
 ```
 
-Then move **042 to the top of the project board** regardless of its number, because it gates six others.
+Then pin **042** and **049** to the top whatever their numbers, because they gate six and two issues respectively.
 
 ---
 
