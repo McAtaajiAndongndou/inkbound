@@ -48,3 +48,25 @@ If a decision here contradicts the code, the decision wins and the code is a bug
 - **A crit is triple damage.** A frozen enemy takes roughly 3× from the next hit. Not an instant kill — the freeze is a setup reward, not a skip button, and HP stays meaningful.
 - **Only the Sprayer, Big Arm and Drainer paint grey.** Turret fire leaves ground alone, so an enemy the player cannot paint back never creates a dead zone. Enemy grey is visually identical to dead ground — territory is legible by *who last touched it*, not by a tint.
 - **The scorecard is three numbers.** Coverage, time, dry time. No letter rank, no saved bests. It can grow later; it must not block anything now.
+
+### What the asset files actually contain
+
+Inspected the GLB animation tables rather than trusting the docs. Two facts change several requirements:
+
+- **The player model is fully rigged and generous.** `soldier-swat.glb` has 62 joints, a complete humanoid skeleton, and **24 clips** — including `Death`, `HitRecieve`, `Gun_Shoot`, `Idle_Gun_Pointing`, `Walk`, four directional runs, `Roll`, `Interact`, kicks and punches. But it has **no jump, fall, land or climb clip**.
+- **The enemy models have no skeleton at all.** Both `soldier-charger.glb` and `soldier-sprayer.glb` report **0 joints**. Their five clips (`Rifle@Aim`, `@AimShoot`, `@Reload`, `@Run.001`, `@Shoot`) animate nothing that deforms the mesh. Their motion is the procedural bob-and-lean in `enemy.js`, not animation.
+
+Consequences: enemy walk cycles, melee attacks and death reactions **cannot come from clips** with the current assets. Player jump, fall, land and climb **must be procedural**, borrowed, or sourced from a new pack.
+
+### Settled after that inspection
+
+- **Hipfire splashes.** A shot damages every enemy inside the splat radius, so ADS is precision and crits while hipfire is coverage and clumps. The tradeoff is real rather than cosmetic.
+- **Enemies stay rigid.** Procedural motion is the accepted answer — bob, lean, squash, recoil, a death topple. Rigged enemy models are rejected as a re-import with unknown clip coverage.
+- **Missing player clips come from the Universal Animation Library**, which is already listed in `docs/ASSETS.md` and shares the rig family.
+- **`pistol.glb` is authoritative.** The Sci-Fi Gun Pack is dropped from the design; the docs claiming it replaced Kenney's blaster were wrong.
+- **One playable character.** The second character is cut.
+- **Mood:** the Ascent is cold dawn, Last Colour is sickly amber interior.
+- **Amber is the only danger colour** — enemy telegraphs, traps and incoming fire all use it, because it is not a paint colour.
+- **Territory is read from the minimap**, with the HUD number relabelled from coverage to territory and tinted with the player's colour.
+- **Base props are procedural plus the ITHappy pack** — blockout geometry and code-built crates and pipes, with the downloaded pack filling in detail where it validates.
+- **A minimal killfeed ships**, naming the enemy and the colour that killed it.

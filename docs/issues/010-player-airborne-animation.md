@@ -2,13 +2,15 @@
 **Priority:** MUST
 **PRD:** AN4
 **Cost:** S
-**Depends on:** nothing
+**Depends on:** 049 — the player rig ships no jump, fall or land clips, so they must come from the Universal Animation Library
 
 ### Context
 
 The player has five animation clips and the code wires **two states**. `main.js` calls `setMoving(speed > 0.5)` and nothing else, so the player plays their run animation while falling through the air. Standing still mid-jump looks the same as sprinting mid-jump.
 
-`Avatar` already owns a mixer and a `play(name, fade)` method. The physics already knows whether the player is grounded. This issue connects the two — it is the highest polish-per-hour change in the project.
+The rig actually has **24 clips**, but none of them are jump, fall or land — issue 049 brings those in from the Universal Animation Library. This issue is the state machine that decides when to play them.
+
+`Avatar` already owns a mixer and a `play(name, fade)` method. The physics already knows whether the player is grounded.
 
 ### Scope — files you may touch
 

@@ -84,6 +84,7 @@ The game is submittable when **all of these are true**:
 | C3 | **Red knockback** flings an enemy, and impact damages it | MUST | — | core | ✅ Built |
 | C4 | **Freeze → crit window** — three blue hits, then a punishing shot | SHOULD | M | paint | ❌ Not built |
 | C5 | **Turrets have no status procs** — positioning is the only answer | MUST | S | shaders | ⚠️ Verify — likely procs apply today |
+| C6 | **ADS is a real tradeoff** — right mouse tightens spread and enables crits at reduced movement speed; hipfire paints a wider area | MUST | S | core | ⚠️ Spread and M2 exist; crit payoff missing (C4), multi-target missing |
 
 ---
 
@@ -147,6 +148,7 @@ The game is submittable when **all of these are true**:
 | H3 | Per-level win and lose screens | MUST | S | ui | ⚠️ Generic text today |
 | H4 | Minimap | MUST | — | ui | ✅ Built |
 | H5 | Loading screen | MUST | — | ui | ✅ Built |
+| H6 | **Killfeed** — a line when an enemy dies, naming it and the colour that killed it | SHOULD | S | ui | ❌ Not built |
 
 ---
 
@@ -198,7 +200,7 @@ The game is submittable when **all of these are true**:
 | ID | Requirement | Pri | Cost | Lane | Status |
 |---|---|---|---|---|---|
 | M1 | Player character, one, animated | MUST | — | shaders | ✅ `soldier-swat.glb` |
-| M2 | Second playable character, cosmetic only | COULD | S | shaders | ❌ Model not in the build |
+| M2 | Second playable character | **Cut** | — | — | ⛔ Cut — one character ships |
 | M3 | Charger and Sprayer models | MUST | — | shaders | ✅ Built |
 | M4 | Wall-crawler model | MUST | S | shaders | ❌ Missing |
 | M5 | Turret models | MUST | S | shaders | ❌ Missing |
@@ -246,6 +248,7 @@ Not shipping, regardless of how good the idea is. If someone proposes one, point
 - Vehicles — removes paint from a paint game
 - A hub level — a fifth level's worth of work for no gameplay
 - New enemy types beyond the Stalker
+- A second playable character — cut; one character ships
 - Two-of-three loadout as the default
 - Health bars on enemies
 - Cutscenes or exposition walls

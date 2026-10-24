@@ -10,6 +10,8 @@ They are **drafts on disk, not published issues.** Publishing is a visible act o
 
 **Issue 042 gates six others** but is numbered late. It is the model-pipeline spike, and if it fails, 018, 020, 024, 025, 043 and 044 cannot be finished. Do it early, not in numeric order.
 
+**Issue 049 gates 010 and 050.** The player rig has 24 clips and none of them are jump, fall, land or climb. Those four states come from the Universal Animation Library, so the library has to land before those two issues can.
+
 ---
 
 ## All 44
@@ -62,6 +64,20 @@ They are **drafts on disk, not published issues.** Publishing is a visible act o
 | 042 | **Model spike — wall-crawler** | shaders | MUST | S | — |
 | 043 | Turret model | shaders | MUST | S | 042 |
 | 044 | Remaining enemy models | shaders | SHOULD | M | 042 |
+| 045 | ADS tradeoff + splash damage | paint | MUST | S | 034 |
+| 046 | Sprayer reload window | shaders | MUST | S | 004 |
+| 047 | Wall-crawler climbs green | shaders | MUST | M | 042 |
+| 048 | Stalker | shaders | COULD | M | 042 |
+| 049 | **Animation library integration** | shaders | MUST | M | — |
+| 050 | Player climb animation | core | SHOULD | S | 049 |
+| 051 | Enemy procedural motion | shaders | MUST | M | — |
+| 052 | Player combat poses | shaders | SHOULD | S | 045 |
+| 053 | Per-level mood | levels | MUST | S | — |
+| 054 | Danger language + readability | shaders | MUST | S | 029 |
+| 055 | Territory readout | ui | SHOULD | S | 001 |
+| 056 | Military base props | levels | MUST | M | 053 |
+| 057 | Killfeed | ui | SHOULD | S | 009 |
+| 058 | Deployment + credits | ui | MUST | S | every model issue |
 
 ---
 
@@ -104,13 +120,9 @@ Then move **042 to the top of the project board** regardless of its number, beca
 
 ## Still not drafted
 
-Genuinely undecided or not yet designed — do not hand these to an agent:
+**Nothing.** Every PRD requirement now has an issue, or is built, or is cut. The four cut items are listed in the PRD's out-of-scope section.
 
-- **Second playable character** (M2, COULD) — open question in the PRD
-- **Military base props** (M10) — `docs/ASSETS.md` lists a source but nobody has looked at it
-- **Per-level mood** (J2) — Outskirts has atmosphere; the Ascent and Last Colour do not
-- **Readability pass** (J3, J4) — silhouette and telegraph colour are unverified
-- **Which gun model is authoritative** (M9) — `pistol.glb` or the Sci-Fi Gun Pack
+The remaining work is not paperwork — it is deciding order and defending focus. See the four chains above.
 
 ---
 
