@@ -2,40 +2,43 @@
 **Priority:** MUST
 **PRD:** E2
 **Cost:** M
-**Depends on:** 012 (the Charger fight must be readable before two enemies share a room)
+**Depends on:** 012, 029 for the trap volume, 031 for the blade
 
 ### Context
 
-The first **combination**. A Charger demands movement; a Sprayer punishes movement in the open. There is no single colour that answers both, so the player has to choose an order.
+The trap room, and the level's best teaching moment: **will you use the hazard, or just avoid it?**
 
-Design: `docs/levels/01-outskirts.md`, beat "Island C — two at once".
+Four enemies, a swinging blade between cover blocks, and a back edge that overhangs the waste. Red knockback can put a Charger into the chasm — the room rewards the player who understands their own kit.
+
+Design: `docs/levels/01-outskirts.md`, "Island C — the trap room".
 
 ### Scope — files you may touch
 
-- `src/levels/level-01-mission.js` — `L1.islands.C`, its spawns, and the gate at its back edge
-- `src/config.js` — enemy counts if they live there
+- `src/levels/level-01-mission.js` — Island C, its deck, its spawns, the blade
+- The waste edge geometry
 
 ### Out of scope — do not touch
 
-- Either enemy's behaviour
-- The pillars and the tower behind the gate
-- Island B
+- The blade's swing behaviour
+- The waste surface itself
+- The return loop, which is issue 015
 
 ### Acceptance criteria
 
-- [ ] Exactly one Charger and one Sprayer spawn on Island C
-- [ ] The Sprayer keeps range rather than walking into melee
-- [ ] The room is open enough to retreat and repaint — at least two exits or a wide floor
-- [ ] The gate opens only when both are dead
-- [ ] A player who kills the Sprayer first has an easier fight, and that is discoverable without being told
+- [ ] Two Chargers on the floor, two Sprayers with one elevated
+- [ ] An elevated Sprayer that only aggroes when the player climbs
+- [ ] A swinging blade between two cover blocks, denying the middle of the room on a rhythm
+- [ ] A waste edge close enough that a red knockback can send a Charger over it
+- [ ] Environmental kills get a distinct sound and hit confirmation
+- [ ] The room is the tightest paint budget in the level — a careless player can run dry
 
 ### Manual check
 
-Fight the room twice, killing in a different order. One order should feel clearly smarter. If both feel identical, the two enemies are not exerting different pressure.
+Fight it normally and confirm the blade forces you off the middle. Then deliberately knock a Charger into the waste. If you smile, it works; if it is hard to arrange, the edge is too far from the fight.
 
 ### Design note
 
-This is the level's first real decision, so readability matters more than difficulty. Both enemies must be visible from where the player enters.
+**This is the minute to test.** The whole level's claim to being more than a tutorial rests on the player discovering that the hazard is a weapon. If nobody finds it unprompted, put a Charger nearer the edge.
 
 ### Definition of done
 

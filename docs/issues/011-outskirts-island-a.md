@@ -2,43 +2,39 @@
 **Priority:** MUST
 **PRD:** E2
 **Cost:** S
-**Depends on:** nothing — the geometry already exists
+**Depends on:** nothing — the island exists
 
 ### Context
 
-The first thirty seconds of Outskirts are meant to be pure play. No enemies, no objectives, just movement across an island with a gap and a visible hazard at the edge.
+The entry beat, and the level's first lesson in **verticality**: a Sprayer stands on a deck above the island and ignores the player until they climb to it.
 
-Design: `docs/levels/01-outskirts.md`, beat "Island A — the open". The island exists — this issue is pacing and hazard placement, not new layout.
+Design: `docs/levels/01-outskirts.md`, "Island A — the entry".
 
 ### Scope — files you may touch
 
-- `src/levels/level-01-mission.js` — Island A only (`L1.islands.A`, and the tree list for that band)
-- `src/config.js` — only if a trap number needs a home
+- `src/levels/level-01-mission.js` — Island A, its deck, its spawns
+- The spike pit placement
 
 ### Out of scope — do not touch
 
-- Islands B and C, the pillars, the ascent block
-- The decor scatter system in `decor.js`
-- Enemy spawns
+- Island B and beyond
+- Enemy behaviour
+- The decor scatter system
 
 ### Acceptance criteria
 
-- [ ] The player can walk from spawn to the Gap without encountering an enemy
-- [ ] The first spike pit is visible before it can hurt anyone
-- [ ] Falling into the Gap returns the player to Island A, not to death
-- [ ] Foliage does not close over the route at eye height
-- [ ] There is at least 6 m of open ground in front of spawn to run in
+- [ ] One Charger on the floor
+- [ ] One Sprayer on a raised deck, reachable by green climb or red bounce
+- [ ] That Sprayer **does not aggro until the player climbs** — it is opt-in difficulty
+- [ ] The spike pit is visible before it can hurt anyone
+- [ ] At least 6 m of open ground in front of spawn
+- [ ] Falling returns the player to the island, not to death
 
 ### Manual check
 
-Start a fresh run and do nothing but run forward. The pit should be obvious before you reach it, and you should never be surprised by a hazard you could not see.
-
-### Design note
-
-This beat exists to let the player trust the level. Resist adding a second hazard here — the pit is teaching *that traps exist*, and one lesson per room.
+Walk the floor route: one enemy, one visible hazard, no pressure. Then climb the deck and confirm the second enemy wakes. If the deck enemy shoots you on the floor route, the whole "opt-in difficulty" rule is broken.
 
 ### Definition of done
 
 - [ ] `npm test` green
-- [ ] PRD status for E2 updated if this is the last Outskirts slice outstanding
 - [ ] No files touched outside the lane

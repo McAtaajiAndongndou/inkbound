@@ -31,11 +31,11 @@ They are **drafts on disk, not published issues.** Publishing is a visible act o
 | 009 | Per-level end screens | ui | MUST | S | — |
 | 010 | Player airborne animation | shaders | MUST | S | — |
 | 011 | Outskirts — Island A | levels | MUST | S | — |
-| 012 | Outskirts — Island B | levels | MUST | S | 010 |
+| 012 | Outskirts — Island B | levels | MUST | M | 011, 030 |
 | 013 | Outskirts — The Gap | levels | MUST | M | 001 |
-| 014 | Outskirts — Island C | levels | MUST | M | 012 |
-| 015 | Outskirts — The Pillars | levels | MUST | M | 010, 013, 031 |
-| 016 | Outskirts — The Ledge | levels | SHOULD | M | 015 |
+| 014 | Outskirts — Island C | levels | MUST | M | 012, 029, 031 |
+| 015 | Outskirts — Return loop + side island | levels | MUST | S | 014 |
+| 016 | Outskirts — Pillars + ledge | levels | MUST | M | 015, 013, 031 |
 | 017 | Ascent — Landing + first face | levels | MUST | S | 002 |
 | 018 | Ascent — Terrace one | levels | MUST | M | 017, 042 |
 | 019 | Ascent — Collapsing catwalk | levels | MUST | M | 018, 030 |

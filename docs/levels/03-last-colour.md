@@ -28,6 +28,22 @@ Big Arm     arena boss                     the floor is taken from you
 Siphon      the final exam                 blue, green, red, in order
 ```
 
+## The Siphon's position in that order
+
+The Siphon is **the structure in the middle of the Core chamber**, present from the moment the player walks in.
+
+| Beat | Siphon state |
+|---|---|
+| Waves 2 and 3 | **Architecture.** Dormant, grey, centre of the room. A landmark and cover to fight around |
+| Big Arm enters | **Inert.** Big Arm is its guardian, not its second phase |
+| Big Arm dies | **Wakes.** Housings open, the room shifts, the exam begins |
+| Three phases | Blue freezes the intake → green pins the arms → red knocks the core into its own machine |
+| Complete | Overloads. Level ends |
+
+**Never alongside Big Arm.** Two bosses at once blur both: Big Arm is a *creature* fight about movement and territory, the Siphon is a *knowledge* fight about colour order. In sequence, Big Arm becomes the rehearsal — it dies to a three-colour combo, so the exam tests something the player has already seen the shape of.
+
+The order also keeps the cut cheap. If Big Arm is cut (`SHOULD`, cost `L`), the Siphon still works alone, because it was never a phase of Big Arm.
+
 ---
 
 ## Room by room

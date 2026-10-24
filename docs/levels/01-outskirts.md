@@ -1,83 +1,135 @@
 # Outskirts — Level One
 
-**Identity:** the loop with *space*. Open, playful, forgiving.
+**Identity:** the loop with *space* — and the level that teaches **verticality**.
 
-The player has just been taught that colour does something. This level is where they discover that colour does things *to the world*, and that they can choose which thing. Nothing here should kill them for trying.
-
-Artefacts: `GLOSSARY.md`, `docs/enemies/algorithms.md`, `docs/levels/02-the-ascent.md` (for the trap escalation rule).
+Revised 2026-10-24. The first draft of this level was a straight line with five enemies and one vertical room at the end. It was a hallway with arenas, no retreat and no route choice. This version fixes that.
 
 ---
 
-## Beats
+## What was wrong with the corridor
+
+| Problem | Consequence |
+|---|---|
+| Straight A → B → C → pillars | No retreat, so no repainting under pressure |
+| Five enemies | One or two at a time; never from an angle |
+| Jump and bounce only until the end | Traversal identical to the tutorial |
+| No traps | No reason to look at the ground |
+| Verticality saved for the last room | The level's best idea arrives last |
+
+---
+
+## The three structural changes
+
+### 1. A second level on every island
+
+Each island gets a raised deck reachable by **green climb** or **red bounce**. Enemies stand on them. Height is not a ladder — it is a paint decision.
+
+### 2. A return loop
+
+A catwalk from Island C back to Island B: unpainted, empty, slow, safe.
+
+It exists so the player can **retreat and repaint**, which is the game's core verb and the thing a corridor forbids. Without it, an empty tank in Island C is a death sentence decided by geometry.
+
+### 3. Traps in rooms with enemies
+
+A trap alone is a timing test. A trap inside a fight is a **tool**: red-knock a charger into the pit, or lose the paint lane the trap denies.
+
+---
+
+## The rule that makes this work: verticality is opt-in difficulty
+
+**Enemies on upper decks only aggro when the player climbs to them.**
+
+The ground route stays gentle, so Outskirts remains the softest level and the tutorial's successor. The high route is faster, more dangerous and gives better sightlines. That is the replay hook, and it means more enemies do not make the level hostile.
+
+---
+
+## Route
 
 ```
-Island A     open, nothing attacks       let them breathe and trust the level
-Island B     one Charger, open floor     teach blue
-The Gap      blue slope + red pad        momentum, the flow moment
-Island C     Charger + Sprayer together  two answers at once
-The Pillars  green climb, red bounce     the setpiece
-Ledge        quiet, view back            release
+Island A   spawn, 1 charger, spike pit, deck sprayer        [floor]
+   │ gap
+Island B   2 chargers + deck sprayer, collapsing bridge     [floor + deck]
+   │ the Gap — blue slope, red pad
+Island C   2 chargers, 2 sprayers, blade, waste edge        [floor + deck]
+   │ catwalk (return loop, C → B)
+   │
+The Pillars  green climb → red bounce → fight → climb        [vertical exam]
+   │
+Ledge        release, view, deco reveal
 ```
-
-The existing island layout is sound and should not be rebuilt. What it needs is **rhythm**, not new geometry.
 
 ---
 
 ## Room by room
 
-### Island A — the open
+### Island A — the entry
 
-Spawn, a gap to jump, foliage. **No enemies.**
+**Question:** *is this place safe enough to learn in?*
 
-The only job of this beat is to let the player run. Movement is the game's best feature and the first thirty seconds should be pure play. Put one trap here — a visible spike pit at the edge of the route — so the rule "this place is dangerous" arrives before the fights do.
+One Charger. One spike pit, visible before it can hurt anyone. One **Sprayer on a deck above** that ignores the player unless they climb.
 
-**Question:** *do I want to move?*
+The deck is the level's first lesson about verticality and it costs nothing: climb up, the sprayer wakes up, and you learn that height means enemies.
+
+**Paint budget:** generous. **Exit:** the gap.
 
 ---
 
-### Island B — first blood
+### Island B — the first real fight
 
-One **Charger**, wide open floor, no cover.
+**Question:** *can I fight two things while the ground is contested?*
 
-> You sidestep or you paint. Both work. Only one of them is interesting.
+Two **Chargers** on the floor, one **Sprayer** on a deck. No single colour answers all three, so the player chooses an order.
 
-Blue on its charge line is the intended answer, and it's also the Gap's run-up — the paint you lay here is the paint you need in twenty seconds. That reuse is what makes the island feel designed rather than decorated.
+Exit: the Gap, via a **collapsing bridge**. Blue crosses it in one slide; running it works and feels reckless.
 
-**Question:** *what if the floor moved with the enemy?*
+**Paint budget:** large floor, deliberately — this is where the player learns that running out is survivable if the ground is theirs.
 
 ---
 
 ### The Gap — momentum
 
-The signature movement beat. A long gap, approached down a blue slope, with a red pad at the far side.
+Unchanged from the original design, and it should stay unchanged. **Slide down blue, launch off red, land.** One continuous motion, and the beat that stops the game being a shooter with paint in it.
 
-Blue to build speed, red to convert it into height. One continuous motion: **slide → launch → land.** This is the moment the game stops being a shooter with paint in it.
-
-**Notes**
-- A missed jump must drop the player onto Island B again, not into the void.
-- The slope must be long enough to reach top speed before the edge, or the beat reads as a coin flip.
-
-**Question:** *can I keep my speed?*
+A missed jump lands on Island B. Never the void.
 
 ---
 
-### Island C — two at once
+### Island C — the trap room
 
-**One Charger and one Sprayer**, in the open, together.
+**Question:** *will I use the hazard, or just avoid it?*
 
-This is the level's first *combination*: the Charger demands movement, the Sprayer punishes movement in the open. The player must deal with one while the other is a threat, and there is no single colour that solves both.
+Two **Chargers** and two **Sprayers**, one of them elevated. A **swinging blade** between two cover blocks, on a fixed rhythm. And the island's back edge overhangs the **waste**.
 
-**Question:** *what do I do when the answer is two answers?*
+That last detail is the point. Red knockback can put a Charger into the chasm, so the room rewards the player who understands their kit. It needs a distinct sound and hit confirmation — players will chase this once they find it.
+
+The blade denies the middle of the room on a rhythm, so the safe route costs time and the fast route costs position.
+
+**Paint budget:** the tightest room in the level, and the only one where a careless player can run dry.
 
 ---
 
-### The Pillars — setpiece
+### The return loop
 
-Green up a pillar's side, paint its roof red, bounce across to the second pillar, then climb again. Two shooters wait on the second pillar's deck, so the bounce lands the player *into* a fight.
+A catwalk from C back to B. No enemies. No paint. Longer than the way you came.
 
-This already exists in the level and it should be protected. It is the only geometry in the game that reads as Inkbound and nothing else.
+It is not a shortcut — it is a **way out**. Its whole job is to make retreat possible, so a dry player has somewhere to go that is not a restart.
 
-**Add here:** one **swinging blade** on the approach, whose real purpose is to prove that traps have colour answers — you can *climb past it* on a green face instead of timing it. That single room teaches the whole trap language.
+---
+
+### The optional side island
+
+One hard red bounce from Island C's edge. No enemies, no reward beyond a view of the forest you have painted and a shortcut back to B.
+
+It exists so the level has something to find. Its cost is one bounce distance and one platform.
+
+---
+
+### The Pillars — final exam
+
+Green up a pillar's side, paint its roof red, bounce to the second pillar, climb again. Two Sprayers wait on the deck, so the bounce lands the player into a fight.
+
+Add one **swinging blade on the approach, with a green route around it.** That single room teaches the whole trap language: you can *time* a trap or you can *paint* your way past it.
 
 **Question:** *will you take the safe route or the clever one?*
 
@@ -85,81 +137,44 @@ This already exists in the level and it should be protected. It is the only geom
 
 ### The Ledge — release
 
-Top of the pillars, no enemies, a clear view back across the forest the player just painted.
-
-The trees and foliage near their paint have *come back to colour* — this is where the grey-to-colour reveal pays off. Nothing to fight, nothing to collect.
+No enemies. No hazard. A view back across the forest, and the decor reveal paying off — the trees near your paint have come back to colour.
 
 ---
 
-## Enemies
+## Enemies: 5 → 11
 
-| Enemy | Count | Where | The question |
-|---|---|---|---|
-| Charger | 2 | Islands B and C | Position |
-| Sprayer | 2 | Island C, pillar deck | Your paint |
+| Island | Enemies |
+|---|---|
+| A | 1 Charger, 1 deck Sprayer (opt-in) |
+| B | 2 Chargers, 1 deck Sprayer |
+| C | 2 Chargers, 2 Sprayers (one elevated) |
+| Pillars | 2 Sprayers |
 
-Four enemies for the whole level. The forest is not a gauntlet; it's a playground with teeth.
+The six extra enemies are mostly **above** the player. That is deliberate: it adds combat without making the floor route harder.
 
 ---
 
 ## Traps
 
-| Trap | Where | The colour answer |
+| Trap | Where | Answer |
 |---|---|---|
-| Spike pit | Island A edge | None needed — it's the "traps exist" beat |
-| Collapsing bridge | The Gap crossing | Red bounce before it drops |
-| Swinging blade | Pillar approach | Green — climb around it |
+| Spike pit | Island A | Visible; teaches that traps exist |
+| Collapsing bridge | Island B exit | Blue to cross in one slide |
+| Swinging blade | Island C, between cover | Time it, or route around |
+| Swinging blade + green route | Pillar approach | The trap-language lesson |
+| The waste edge | Island C | Not a trap — a **weapon** |
 
 ---
 
-## The environment reveal
+## Constraints that come with this
 
-As paint spreads, decor within a radius lerps from dead grey to its vibrant colour.
-
-This is the cheapest storytelling in the project and it is the level's *identity*. The forest is where the player sees the world responding to them, which is why the military base later has to be grey on purpose.
-
-**Rule:** the reveal must be local (near the paint) and slow (a second or two). A global tint change reads as a filter; local recovery reads as life.
-
----
-
-## Signature moment
-
-**Red-knock a Charger into the toxic waste.**
-
-It needs its own sound and a distinct hit confirmation. Players will discover it once and then do it deliberately for the rest of the game — that discovery is the moment Outskirts becomes *theirs*.
-
-Place one Charger deliberately near an edge in Island C to make it discoverable rather than lucky.
-
----
-
-## Replay hook
-
-One hidden side route: a harder jump, no enemies, a small cosmetic payoff. It costs a few platforms and it tells the player there might be more than they saw.
-
----
-
-## Fail-forward
-
-| Event | Result |
-|---|---|
-| Miss the Gap | Land on Island B, keep the run |
-| Miss a bounce | Land on the floor below the pillars |
-| Fall in waste | Return to the island edge, lose paint |
-| Dry out | Declared loss |
-
-Nothing in this level should end a run except drying out.
-
----
-
-## Paint budget
-
-Generous. This is the level that teaches, so the tank should feel like it refills faster than the player can spend it. If a player runs dry on Outskirts, the pacing is wrong — not the player.
-
-**Recovery rule:** every island has enough paintable surface that a player who is dry is never more than a splat from recovery.
+- **Paint budget.** More enemies and traps both spend paint, and there is no trickle. Every island needs enough paintable ground that a dry player is one splat from recovery.
+- **Readability.** Eleven enemies means the player must be able to tell them apart at 20 m. See issue 054.
+- **Tests.** `tests/level-01-decor.test.js` asserts every tree stands on a floor. Moving an island breaks it; adding a deck does not.
 
 ---
 
 ## What to test first
 
-1. **The Gap** — does slide → launch → land read as one motion, or as three separate panics?
-2. **The Pillars' swinging blade** — does any player discover the green route without being told? If nobody ever does, the trap is decoration rather than a lesson.
+1. **Island C** — does any player discover knockback-into-the-waste without being told?
+2. **The return loop** — does anyone use it? If nobody ever retreats, the loop is decoration and the level is still a corridor with extra steps.
