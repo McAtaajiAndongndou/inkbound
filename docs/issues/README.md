@@ -6,7 +6,15 @@ They are **drafts on disk, not published issues.** Publishing is a visible act o
 
 ---
 
-## All 28, in dependency order
+## Read this first
+
+**Issue 042 gates six others** but is numbered late. It is the model-pipeline spike, and if it fails, 018, 020, 024, 025, 043 and 044 cannot be finished. Do it early, not in numeric order.
+
+---
+
+## All 44
+
+`D`/`M`/`C` ids in the dependency column are PRD rows, not issues.
 
 | # | Issue | Lane | Pri | Cost | Depends on |
 |---|---|---|---|---|---|
@@ -15,41 +23,57 @@ They are **drafts on disk, not published issues.** Publishing is a visible act o
 | 003 | Dry out | core | MUST | S | 001, 002 |
 | 004 | Charger recovery window | shaders | MUST | S | — |
 | 005 | Turret: no status procs | shaders | MUST | S | — |
-| 006 | Level select | ui | MUST | S | 007, for anything to select |
-| 007 | The Primer | levels | MUST | M | 001, 002 (beats land better) |
-| 008 | Drainer eats paint | shaders | MUST | M | 001 |
+| 006 | Level select | ui | MUST | S | 007 |
+| 007 | The Primer | levels | MUST | M | 001, 002 |
+| 008 | Drainer eats paint | shaders | MUST | M | 001, 042 |
 | 009 | Per-level end screens | ui | MUST | S | — |
 | 010 | Player airborne animation | shaders | MUST | S | — |
 | 011 | Outskirts — Island A | levels | MUST | S | — |
 | 012 | Outskirts — Island B | levels | MUST | S | 010 |
 | 013 | Outskirts — The Gap | levels | MUST | M | 001 |
 | 014 | Outskirts — Island C | levels | MUST | M | 012 |
-| 015 | Outskirts — The Pillars | levels | MUST | M | 010, 013 |
+| 015 | Outskirts — The Pillars | levels | MUST | M | 010, 013, 031 |
 | 016 | Outskirts — The Ledge | levels | SHOULD | M | 015 |
 | 017 | Ascent — Landing + first face | levels | MUST | S | 002 |
-| 018 | Ascent — Terrace one | levels | MUST | M | 017, D3, M4 |
-| 019 | Ascent — Collapsing catwalk | levels | MUST | M | 018 |
-| 020 | Ascent — Terrace two | levels | MUST | M | 019, 005, M5 |
-| 021 | Ascent — The Chain | levels | MUST | M | 020, 013 |
-| 022 | Ascent — The Ledge | levels | MUST | S | 021, 004 |
+| 018 | Ascent — Terrace one | levels | MUST | M | 017, 042 |
+| 019 | Ascent — Collapsing catwalk | levels | MUST | M | 018, 030 |
+| 020 | Ascent — Terrace two | levels | MUST | M | 019, 005, 043 |
+| 021 | Ascent — The Chain | levels | MUST | M | 020, 013, 032 |
+| 022 | Ascent — The Ledge | levels | MUST | S | 021, 004, 031 |
 | 023 | Ascent — Summit + supply lift | levels | MUST | S | 022 |
-| 024 | Last Colour — Hangar | levels | MUST | M | 008, M6 |
-| 025 | Last Colour — Corridor | levels | MUST | M | 024, 005, M5, M7 |
-| 026 | Last Colour — Core waves | levels | MUST | M | 024, 008, D6 |
-| 027 | Last Colour — Big Arm | levels | SHOULD | L | 026, M8 |
-| 028 | Last Colour — Siphon | levels | SHOULD | M | 026, C4 |
-
-`D`/`M`/`C` ids are PRD rows, not issues — they name work that has no issue yet (enemy behaviours, models, colour procs). See **Not yet drafted** below.
+| 024 | Last Colour — Hangar | levels | MUST | M | 008, 042 |
+| 025 | Last Colour — Corridor | levels | MUST | M | 024, 005, 033, 043 |
+| 026 | Last Colour — Core waves | levels | MUST | M | 024, 008, 036, 037 |
+| 027 | Last Colour — Big Arm | levels | SHOULD | L | 026, 044 |
+| 028 | Last Colour — Siphon | levels | SHOULD | M | 026, 034 |
+| 029 | Trap volume + spike pit | levels | MUST | S | — |
+| 030 | Collapsing surfaces | levels | SHOULD | S | 029 |
+| 031 | Swinging blade | levels | SHOULD | S | 029 |
+| 032 | Rolling boulder | levels | COULD | S | 029, 021 |
+| 033 | Security traps | levels | COULD | S | 029, 025 |
+| 034 | Freeze → crit | paint | SHOULD | M | — |
+| 035 | Enemies paint grey | shaders | SHOULD | M | 008 |
+| 036 | Submerge | core | SHOULD | M | 001 |
+| 037 | Partial stealth | shaders | SHOULD | M | 036 |
+| 038 | Scorecard | ui | SHOULD | S | 009 |
+| 039 | Sergeant briefing still | ui | SHOULD | S | — |
+| 040 | Comms bar | ui | SHOULD | S | 039 |
+| 041 | Audio gaps | ui | SHOULD | S | — |
+| 042 | **Model spike — wall-crawler** | shaders | MUST | S | — |
+| 043 | Turret model | shaders | MUST | S | 042 |
+| 044 | Remaining enemy models | shaders | SHOULD | M | 042 |
 
 ---
 
-## The three chains that matter
+## The four chains that matter
 
-**The loop chain** — 001 → 002 → 003. The game's identity is not built yet: ammo is per colour, refill is a keypress, grey is neutral. These three are cheaper than any level and change the game more than a fifth level would.
+**The loop** — 001 → 002 → 003. The game's identity is still not built: ammo is per colour, refill is a keypress, grey is neutral. Cheaper than any level and changes the game more.
 
-**The animation chain** — 010 alone. Three clips and one state read, and the game stops looking unfinished the moment you jump. Highest polish-per-hour in the project.
+**The model spike** — 042 first, then 043 and 044. One afternoon decides whether seven enemy models are achievable or whether the game ships with shaded boxes. Do it before anyone depends on it.
 
-**The level chain** — Outskirts (011–016) is finishable end to end and proves the pattern; Ascent (017–023) and Last Colour (024–028) copy it. Nothing in the Ascent depends on Outskirts' content, only on its *pattern*, so they can run in parallel.
+**The animation** — 010 alone. Three clips and one state read, and the game stops looking unfinished the moment you jump.
+
+**The levels** — Outskirts (011–016) proves the pattern; Ascent (017–023) and Last Colour (024–028) copy it. The later two depend on Outskirts' *pattern*, not its content, so they can run in parallel once the first is standing.
 
 ---
 
@@ -65,7 +89,7 @@ gh label create "lane:paint"   --color "F59E0B" --description "Dikeledi"
 gh label create "lane:shaders" --color "EF4444" --description "Lethabo"
 ```
 
-Then publish **in the order above**, so issue numbers match the filenames and the `Depends on` references stay valid:
+Publish **in numeric order** so the `Depends on` references stay valid:
 
 ```bash
 gh issue create \
@@ -74,22 +98,19 @@ gh issue create \
   --label "lane:paint"
 ```
 
-If you publish in a different order, fix the `Depends on` references before you publish.
+Then move **042 to the top of the project board** regardless of its number, because it gates six others.
 
 ---
 
-## Not yet drafted
+## Still not drafted
 
-These are in the PRD but need a decision or a design pass before an agent can be handed them:
+Genuinely undecided or not yet designed — do not hand these to an agent:
 
-- **Traps** (F1–F3) — no trap system exists and its shape is still open
-- **Freeze → crit** (C4) — now a hard dependency of issue 028
-- **Enemies convert paint to grey** (B1) — same machinery as 008
-- **Submerge + partial stealth** (A6, A7) — open question in the PRD
-- **Scorecard** (A8) — coverage, time, dry time
-- **Story delivery** (G1–G3) — briefing still, comms bar, skippable
-- **Audio gaps** (I2–I4) — gate, telegraph pass, painting sound
-- **Models** (M4–M8) — one issue per enemy, only after the GLB spike passes
+- **Second playable character** (M2, COULD) — open question in the PRD
+- **Military base props** (M10) — `docs/ASSETS.md` lists a source but nobody has looked at it
+- **Per-level mood** (J2) — Outskirts has atmosphere; the Ascent and Last Colour do not
+- **Readability pass** (J3, J4) — silhouette and telegraph colour are unverified
+- **Which gun model is authoritative** (M9) — `pistol.glb` or the Sci-Fi Gun Pack
 
 ---
 

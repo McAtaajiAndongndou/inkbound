@@ -41,3 +41,10 @@ If a decision here contradicts the code, the decision wins and the code is a bug
 - **Level names:** The Primer, Outskirts, The Ascent, Last Colour.
 - **Paintstreak meter** is built last. If the loop feels complete without it, it is gravy.
 - **Scope posture:** design the full loop, tag every element cheap / medium / expensive, and let the deadline pick the cut list rather than the design.
+
+## 2026-10-24 — gaps the issue drafts exposed
+
+- **Traps are authored meshes, not a subsystem.** Each level builds its hazard as a plain mesh plus one shared damage-volume helper. No trap base class, no config table, no triggering system. Three hazards are three small behaviours, and each level owns its own.
+- **A crit is triple damage.** A frozen enemy takes roughly 3× from the next hit. Not an instant kill — the freeze is a setup reward, not a skip button, and HP stays meaningful.
+- **Only the Sprayer, Big Arm and Drainer paint grey.** Turret fire leaves ground alone, so an enemy the player cannot paint back never creates a dead zone. Enemy grey is visually identical to dead ground — territory is legible by *who last touched it*, not by a tint.
+- **The scorecard is three numbers.** Coverage, time, dry time. No letter rank, no saved bests. It can grow later; it must not block anything now.
