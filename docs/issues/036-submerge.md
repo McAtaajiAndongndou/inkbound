@@ -1,5 +1,5 @@
 **Lane:** core (Ozuko)
-**Priority:** SHOULD
+**Priority:** MUST
 **PRD:** A6
 **Cost:** M
 **Depends on:** 001 (the tank and the refill rule)

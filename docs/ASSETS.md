@@ -33,6 +33,7 @@ The Sci-Fi Gun Pack **replaced** the Kenney Blaster Kit, so that all player-side
 | Zombie 3 — Big Arm boss | https://poly.pizza/m/KaVJET0WHx (Quaternius) | **CC-BY** |
 | Zombie 4, "Zombie half" — Wall-crawler | https://poly.pizza/m/Htcsn9OrXJ (Quaternius) | **CC-BY** |
 | Turret Gun | https://poly.pizza/m/ekTQhbJId7 and https://poly.pizza/m/hThPXDCbwl (Quaternius) | CC0 |
+| **Stalker — not yet sourced** | Needs a creature model. Added after this file was written, so no asset was ever chosen | — |
 
 ## Environment
 

@@ -78,6 +78,7 @@ They are **drafts on disk, not published issues.** Publishing is a visible act o
 | 056 | Military base props | levels | MUST | M | 053 |
 | 057 | Killfeed | ui | SHOULD | S | 009 |
 | 058 | Deployment + credits | ui | MUST | S | every model issue |
+| 059 | Paintstreak meter | ui | COULD | M | 001, 038 |
 
 ---
 

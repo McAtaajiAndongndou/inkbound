@@ -1,5 +1,5 @@
 **Lane:** shaders (Lethabo)
-**Priority:** SHOULD
+**Priority:** MUST
 **PRD:** A7
 **Cost:** M
 **Depends on:** 036 (there is nothing to hide with until submerge exists)

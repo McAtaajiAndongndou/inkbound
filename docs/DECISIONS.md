@@ -70,3 +70,10 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Territory is read from the minimap**, with the HUD number relabelled from coverage to territory and tinted with the player's colour.
 - **Base props are procedural plus the ITHappy pack** — blockout geometry and code-built crates and pipes, with the downloaded pack filling in detail where it validates.
 - **A minimal killfeed ships**, naming the enemy and the colour that killed it.
+
+### Open questions closed
+
+- **Submerge and partial stealth ship**, and both are upgraded to MUST. Without them, wet collapses into "stand still to reload" and the loop keeps its resource but loses its decision.
+- **Paintstreak is in**, as a COULD, built last.
+- **The decor reveal is already implemented** — `decor.js` carries the full per-colour palette, the instanced buckets and the delayed reveal. `J1` was marked partial in error.
+- **The Stalker needs a sourced model.** It is the only enemy in the roster with no asset chosen, because it was invented after `docs/ASSETS.md` was written.

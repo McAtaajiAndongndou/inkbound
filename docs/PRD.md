@@ -57,8 +57,8 @@ The game is submittable when **all of these are true**:
 | A3 | **Pushback when dry** — firing on empty produces a dry click and no shot | MUST | S | paint | ✅ Built |
 | A4 | **Grey slows you** and refills nothing, as a live modifier | MUST | S | core | ❌ Not built — `SURFACE.grey.speedScale` is 1.0 |
 | A5 | **Dry out** — no tank and no territory ends the run, and the game says so | MUST | S | core | ❌ Not built |
-| A6 | **Submerge** — fast refill, hidden, cannot fire | SHOULD | M | core | ❌ Not built |
-| A7 | **Partial stealth** — submerging halves detection; firing reveals | SHOULD | M | core | ❌ Not built |
+| A6 | **Submerge** — fast refill, hidden, cannot fire | MUST | M | core | ❌ Not built |
+| A7 | **Partial stealth** — submerging halves detection; firing reveals | MUST | M | shaders | ❌ Not built |
 | A8 | **Scorecard** — coverage, time, dry time at level end | SHOULD | S | ui | ❌ Not built |
 
 **Acceptance for A1/A2 together:** a player who paints and stands in their own colour never needs to press a key to refill, and a player who paints and walks away can run out.
@@ -84,7 +84,8 @@ The game is submittable when **all of these are true**:
 | C3 | **Red knockback** flings an enemy, and impact damages it | MUST | — | core | ✅ Built |
 | C4 | **Freeze → crit window** — three blue hits, then a punishing shot | SHOULD | M | paint | ❌ Not built |
 | C5 | **Turrets have no status procs** — positioning is the only answer | MUST | S | shaders | ⚠️ Verify — likely procs apply today |
-| C6 | **ADS is a real tradeoff** — right mouse tightens spread and enables crits at reduced movement speed; hipfire paints a wider area | MUST | S | core | ⚠️ Spread and M2 exist; crit payoff missing (C4), multi-target missing |
+| C6 | **ADS is a real tradeoff** — right mouse tightens spread and enables crits at reduced movement speed; hipfire paints a wider area and splashes every enemy in the splat | MUST | S | core | ⚠️ Spread and M2 exist; crit payoff missing (C4), splash missing |
+| C7 | **Paintstreak meter** — coverage and kills fill a gauge, spent on a splat that claims a zone and stuns everything inside | COULD | M | ui | ❌ Not built. Build last of everything |
 
 ---
 
@@ -167,7 +168,7 @@ The game is submittable when **all of these are true**:
 
 | ID | Requirement | Pri | Cost | Lane | Status |
 |---|---|---|---|---|---|
-| J1 | **Grey-to-colour decor reveal** near painted ground | SHOULD | M | levels | ⚠️ Partial — decor reacts, reveal unconfirmed |
+| J1 | **Grey-to-colour decor reveal** near painted ground | SHOULD | M | levels | ✅ Built in `decor.js` — palette, instanced buckets and delayed reveal all exist |
 | J2 | Per-level mood — fog, light, palette | MUST | S | levels | ⚠️ Outskirts only |
 | J3 | Readability — enemies visible from where you fight | MUST | S | levels | ❌ Not verified |
 | J4 | Enemies distinguishable by silhouette and telegraph colour | MUST | S | shaders | ❌ Not verified |
@@ -212,6 +213,7 @@ The game is submittable when **all of these are true**:
 | M11 | Forest props | MUST | — | levels | ✅ 32 megakit GLBs |
 | M12 | Every CC-BY asset credited in-game | MUST | S | ui | ⚠️ Partial |
 | M13 | One GLB validated before any bulk download | MUST | — | shaders | ⚠️ Done for soldiers, not for zombies or turrets |
+| M14 | Stalker model — **no asset sourced yet** | SHOULD | S | shaders | ❌ Missing. The only enemy with no asset chosen |
 
 **Missing models are the largest single visual risk.** The forest is dressed; every enemy after the first level and the entire final level are not. `docs/ASSETS.md` has the pipeline rule for this: validate one, never bulk.
 
@@ -261,15 +263,17 @@ Not shipping, regardless of how good the idea is. If someone proposes one, point
 
 ## Open questions
 
-| # | Question | Blocks |
+**None.** All seven were closed on 2026-10-24, and the reasoning is in `docs/DECISIONS.md`.
+
+| # | Question | Answer |
 |---|---|---|
-| 1 | Is **submerge** (A6/A7) in for submission or after? | How much of the loop the player feels |
-| 2 | Is **paintstreak** in at all? | UI work, and the climax |
-| 3 | Does **Big Arm** ship, or does Last Colour end on the Siphon? | Level 3 scope |
-| 4 | Is **J1's decor reveal** actually working, or does it need building? | A `SHOULD` that may be a `MUST` for the story |
-| 5 | Does the **second playable character** (M2) ship? | Menu work and one model |
-| 6 | Do **enemy walk cycles** ship, given the source GLBs have no leg bones? | Whether AN7 is a retarget job or stays a faked bob |
-| 7 | Which gun model is authoritative — `pistol.glb` or the Sci-Fi Gun Pack? | M9, and the credits entry |
+| 1 | Is submerge (A6/A7) in? | **In**, and upgraded to MUST |
+| 2 | Is paintstreak in? | **In**, as C7, built last |
+| 3 | Big Arm or Siphon? | **Both**, in sequence — Big Arm is wave three, the Siphon is the exam |
+| 4 | Is J1's decor reveal built? | **Yes**, fully — it was marked partial in error |
+| 5 | Does the second character ship? | **Cut** — one character |
+| 6 | Do enemy walk cycles ship? | **Procedural motion only** — the enemy GLBs have zero joints |
+| 7 | Which gun model? | **`pistol.glb`** |
 
 ---
 
