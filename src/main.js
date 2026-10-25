@@ -6,6 +6,10 @@ import { Avatar } from "./shaders/avatar.js";
 import { CameraRig } from "./core/camera-rig.js";
 import { PaintGun } from "./paint/paint-gun.js";
 import { Level01 } from "./levels/level-01-mission.js";
+import { Level02 } from "./levels/level-02-ascent.js";
+import { Level03 } from "./levels/level-03-horde.js";
+import { LevelBase } from "./levels/level-base.js";
+import { PaintSurface } from "./paint/paint-surface.js";
 import { Hud } from "./ui/hud.js";
 import { PaintGunModel } from "./paint/paint-gun-model.js";
 
@@ -73,6 +77,46 @@ const game = {
   },
 };
 
+// Level select (#78): menu ids (ui/menu.js LEVELS) -> level class. The Primer
+// has no file of its own yet, so it plays Level 1 until it does.
+const LEVEL_CLASSES = {
+  primer: Level01,
+  outskirts: Level01,
+  ascent: Level02,
+  "last-colour": Level03,
+};
+let currentLevelId = "outskirts";
+
+/**
+ * Build and load a level WITHOUT touching the one being played, so a load that
+ * throws leaves the current level running and the menu usable (#78).
+ */
+async function buildLevel(id) {
+  const Level = LEVEL_CLASSES[id];
+  if (!Level) throw new Error(`no level "${id}"`);
+  const next = new Level(game);
+  try {
+    // A stub with no load() of its own gets one bare floor: it loads and does
+    // nothing, instead of throwing or dropping the player into the void.
+    if (Level.prototype.load === LevelBase.prototype.load) stubFloor(next);
+    else await next.load();
+  } catch (err) {
+    next.dispose();
+    throw err;
+  }
+  return next;
+}
+
+function stubFloor(stub) {
+  const floor = new PaintSurface({ width: 20, height: 20, cells: 2 });
+  floor.mesh.rotation.x = -Math.PI / 2;
+  floor.mesh.receiveShadow = true;
+  floor.isFloor = true;
+  stub.root.add(floor.mesh);
+  stub.surfaces.push(floor);
+  stub.spawn.set(0, 1, 0);
+}
+
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
 scene.add(rig.camera);
 const input = new Input(renderer.domElement);
@@ -107,7 +151,10 @@ function setPlaceholderVisible(p, visible) {
   if (p.mesh.material) p.mesh.material.visible = visible;
 }
 
-function loadLevel() {
+/** Swap in level `id` (default: reload the current one). Rejects if it fails. */
+async function loadLevel(id = currentLevelId) {
+  const next = await buildLevel(id);
+
   if(gun){
     gun.dispose();
   }
@@ -125,8 +172,8 @@ function loadLevel() {
 
   hud.hideEnd();
 
-  level = new Level01(game);
-  level.load();
+  level = next;
+  currentLevelId = id;
   scene.add(level.root);
 
   player = new Player(level.surfaces, level.spawn);
@@ -174,8 +221,10 @@ function loadLevel() {
   gunModel = new PaintGunModel(rig.camera, player, avatar);
 }
 
-preloadEnemyModel().then(() => {
-  loadLevel();
+const reportLoadError = (err) => console.error("[main] level failed to load", err);
+
+preloadEnemyModel().then(async () => {
+  await loadLevel();
   document.getElementById("loading").remove();
   animate();
 });
@@ -184,7 +233,9 @@ preloadEnemyModel().then(() => {
 const menu = new Menu(document.body, {
   audio,
   canvas: renderer.domElement,
-  onRestart: loadLevel,
+  onRestart: () => loadLevel().catch(reportLoadError),
+  onSelectLevel: (id) => loadLevel(id),
+  currentLevel: currentLevelId,
 });
 
 const clock = new THREE.Clock();
@@ -192,7 +243,7 @@ const clock = new THREE.Clock();
 /** One step of gameplay. Skipped entirely while the menu is open. */
 function simulate(dt, elapsed, actions, mouse) {
   if (actions.restart){
-    loadLevel();
+    loadLevel().catch(reportLoadError);
     return;
   }
   if (actions.toggleView) rig.toggle();
