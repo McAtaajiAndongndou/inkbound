@@ -64,11 +64,17 @@ window.addEventListener("keydown", () => audio.unlock());
 // no server) from dialling out on every level load.
 const gltfLoader = new GLTFLoader();
 
+// Scorecard (#110): how long the run took and how much of it was spent on
+// grey. Both only count while the run is live — alive, not yet won, menu
+// closed (simulate() does not run behind the menu) — and reset on restart.
+const run = { time: 0, dryTime: 0, over: false };
+
 const game = {
   scene,
   loadGLB: (url) => gltfLoader.loadAsync(url),
   onWin: () => {
-    hud.showEnd("win");
+    run.over = true;
+    hud.showEnd("win", { stats: { time: run.time, dryTime: run.dryTime } });
     audio.play("win");
   },
 };
@@ -124,6 +130,9 @@ function loadLevel() {
   }
 
   hud.hideEnd();
+  run.time = 0;
+  run.dryTime = 0;
+  run.over = false;
 
   level = new Level01(game);
   level.load();
@@ -157,6 +166,7 @@ function loadLevel() {
   lastPos.copy(player.mesh.position);
 
   player.onDeath = () => {
+    run.over = true;
     avatar.die();
     hud.showEnd("lose");
     audio.play("lose");
@@ -201,6 +211,10 @@ function simulate(dt, elapsed, actions, mouse) {
 
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
+  if (!run.over && !player.dead) {
+    run.time += dt;
+    if (player.currentColour === "grey") run.dryTime += dt;
+  }
  
 
   const p = player.mesh.position;

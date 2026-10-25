@@ -25,6 +25,13 @@ const END_LOSE = {
 
 const RESTART_HINT = '<b>R</b> restart level · <b>Esc</b> menu';
 
+// Scorecard (#110): three numbers, written for a player. No rank, nothing saved.
+const pct = (x) => `${Math.round(Math.max(0, Math.min(1, x)) * 100)}%`;
+const clock = (seconds) => {
+  const s = Math.floor(seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
 /**
  * HUD. DOM-based, which is cheap and does not cost us a draw call.
  * Ammo counter, current colour, and a live readout of what the player is
@@ -62,7 +69,13 @@ export class Hud {
         <div id="coverage">Coverage: 0%</div>
       </div>
       <div id="end-win" class="end hidden" role="status">
-        <h1>EXTRACTED</h1><p class="end-detail"></p><p class="end-restart">${RESTART_HINT}</p>
+        <h1>EXTRACTED</h1><p class="end-detail"></p>
+        <dl class="scorecard hidden">
+          <div><dt>Coverage</dt><dd data-stat="coverage"></dd><span>of the level painted</span></div>
+          <div><dt>Time</dt><dd data-stat="time"></dd><span>start to finish</span></div>
+          <div><dt>Dry time</dt><dd data-stat="dry"></dd><span>of the run on grey</span></div>
+        </dl>
+        <p class="end-restart">${RESTART_HINT}</p>
       </div>
       <div id="end-lose" class="end hidden" role="status">
         <h1>DOWN</h1><p class="end-detail"></p><p class="end-restart">${RESTART_HINT}</p>
@@ -83,6 +96,7 @@ export class Hud {
     this.endWin = root.querySelector('#end-win');
     this.endLose = root.querySelector('#end-lose');
     this.hitmarker = root.querySelector('#hitmarker');
+    this.scorecard = root.querySelector('.scorecard');
 
     this._coverageTimer = 0;
     this._coverageValue = 0;
@@ -111,8 +125,10 @@ export class Hud {
    * @param {object} [opts]
    * @param {string} [opts.level]            a LEVELS id from ui/menu.js
    * @param {'dead' | 'dry'} [opts.reason]   why the player lost (default dead)
+   * @param {{ time: number, dryTime: number }} [opts.stats]
+   *   the run, in seconds, for the win scorecard (main.js accumulates it)
    */
-  showEnd(kind, { level, reason = 'dead' } = {}) {
+  showEnd(kind, { level, reason = 'dead', stats } = {}) {
     const info = END_LEVELS[level];
     const name = info?.name ?? 'this level';
     const el = kind === 'win' ? this.endWin : this.endLose;
@@ -120,6 +136,7 @@ export class Hud {
     if (kind === 'win') {
       el.querySelector('h1').textContent = info?.win ?? 'EXTRACTED';
       el.querySelector('.end-detail').textContent = info ? `${info.name} complete.` : '';
+      this._showScorecard(stats);
     } else {
       const lose = END_LOSE[reason] ?? END_LOSE.dead;
       el.querySelector('h1').textContent = lose.title;
@@ -134,6 +151,17 @@ export class Hud {
   hideEnd() {
     this.endWin.classList.add('hidden');
     this.endLose.classList.add('hidden');
+    this._coverageTimer = 0; // a restarted level reads its own coverage on the next frame
+  }
+
+  // Coverage is the HUD's own readout value, not a second scan of the level.
+  _showScorecard(stats) {
+    this.scorecard.classList.toggle('hidden', !stats);
+    if (!stats) return;
+    const stat = (name) => this.scorecard.querySelector(`[data-stat="${name}"]`);
+    stat('coverage').textContent = pct(this._coverageValue);
+    stat('time').textContent = clock(stats.time);
+    stat('dry').textContent = pct(stats.time > 0 ? stats.dryTime / stats.time : 0);
   }
 
   update(dt, { gun, player, surfaces }) {
