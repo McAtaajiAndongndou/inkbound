@@ -109,7 +109,10 @@ test('clearing island B opens gate B, and gate C is untouched (#37)', async () =
 
 test('an enemy flung out of an arena cannot hold its gate shut (#37, #56)', async () => {
   const { level } = await buildLevel();
-  const charger = level.enemies.find((e) => e.type === 'charger');
+  // The Charger that BELONGS to island B, not merely the first one in the list —
+  // island A has had its own Charger since #011.
+  const charger = level.gateB.watch.find((e) => e.type === 'charger');
+  assert.ok(charger, 'island B should be watching a Charger');
 
   // The soft-lock the issues warn about: a red hit flings an enemy off the
   // edge, and with no gravity it floats there ALIVE forever

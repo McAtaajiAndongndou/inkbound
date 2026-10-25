@@ -98,6 +98,64 @@ The player splits your surfaces into walkable floors and solid walls purely from
 
 ---
 
+## Trap damage: one verb, two targets
+
+A trap is a region that hurts whatever stands in it
+(`src/levels/trap-volume.js`). It asks exactly one thing of a target:
+
+```js
+target.position        // THREE.Vector3
+target.takeDamage(n)   // colourless damage, no proc
+target.alive === false // optional: a corpse is not a hazard
+target.dead === true   // optional: the player's flag
+```
+
+- **The player has it** (`core/player.js`), and `Player.takeDamage` already owns
+  `HEALTH.hurtCooldown`, so standing in a hazard cannot chain hits.
+- **Enemies have it too** (`Enemy.takeDamage(n)`), added from the levels lane on
+  24 Oct for PRD F1; the enemies lane owns that file and should review the shape.
+  It is deliberately not `takeColourHit`: a trap must not apply a paint proc, and
+  `grey` would be rejected outright. So "red-knock a Charger into the pit and it
+  dies" now works without the trap knowing what an enemy is.
+
+---
+
+## Levels: one registry, no second list
+
+`src/levels/index.js` is the only list of levels. `main.js` builds from it and the
+pause menu (#006) renders from it:
+
+```js
+game.levels          // [{ id, name, create }] — the list to render
+game.currentLevelId()// which one is loaded
+game.loadLevel(id)   // swap levels without a refresh
+```
+
+Ids are stable and lowercase: `primer`, `outskirts`, `ascent`, `last-colour`.
+An unknown id falls back to `outskirts` and warns; it must never leave a dead page.
+
+**If you add a level, add it here and nowhere else.** A `switch` in `main.js` or an
+array in `menu.js` is the drift this exists to prevent.
+
+## Enemies can be dormant
+
+```js
+new Enemy({ position, config, parent, floors, sleeping: true })
+enemy.wake()
+```
+
+A dormant enemy is **on screen and inert**: no movement, no telegraph, no attack.
+`wake()` starts it; being hit wakes it too (`takeColourHit` and `takeDamage`), and
+`Player.checkEnemyContact` ignores a dormant enemy. So it is never free damage in
+either direction.
+
+**Why:** opt-in difficulty (#54). Hiding an enemy until a trigger is a *reveal*, not a
+choice — the player must be able to see the threat before deciding. **The level owns
+the trigger** (a height, a line, a gate); the enemy owns the state. Island A's Charger
+is woken by `wakeZ`; Island C's Sprayers are awake from load.
+
+---
+
 ## Config: the single source of truth
 
 Every colour, physics number, ammo value and enemy stat lives in `config.js`.

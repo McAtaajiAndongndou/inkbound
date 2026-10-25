@@ -131,13 +131,23 @@ export class Enemy {
    *                                        across the gap, because nothing here
    *                                        ever applies gravity.
    */
-  constructor({ position, config, parent, floors }) {
+  constructor({ position, config, parent, floors, sleeping = false }) {
     this.config = config;
     // Derived from the config's identity rather than passed alongside it, so
     // `type` and `config` cannot be handed over disagreeing.
     this.type = Object.keys(ENEMY).find((key) => ENEMY[key] === config) ?? "sprayer";
     this.alive = true;
     this.hp = config.hp;
+
+    // DORMANT. An enemy that exists, is visible, and does nothing until the level
+    // wakes it. This is how "opt-in difficulty" is built (issue #54, and the deck
+    // Sprayer / Island A Charger in Outskirts): the player must be able to SEE the
+    // threat before deciding to engage. Hiding the enemy until the trigger is not
+    // the same thing — that is a reveal, and it removes the decision.
+    //
+    // Being hit wakes it, in both damage paths, so a dormant enemy is never a
+    // free kill.
+    this.sleeping = sleeping;
 
     this._toPlayer = new THREE.Vector3();
     this._vel = new THREE.Vector3();      // own planar velocity — needed to slide
@@ -301,6 +311,13 @@ export class Enemy {
 
   /** Per-frame entry point: logic first, then animation/gait. */
   update(dt, playerPos) {
+    if (this.sleeping) {
+      // Awake enough to look alive, asleep enough to be harmless: no movement, no
+      // telegraph, no attack. The idle clip still plays, so a dormant enemy reads
+      // as standing guard rather than as a frozen prop.
+      if (this.alive) this._animate(dt);
+      return;
+    }
     this._tick(dt, playerPos);
     if (this.alive) this._animate(dt);
     // The gait is NOT part of `_animate`, because `_animate` returns immediately
@@ -308,6 +325,11 @@ export class Enemy {
     // loader) and for the box fallback. Keeping it separate is what lets it be
     // tested with a stand-in model.
     this._gait(dt);
+  }
+
+  /** Stop being dormant. Idempotent: the level may call it every frame on a trigger. */
+  wake() {
+    this.sleeping = false;
   }
 
   /**
@@ -535,6 +557,9 @@ export class Enemy {
     const name = ID_TO_NAME[colourId];
     if (!name || colourId === PAINT_IDS.grey) return false;
 
+    // A hit wakes a dormant enemy: no free kills.
+    this.sleeping = false;
+
     // Feedback first, so a killing hit still reads as coloured.
     this._tintTarget.setHex(PAINT[name].hex);
     this._tintTimer = TINT_FADE;
@@ -561,16 +586,44 @@ export class Enemy {
       this._vel.set(0, 0, 0);
     }
 
-    if (this.hp <= 0) {
-      this.alive = false;
-      // A dead enemy never lands its attack: cancel the windup. The colour is
-      // left alone so the killing hit still reads as coloured.
-      this._windupTimer = 0;
-      this.mesh.scale.setScalar(1);
-      setTimeout(() => this.dispose(), KILL_FLASH_MS);
-    }
+    if (this.hp <= 0) this._die();
 
     return true;
+  }
+
+  /**
+   * Colourless damage: a trap, a fall, anything that is not paint.
+   *
+   * WHY THIS EXISTS RATHER THAN REUSING `takeColourHit`. That method applies a
+   * blue/red/green proc, and it rejects `grey` outright -- so a spike pit would
+   * either invent a status the hit never earned or silently do nothing. Traps
+   * and environmental kills need damage with no status, which is this method.
+   *
+   * Added from the levels lane for PRD F1 ("red knockback into a pit must
+   * kill"); the enemies lane owns this file and should review the shape.
+   *
+   * @param {number} damage
+   * @returns {boolean} whether the hit landed
+   */
+  takeDamage(damage) {
+    if (!this.alive || !(damage > 0)) return false;
+    this.sleeping = false;   // a trap that hurts you also wakes you
+    this.hp -= damage;
+    if (this.hp <= 0) this._die();
+    return true;
+  }
+
+  /**
+   * The one death path. Both a paint kill and a colourless kill end here, so the
+   * corpse cannot behave differently depending on what killed it.
+   */
+  _die() {
+    this.alive = false;
+    // A dead enemy never lands its attack: cancel the windup. The colour is
+    // left alone so the killing hit still reads as coloured.
+    this._windupTimer = 0;
+    this.mesh.scale.setScalar(1);
+    setTimeout(() => this.dispose(), KILL_FLASH_MS);
   }
 
   _fadeTint(dt) {

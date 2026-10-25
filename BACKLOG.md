@@ -36,3 +36,12 @@ Ideas, playtest findings and parked work. **Check triage status before building 
 - **Island B is too small** — the only way past the enemy is to ignore it.
 - **Third platform is too easy.**
 - **TPV preferred over FPV** for aiming and painting — pending confirmation, and this is the Splatoon-vs-CoD balance decision.
+
+## Playtest findings — Outskirts entry island (Renda, 24 Oct 2026)
+
+- **The deck read as climbable but had no point.** Being off the route meant there was no reason to spend paint on it. It also duplicated Island C's right pillar (Sprayers above you; shoot them or knock them off; left pillar for high ground).
+- **Island A was clutter.** Deck + pit + Charger inside one short island, all competing at the moment the player has the least footing.
+- **The Charger reached the player before they had found their feet.** It moves from load at 5 m/s from ~8 m; distance alone cannot fix that on a 13 m island.
+- **The trap did nothing.** It was beside the route, so it was never touched and never used against an enemy.
+- **A hidden-then-spawned enemy is a reveal, not opt-in difficulty.** The deck Sprayer did not exist until the player was already on top of it, so there was no decision to make.
+- **The deck's 1 m overhang reads as a protruding roof** on a free-standing deck, even though a climb needs at least 0.3 m of it to land. Keep the overhang, frame it as a capital.

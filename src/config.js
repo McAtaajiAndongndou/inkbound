@@ -122,6 +122,22 @@ export const HEALTH = {
   contactHeight: 1.7, // ...and within this vertical distance
 };
 
+// Traps: authored meshes plus ONE damage-volume helper (`docs/DECISIONS.md`,
+// 2026-10-24). This block is not a trap table -- each level still owns the shape
+// it hurts you with. It holds only the numbers a hazard would otherwise hardcode,
+// and the colours that make a hazard legible.
+export const TRAP = {
+  // Amber is the only danger colour in the game (DECISIONS.md), because it is not
+  // one of the three paint colours: nothing you are able to paint is a warning.
+  amber: 0xd98a2b,
+  bed: 0x1c1a17,       // the dark recess, so the spikes read against the floor
+
+  spike: {
+    damage: 15,        // a hit, not a kill: seven of them at full health
+    cooldown: 1.0,     // seconds between hits on the SAME target, not per frame
+  },
+};
+
 export const PAINT_GUN = {
   range: 30,
   radius: 1.4, // splat radius in world units

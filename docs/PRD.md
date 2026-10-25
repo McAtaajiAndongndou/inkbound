@@ -16,7 +16,8 @@ When two documents disagree:
 
 If this file and a design doc contradict on *how* something behaves, the design doc is right and this file is stale. Fix this file.
 
-Status column verified against the code at commit `b3a19b3`. **Re-verify before trusting it** — it will drift.
+Status column verified against the code at commit `b3a19b3`, with the levels rows
+re-verified on 24 Oct 2026. **Re-verify before trusting it** — it will drift.
 
 ---
 
@@ -124,7 +125,7 @@ The game is submittable when **all of these are true**:
 
 | ID | Requirement | Pri | Cost | Lane | Status |
 |---|---|---|---|---|---|
-| F1 | **Spike pit** — telegraphed, damages, does not instantly kill | SHOULD | S | levels | ❌ No trap system |
+| F1 | **Spike pit** — telegraphed, damages, does not instantly kill | SHOULD | S | levels | ⚠️ Helper built and tested (`trap-volume.js`), **no hazard placed**: the pit belongs to the Primer's corridor (E1), where it cannot be walked around. Outskirts' traps are the B blade, the C vent and the waste edge |
 | F2 | **One paint-solvable trap** — a hazard with a colour answer | SHOULD | S | levels | ❌ Not built |
 | F3 | Trap density per level per `docs/levels/` | COULD | S | levels | ❌ Not built |
 

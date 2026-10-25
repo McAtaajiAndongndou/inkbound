@@ -5,7 +5,7 @@ import { Player } from "./core/player.js";
 import { Avatar } from "./shaders/avatar.js";
 import { CameraRig } from "./core/camera-rig.js";
 import { PaintGun } from "./paint/paint-gun.js";
-import { Level01 } from "./levels/level-01-mission.js";
+import { createLevel, levelEntry, LEVELS, DEFAULT_LEVEL_ID } from "./levels/index.js";
 import { Hud } from "./ui/hud.js";
 import { PaintGunModel } from "./paint/paint-gun-model.js";
 
@@ -43,6 +43,12 @@ let player = null;
 let gun = null;
 let gunModel = null;
 
+// WHICH LEVEL. `?level=ascent` is the dev/QA selector until the pause-menu list
+// lands (issue 006, ui). The ids live in `levels/index.js` — this file must never
+// hold a second list, or adding a level works here and is missing in the menu.
+const requestedLevel = new URLSearchParams(window.location.search).get("level");
+let currentLevelId = requestedLevel ? levelEntry(requestedLevel).id : DEFAULT_LEVEL_ID;
+
 const muzzleVec = new THREE.Vector3();
 const handVec = new THREE.Vector3();
 let avatar = null;
@@ -70,6 +76,17 @@ const game = {
   onWin: () => {
     hud.showEnd("win");
     audio.play("win");
+  },
+
+  // --- level switching (issue 006 is the menu that calls this) --------------
+  // The menu needs three things and no more: the list to render, which one is
+  // current, and the ability to load another. Keeping the list HERE rather than
+  // in the menu is what stops the two drifting apart.
+  levels: LEVELS,
+  currentLevelId: () => currentLevelId,
+  loadLevel: (id) => {
+    currentLevelId = levelEntry(id).id;
+    loadLevel();
   },
 };
 
@@ -125,7 +142,7 @@ function loadLevel() {
 
   hud.hideEnd();
 
-  level = new Level01(game);
+  level = createLevel(currentLevelId, game);
   level.load();
   scene.add(level.root);
 

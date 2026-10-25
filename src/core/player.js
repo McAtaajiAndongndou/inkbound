@@ -118,6 +118,7 @@ export class Player {
     if (this.dead) return;
     for (const enemy of enemies) {
       if (enemy.alive === false) continue;      // a corpse is not a hazard
+      if (enemy.sleeping === true) continue;    // nor is something still dormant
       if (!enemy.position || !enemy.config) continue;
       const dx = enemy.position.x - this.position.x;
       const dz = enemy.position.z - this.position.z;

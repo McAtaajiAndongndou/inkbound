@@ -63,7 +63,7 @@ Creative direction sits with Renda + Moses; the mechanics trio build the systems
 
 ## Definition of done
 
-- `npm test` passes — 144 tests, 0 failures at the time of writing
+- `npm test` passes — 161 tests, 0 failures at the time of writing
 - New behaviour has a test in `tests/`
 - The manual check is described and actually performed
 - Docs updated if a decision changed (`docs/DECISIONS.md`, or an ADR if it qualifies)

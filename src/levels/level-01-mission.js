@@ -30,10 +30,15 @@ const L1 = {
   // props over more ground rather than adding props.
   corridorHalf: 11,           // full width 22
   cells: PAINT_GRID.level1Cells,
-  spawn: { x: 0, y: 2, z: 13 },
+  spawn: { x: 0, y: 2, z: 21 },
 
   islands: {
-    A: { zMin: 8,   zMax: 18  },  // start — spawn + fall respawn land here
+    // A is the only island that grew BACKWARD (18 -> 26, issue 011). The route's
+    // far edge stays at z 8, so Gap 1 and every jump number measured against it
+    // are untouched; the extra eight metres are behind the old spawn, which is
+    // the only direction this island had left to expand without re-tuning the
+    // fight that comes after it.
+    A: { zMin: 8,   zMax: 26  },  // start — the vantage: spawn, nothing else
     B: { zMin: -7,  zMax: 4.5 },  // middle — deep: Charger fight + blue run-up
     C: { zMin: -24, zMax: -16 },  // arena — then the stair tower behind its door
   },
@@ -145,6 +150,12 @@ const L1 = {
     C: { yTop: 7 },    // island C's back edge, at the foot of the tower
   },
 
+  // A is intentionally EMPTY: no enemy, no hazard, no deck. Its job is the view —
+  // B's deck and Sprayer are visible across Gap 1, so the player arrives at the
+  // first fight with a plan. See `docs/levels/01-outskirts.md`, "Island A — the
+  // vantage", for the playtest that removed the deck, the Charger and the pit.
+  //
+
   // NO BEACONS (#39). There used to be four free-floating unlit boxes here —
   // blue, red and two green — marking where the player was meant to paint what.
   // Two of them hung in mid-air over a gap with nothing under them, and Renda
@@ -172,6 +183,8 @@ const L1 = {
   // Spawns are a starting hint, not a hold: there is no aggro radius, so enemies
   // walk at the player from load and freeze where the next step would fall off.
   spawns: [
+    // island A — NOTHING. The entry is a vantage, not a fight (playtest, 24 Oct).
+    // The first enemy is the first thing past Gap 1.
     { x: 4,   y: 0,   z: -1,   type: 'charger' },
     { x: -4,  y: 0,   z: -21,  type: 'charger' },
     { x: 0,   y: 0,   z: -19,  type: 'sprayer' },
@@ -209,7 +222,7 @@ const L1 = {
     // standing at the end of the mission — and the waste trenches are derived
     // from this, so they follow it automatically.
     zMin: -47,
-    zMax: 20,
+    zMax: 28,
   },
 
   // The TREES. Hand-placed, because the rules are not geometric:
