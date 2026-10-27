@@ -224,6 +224,13 @@ export const ENEMY = {
     // Melee: walk up and STOP at contact range rather than continuing through the
     // player and turning round. See the `holding` note in _tick (#39).
     stopDistance: HEALTH.contactRange + 0.2,
+    // #76: the third beat. A charge ends by arriving on the player, by a wall or
+    // ledge, by 8 m travelled or by 2 s committed (enemy.js), and then the
+    // Charger stands still and takes full damage for this long. That turns the
+    // fight into bait -> dodge -> punish. If the window feels too generous,
+    // shorten THIS before touching anything else; if it still feels unfair, the
+    // windup is too short — not the recovery.
+    recovery: 1.2,
   },
   wallCrawler: {
     hp: 45,

@@ -25,6 +25,22 @@ const TELEGRAPH_SWELL = 0.35;       // body grows by this fraction by the end of
 const DEFAULT_WINDUP = 0.6;         // seconds; overridden by config.windup
 const DEFAULT_ATTACK_COOLDOWN = 2;  // seconds; overridden by config.attackCooldown
 
+// --- charge recovery (#76) ---------------------------------------------------
+// Every attack owes the player three beats: tell -> threat -> opening. The
+// Charger had the first two and not the third, so the fight was "sidestep or
+// take 25" — a reaction test, not a skill. A charge that ENDS now buys the
+// player a stationary, vulnerable window (`config.recovery`).
+//
+// A charge ends four ways, and every one of them goes through `_startRecovery`,
+// so it is impossible to add an exit that forgets to pay out the opening:
+//   1. arrival  — it stops ON the player (`stopDistance`, #39)
+//   2. impact   — a refused step: wall, ledge, or a drop over maxStepDown
+//   3. distance — CHARGE_DISTANCE of ground covered, so kiting still ends it
+//   4. time     — CHARGE_TIME committed; the backstop, catches slow/icy charges
+const CHARGE_DISTANCE = 8;          // metres of charge before it is spent
+const CHARGE_TIME = 2.0;            // seconds committed before it is spent
+const MIN_CHARGE_SPEED = 0.5;       // m/s below which it is standing, not charging
+
 // --- GLB soldiers (#50) ------------------------------------------------------
 const MODEL_HEIGHT = 1.6;           // world units tall; tune to taste
 
@@ -157,6 +173,13 @@ export class Enemy {
     this._attackCooldown = 0;
     this._telegraphColour = new THREE.Color(TELEGRAPH_COLOUR);
     this.onAttack = null;                  // fired when a windup completes: (enemy) => void
+
+    // Charge recovery (#76). `recovery: 0` means this enemy has no such state,
+    // which is what keeps every other enemy in the game unaffected by it.
+    this._recovery = config.recovery ?? 0;
+    this._recoverTimer = 0;                // > 0 while standing in the opening
+    this._chargeTime = 0;                  // seconds spent in the current charge
+    this._chargeDistance = 0;              // metres covered in the current charge
 
     // Without floors we cannot tell ground from void, so the safe fallback is
     // to stand still rather than walk off the edge.
@@ -383,6 +406,18 @@ export class Enemy {
       return;
     }
 
+    // RECOVER (#76) — the opening beat. The charge is over, so the enemy plants
+    // itself: no steering, no re-alerting, whatever the player does. Damage is
+    // deliberately NOT gated: `takeColourHit` has no state guard, and contact
+    // damage stays on `config.contactDamage` read by player.checkEnemyContact,
+    // so both behave exactly as they did before. Knockback still carries it.
+    if (this._recoverTimer > 0) {
+      this._recoverTimer -= dt;
+      this._vel.set(0, 0, 0);
+      this._applyKnockback(dt);
+      return;
+    }
+
     if (!this.config.canMove) return;
 
     // Green pin: movement stops, threat does not (settled rule). The knockback
@@ -428,6 +463,13 @@ export class Enemy {
     // `on blue a Charger commits to its heading and slides past a sidestep`.
     const icy = rules.friction < 1;
     const holding = !icy && this.config.stopDistance > 0 && dist < this.config.stopDistance;
+
+    // ARRIVAL is the end of a charge (#76). The Charger stops ON the player
+    // (#39), and standing glued to them is exactly the "immediately back on you"
+    // problem — so the stop is also where the opening begins. `_startRecovery`
+    // ignores this when nothing was charging, so simply loitering next to an
+    // idle Charger does not freeze it forever.
+    if (holding && this._recovery > 0) this._startRecovery();
 
     if (Number.isFinite(dist) && dist > 0.001 && !holding) {
       const inv = 1 / dist;
@@ -495,11 +537,55 @@ export class Enemy {
         // facing mesh, and the mesh is built with no base rotation.
         this.mesh.rotation.y = Math.atan2(vx, vz);
       }
+
+      if (this._recovery > 0) this._trackCharge(dt);
     } else {
-      this._vel.set(0, 0, 0);   // refused: stop pushing into the void
+      // Refused: stop pushing into the void. Against a wall, a ledge or a drop
+      // that is also the end of the charge (#76) — hitting something is the tell
+      // the player reads before the opening, so it must not be a free retry.
+      this._vel.set(0, 0, 0);
+      if (this._recovery > 0) this._startRecovery();
     }
 
     this._applyKnockback(dt);
+  }
+
+  /**
+   * Charge bookkeeping (#76). Runs once per frame the enemy actually moved, and
+   * only for configs that have a `recovery`. Ends the charge on distance or on
+   * time; arrival and impact are handled in `_tick`.
+   *
+   * The budget is per-charge, not per-life: standing still clears it, so every
+   * new charge starts with the full allowance.
+   */
+  _trackCharge(dt) {
+    const speed = Math.sqrt(this._vel.x * this._vel.x + this._vel.z * this._vel.z);
+    if (speed < MIN_CHARGE_SPEED) {
+      this._chargeTime = 0;
+      this._chargeDistance = 0;
+      return;
+    }
+
+    this._chargeTime += dt;
+    this._chargeDistance += speed * dt;
+
+    if (this._chargeTime >= CHARGE_TIME || this._chargeDistance >= CHARGE_DISTANCE) {
+      this._startRecovery();
+    }
+  }
+
+  /**
+   * Hand over the opening: stand still and take it for `config.recovery` seconds.
+   * Idempotent, and a no-op when no charge is in flight — that is what stops the
+   * arrival and impact exits from re-arming the timer every frame.
+   */
+  _startRecovery() {
+    if (this._recovery <= 0) return;
+    if (this._chargeTime <= 0 && this._chargeDistance <= 0) return;
+    this._recoverTimer = this._recovery;
+    this._chargeTime = 0;
+    this._chargeDistance = 0;
+    this._vel.set(0, 0, 0);
   }
 
   /**
@@ -594,6 +680,11 @@ export class Enemy {
     return this._windupTimer > 0;
   }
 
+  /** True while the enemy is in the post-charge opening and cannot re-alert (#76). */
+  get recovering() {
+    return this._recoverTimer > 0;
+  }
+
   /**
    * Begin an attack windup. Returns false if the enemy is dead, already
    * winding up, or still cooling down from its last attack.
@@ -601,7 +692,10 @@ export class Enemy {
    * Anything that attacks (shooting, a charge, a drain) should go through this.
    */
   startTelegraph() {
-    if (!this.alive || this._windupTimer > 0 || this._attackCooldown > 0) return false;
+    // Recovery is the opening: re-alerting inside the window would delete the
+    // beat the window exists to create (#76).
+    if (!this.alive || this._windupTimer > 0 || this._attackCooldown > 0
+      || this._recoverTimer > 0) return false;
     this._windupTotal = this.config.windup ?? DEFAULT_WINDUP;
     this._windupTimer = this._windupTotal;
     this._vel.set(0, 0, 0);          // plant: the tell has to read
