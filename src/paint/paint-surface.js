@@ -125,6 +125,72 @@ export class PaintSurface {
     return true;
   }
 
+  /**
+   * Convert painted ground back to grey in a circle around a world point (#80).
+   *
+   * This is the Drainer's whole verb. Territory is the game's positive feedback,
+   * and eating it is the only thing that takes it back — so the write has to be
+   * the SAME write the player's gun does: one grid, cell by cell, last writer
+   * wins. A drain and a splat in the same area therefore cannot corrupt each
+   * other; there is no snapshot and no second copy to get out of step.
+   *
+   * NEAREST FIRST, and that is a gameplay rule rather than an optimisation: the
+   * hole has to grow OUTWARD from the enemy standing in it, so the patch visibly
+   * shrinks toward the thing eating it instead of dissolving at a hard-coded
+   * edge. Rings of increasing Chebyshev distance, masked by the same ellipse
+   * `splat` uses, so a drain of radius r covers exactly the ground a splat of
+   * radius r would.
+   *
+   * @param {THREE.Vector3} worldPoint  where the eater is standing
+   * @param {number} worldRadius        how far it can reach, in world units
+   * @param {number} [maxCells]         cells this call may eat. The RATE is a
+   *                                    per-enemy difficulty number, so it is the
+   *                                    caller's job to turn seconds into cells.
+   * @returns {number} cells actually turned grey (0 if there was nothing to eat)
+   */
+  drain(worldPoint, worldRadius, maxCells = Infinity) {
+    if (this.unpaintable || maxCells <= 0) return 0;
+
+    const centre = this.worldToCell(worldPoint);
+    if (!centre) return 0;
+
+    const cols = this.map.cols;
+    const rows = this.map.rows;
+    const data = this.map.data;
+    // Same cell-space maths as `splat`, so the two shapes agree.
+    const rx = Math.max(1, Math.round(worldRadius * (cols / this.width)));
+    const ry = Math.max(1, Math.round(worldRadius * (rows / this.height)));
+    const reach = Math.max(rx, ry);
+
+    let drained = 0;
+
+    outer: for (let ring = 0; ring <= reach; ring++) {
+      // dy/dx are offsets in CELLS from the centre; walking outwards ring by
+      // ring is what makes the drain nearest-first without sorting or a scratch
+      // list. `ring 0` is the cell under the enemy itself.
+      for (let dy = -ring; dy <= ring; dy++) {
+        for (let dx = -ring; dx <= ring; dx++) {
+          // only this ring's shell — inner rings were done on earlier passes
+          if (Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
+          if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) > 1) continue;
+
+          const col = centre.col + dx;
+          const row = centre.row + dy;
+          if (col < 0 || col >= cols || row < 0 || row >= rows) continue;
+
+          const i = (row * cols + col) * 4;
+          if (data[i] === PAINT_IDS.grey) continue;   // already dead ground
+
+          data[i] = PAINT_IDS.grey;
+          if (++drained >= maxCells) break outer;
+        }
+      }
+    }
+
+    if (drained > 0) this.map.texture.needsUpdate = true;
+    return drained;
+  }
+
   /** Fraction of the surface that is painted. Drives the paintstreak meter. */
   coverage() {
     let painted = 0;

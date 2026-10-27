@@ -40,6 +40,13 @@ const GAIT = {
   leanPerSpeed: 0.035,
 };
 
+// The Drainer's two postures (#80). The enemy GLBs have no legs, so "face down
+// in the paint" and "standing up to hunt" have to be told apart by the BODY:
+// a feeding drainer folds forward and sinks, a hunting one does not. Same fake
+// as GAIT, same reason — these numbers are the whole of the animation.
+const FEEDING_LEAN = 0.62;   // radians (~35 deg) folded forward over the ground
+const FEEDING_DROP = 0.18;   // metres the body sinks, so the fold does not lift the face
+
 const MODEL_URLS = {
   charger: "./assets/soldier-charger.glb",
   sprayer: "./assets/soldier-sprayer.glb",
@@ -150,6 +157,14 @@ export class Enemy {
     this._tintTimer = 0;
     this._pinnedTimer = 0;                 // green: hard root (movement only)
     this._slipTimer = 0;                   // blue: direct hit slow
+
+    // Feeding (Drainer, #80). `_feeding` is the posture AND the hold: a feeding
+    // drainer does not chase, it eats the grid under itself. `_drainCredit` is
+    // the fractional cell budget, because the rate is per SECOND and one 60 Hz
+    // frame is worth well under one cell — rounding each frame away would drain
+    // nothing at all.
+    this._feeding = config.drainsPaint === true;
+    this._drainCredit = 0;
 
     // Attack telegraph (#40)
     this._windupTimer = 0;                 // > 0 while telegraphing an attack
@@ -346,9 +361,16 @@ export class Enemy {
 
     // The windup PLANTS the feet, so a telegraphing enemy must not lean or bob —
     // otherwise the tell looks like it is still travelling.
-    const lean = this._windupTimer > 0 ? 0 : Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed);
+    //
+    // A feeding Drainer is the other case with a posture of its own: it folds
+    // forward over the paint it is eating and its body sinks, so the two states
+    // are told apart at a distance with no leg bones to help (#80).
+    const feeding = this._feeding;
+    const lean = this._windupTimer > 0 ? 0
+      : feeding ? FEEDING_LEAN
+        : Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed);
 
-    this._model.position.y = this._feetOffset + bob;
+    this._model.position.y = this._feetOffset + bob - (feeding ? FEEDING_DROP : 0);
     this._model.rotation.x = lean;
   }
 
@@ -374,6 +396,11 @@ export class Enemy {
     // forever. It is called exactly once, here, so no branch below repeats it.
     this._fadeTint(dt);
 
+    // Posture and territory (Drainer, #80). Runs before the attack so the
+    // decision "is the player close enough to interrupt the feed?" is made on
+    // this frame's distance, not last frame's.
+    this._updateFeeding(dt, playerPos);
+
     // Attack telegraph (#40). Runs for every living enemy, movers or not. While
     // winding up the enemy plants its feet so the tell reads; knockback from a
     // red hit still carries it.
@@ -393,6 +420,15 @@ export class Enemy {
       return;
     }
     if (this._slipTimer > 0) this._slipTimer -= dt;
+
+    // A feeding Drainer does not chase — it is face down in the paint, and
+    // catching it like that is the counterplay. Knockback still carries it: a
+    // red hit is the one thing the design insists always lands.
+    if (this._feeding) {
+      this._vel.set(0, 0, 0);
+      this._applyKnockback(dt);
+      return;
+    }
 
     const ground = this._probe.down(this.position);
     if (!ground) {                    // over a gap: no pathfinding, so hold
@@ -500,6 +536,65 @@ export class Enemy {
     }
 
     this._applyKnockback(dt);
+  }
+
+  /**
+   * The Drainer's two postures and the grey write (#80).
+   *
+   * FEEDING is where it starts: body down in the paint, converting the grid
+   * under itself to grey at `drainRate` cells per second, nearest cells first so
+   * the hole grows outward from the body. HUNTING begins the moment the player
+   * comes inside `huntRadius` and ends only past `resumeRadius`, and that gap is
+   * the whole point — with one threshold a drainer sitting on the boundary would
+   * flip posture every other frame, which reads as a broken animation and turns
+   * the drain on and off at frame rate.
+   *
+   * The numbers are all config (`ENEMY.drainer`), because `drainRate` is the
+   * difficulty dial for the final level: a dial buried in a function is a dial
+   * nobody finds when the level needs tuning.
+   */
+  _updateFeeding(dt, playerPos) {
+    const cfg = this.config;
+    if (!cfg.drainsPaint) return;
+
+    // No player is nobody to react to, so it keeps eating. Guarded the way
+    // `_tick` guards its argument: a non-Vector3 must not produce NaN here and
+    // quietly freeze the posture for the rest of the run.
+    let dist = Infinity;
+    if (playerPos) {
+      const dx = playerPos.x - this.position.x;
+      const dz = playerPos.z - this.position.z;
+      const d = Math.sqrt(dx * dx + dz * dz);
+      if (Number.isFinite(d)) dist = d;
+    }
+
+    // Hysteresis: stands up close, lies back down only once it is well clear.
+    if (this._feeding) {
+      if (dist < cfg.huntRadius) this._feeding = false;
+    } else if (dist > cfg.resumeRadius) {
+      this._feeding = true;
+    }
+    if (!this._feeding) return;
+
+    const ground = this._probe.down(this.position);
+    if (!ground) return;                    // over a gap: nothing to eat
+
+    // Seconds -> cells. The remainder is carried to the next frame rather than
+    // rounded away, so the rate holds at any frame rate.
+    this._drainCredit += cfg.drainRate * dt;
+    const budget = Math.floor(this._drainCredit);
+    if (budget <= 0) return;
+
+    const drained = ground.surface.drain(this.position, cfg.drainRadius, budget);
+    // Spend what was actually eaten. A drainer that has been standing on grey
+    // ground must not bank a minute of credit and lurch through a whole patch
+    // the instant the player repaints it.
+    this._drainCredit = drained >= budget ? this._drainCredit - budget : 0;
+  }
+
+  /** True while it is face down in the paint, eating (Drainer). */
+  get feeding() {
+    return this._feeding;
   }
 
   /**
