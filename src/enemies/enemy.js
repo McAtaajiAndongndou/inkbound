@@ -521,6 +521,9 @@ export class Enemy {
    *   2. Reaction — blue slows, red knocks back, green pins, and enough
    *      damage kills. This is colour-roles Tier 1 (see MECHANICS.md).
    *
+   * Reaction is skipped entirely for a `config.noProcs` enemy (#77): damage and
+   * tint only. See the turret's config entry for why.
+   *
    * The gun still charges ammo and checks its own cooldown, so nothing here
    * touches ammo. Every Color is reused — nothing is allocated per hit.
    *
@@ -542,23 +545,34 @@ export class Enemy {
 
     this.hp -= damage;
 
-    if (colourId === PAINT_IDS.blue) {
-      // Direct-hit slow; on blue floor the grid friction already slides it.
-      this._slipTimer = 1.5;
-    } else if (colourId === PAINT_IDS.red) {
-      this._knockback.copy(this.position);
-      if (sourcePos) {
-        this._knockback.sub(sourcePos);
-      } else {
-        this._knockback.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+    // #77 — status procs belong to the ENEMY, not to the colour. A `noProcs`
+    // enemy (the turret, the game's designated matrix gap) takes the damage and
+    // the tint and nothing else. One flag read in front of the whole chain, not
+    // a check inside each branch: a future fourth proc then has to opt out as
+    // well, rather than quietly applying to a turret because its author never
+    // knew the turret existed.
+    //
+    // The tint above stays unconditional on purpose — the shot has to read as
+    // the colour you fired, even when the colour buys you no reaction.
+    if (!this.config.noProcs) {
+      if (colourId === PAINT_IDS.blue) {
+        // Direct-hit slow; on blue floor the grid friction already slides it.
+        this._slipTimer = 1.5;
+      } else if (colourId === PAINT_IDS.red) {
+        this._knockback.copy(this.position);
+        if (sourcePos) {
+          this._knockback.sub(sourcePos);
+        } else {
+          this._knockback.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+        }
+        this._knockback.y = 0;
+        if (this._knockback.lengthSq() < 1e-6) this._knockback.set(0, 0, 1);
+        this._knockback.normalize().multiplyScalar(6);
+      } else if (colourId === PAINT_IDS.green) {
+        // Hard root: no buildup. Stops movement, not threat.
+        this._pinnedTimer = 1.5;
+        this._vel.set(0, 0, 0);
       }
-      this._knockback.y = 0;
-      if (this._knockback.lengthSq() < 1e-6) this._knockback.set(0, 0, 1);
-      this._knockback.normalize().multiplyScalar(6);
-    } else if (colourId === PAINT_IDS.green) {
-      // Hard root: no buildup. Stops movement, not threat.
-      this._pinnedTimer = 1.5;
-      this._vel.set(0, 0, 0);
     }
 
     if (this.hp <= 0) {
