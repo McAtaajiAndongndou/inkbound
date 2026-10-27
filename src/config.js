@@ -219,6 +219,10 @@ export const ENEMY = {
     canMove: true,
     climbsGreen: false,
     drainsPaint: false,
+    // The ground it turns grey, in metres, WHERE ITS SHOT LANDS (#107).
+    // Zero/absent means it never touches the grid — which is every other
+    // enemy here except the Drainer, whose grey comes from eating instead.
+    greyRadius: 1.5,
     contactDamage: 10,
     windup: 0.6,
     attackRange: 12,
@@ -316,6 +320,30 @@ export const ENEMY = {
     stopDistance: HEALTH.contactRange + 0.2,
   },
 };
+// Enemy grey conversion (#107).
+//
+// Grey is a FACTION COLOUR (ADR-0002), not the absence of paint: an enemy taking
+// ground is the gun's operation run in reverse. This block is the shape of that
+// operation for enemies that do it at RANGE. The radius is NOT here — it is per
+// enemy (`ENEMY.sprayer.greyRadius`) because a rifle and a slam should not share
+// one number, and Big Arm's slam will carry its own wider one in its own entry
+// when `boss.js` stops being a stub.
+//
+// HOW THE IMPACT IS FOUND, because that is the whole of the issue: the shot is a
+// RAY from the enemy's muzzle to the ground the player is standing on, and the
+// FIRST surface that ray reaches is the one that greys. That single "first hit
+// wins" rule is what stops the conversion passing through a wall or through a
+// raised floor — and it means an unpaintable gate in the way eats the shot
+// instead of letting it through to the ground behind it.
+//
+// RATE: there is no separate timer. The enemy already has an attack cooldown
+// (2.5 s for the Sprayer), so one attack is one splat and nothing here can
+// outpace the thing that triggers it.
+export const GREY_IMPACT = {
+  muzzleHeight: 1.2, // metres above the enemy's feet the ray starts at
+  reach: 2,          // metres past the target it keeps looking, so the target cell is tested
+};
+
 // Difficulty = new rules, not bigger health bars.
 export const DEFENCE = {
   1: { requiredColour: null, combo: [] },
