@@ -235,7 +235,14 @@ function simulate(dt, elapsed, actions, mouse) {
   const dz = p.z - lastPos.z;
   const speed = dt > 0 ? Math.hypot(dx, dz) / dt : 0;
   lastPos.copy(p);
-  if (!player.dead) avatar.setMoving(speed > 0.5);
+  if (!player.dead) {
+    // #82 — the ONE call this issue adds to this file (coordinated with Ozuko):
+    // the physics already knows whether we are on the floor, so the avatar is
+    // only told. It goes before setMoving because setMoving defers to the air
+    // state; the order is what stops a run cycle appearing mid-jump.
+    avatar.setAirborne(player.onGround, player.velocity.y);
+    avatar.setMoving(speed > 0.5);
+  }
   avatar.update(dt);
 
   level.update(dt, player);
