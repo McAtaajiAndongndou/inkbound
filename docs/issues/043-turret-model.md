@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** M5
 **Cost:** S
-**Depends on:** 042 (the pipeline must be proven first)
+**Depends on:** #114 (the pipeline must be proven first)
 
 ### Context
 

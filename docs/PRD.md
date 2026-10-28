@@ -59,7 +59,7 @@ The game is submittable when **all of these are true**:
 | A4  | **Grey slows you** and refills nothing, as a live modifier                | MUST   | S    | core    | ❌ Not built — `SURFACE.grey.speedScale` is 1.0            |
 | A5  | **Dry out** — no tank and no territory ends the run, and the game says so | MUST   | S    | core    | ❌ Not built                                               |
 | A6  | **Submerge** — fast refill, hidden, cannot fire                           | MUST   | M    | core    | ❌ Not built                                               |
-| A7  | **Partial stealth** — submerging halves detection; firing reveals         | MUST   | M    | shaders | ❌ Not built                                               |
+| A7  | **Partial stealth** — submerging halves detection; firing reveals         | MUST   | M    | shaders | ⚠️ Partial (#109) — awareness states, 16 m/7 m radii, last-known-position search and the turret exemption are built and tested; not yet wired to submerge or fire |
 | A8  | **Scorecard** — coverage, time, dry time at level end                     | SHOULD | S    | ui      | ❌ Not built                                               |
 
 **Acceptance for A1/A2 together:** a player who paints and stands in their own colour never needs to press a key to refill, and a player who paints and walks away can run out.
@@ -204,7 +204,7 @@ The game is submittable when **all of these are true**:
 | M1  | Player character, one, animated            | MUST    | —    | shaders | ✅ `soldier-swat.glb`                            |
 | M2  | Second playable character                  | **Cut** | —    | —       | ⛔ Cut — one character ships                     |
 | M3  | Charger and Sprayer models                 | MUST    | —    | shaders | ✅ Built                                         |
-| M4  | Wall-crawler model                         | MUST    | S    | shaders | ❌ Missing                                       |
+| M4  | Wall-crawler model                         | MUST    | S    | shaders | ✅ Validated and spawned in level 1 (#114). Climb behaviour is #115's |
 | M5  | Turret models                              | MUST    | S    | shaders | ❌ Missing                                       |
 | M6  | Drainer model                              | MUST    | S    | shaders | ❌ Missing                                       |
 | M7  | Charger zombie model                       | SHOULD  | S    | shaders | ❌ Missing                                       |
@@ -213,7 +213,7 @@ The game is submittable when **all of these are true**:
 | M10 | Military base props                        | MUST    | M    | levels  | ❌ Nothing exists for Last Colour                |
 | M11 | Forest props                               | MUST    | —    | levels  | ✅ 32 megakit GLBs                               |
 | M12 | Every CC-BY asset credited in-game         | MUST    | S    | ui      | ⚠️ Partial                                       |
-| M13 | One GLB validated before any bulk download | MUST    | —    | shaders | ⚠️ Done for soldiers, not for zombies or turrets |
+| M13 | One GLB validated before any bulk download | MUST    | —    | shaders | ⚠️ Validated on the soldiers and the wall-crawler (#114); turrets unproven |
 | M14 | Stalker model — **no asset sourced yet**   | SHOULD  | S    | shaders | ❌ Missing. The only enemy with no asset chosen  |
 
 **Missing models are the largest single visual risk.** The forest is dressed; every enemy after the first level and the entire final level are not. `docs/ASSETS.md` has the pipeline rule for this: validate one, never bulk.
@@ -227,8 +227,8 @@ The player ships **five clips** and the code wires **two states**. This is why t
 | AN1  | Player idle and run                    | MUST   | —    | shaders        | ✅ Built                                    |
 | AN2  | Player armed idle and run              | MUST   | —    | shaders        | ✅ Built                                    |
 | AN3  | Player death                           | MUST   | —    | shaders        | ✅ Built                                    |
-| AN4  | **Player airborne — jump, fall, land** | MUST   | S    | shaders + core | ❌ Not built: the player runs while falling |
-| AN5  | Player climb                           | SHOULD | S    | shaders        | ❌ Not built                                |
+| AN4  | **Player airborne — jump, fall, land** | MUST   | S    | shaders + core | 🟡 Clips ready (#121): jump start, loop and land drive the player rig. The pack has no fall clip; the state machine that plays them is #82 |
+| AN5  | Player climb                           | SHOULD | S    | shaders        | ❌ Not built, and the animation library has no climb clip (#121), so #122 ships a documented fallback |
 | AN6  | Player ADS pose or transition          | SHOULD | S    | shaders        | ⚠️ Armed idle only                          |
 | AN7  | Enemy walk cycle                       | SHOULD | M    | shaders        | ⚠️ Faked bob — the GLBs have no leg bones   |
 | AN8  | Enemy melee attack                     | MUST   | S    | shaders        | ❌ The Charger is animated with rifle clips |

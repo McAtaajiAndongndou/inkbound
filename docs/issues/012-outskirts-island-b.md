@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E2
 **Cost:** M
-**Depends on:** 011, 030 for the collapsing bridge, 010 for jump readability
+**Depends on:** #83, #102 for the collapsing bridge, #82 for jump readability
 
 ### Context
 

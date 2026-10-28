@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** G2, G3
 **Cost:** S
-**Depends on:** 039 for the visual language
+**Depends on:** #111 for the visual language
 
 ### Context
 

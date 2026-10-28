@@ -2,103 +2,115 @@
 
 Drafts for the GitHub tracker. Each one is a vertical slice: a lane, an acceptance criterion, and the design doc that explains the *why*.
 
-They are **drafts on disk, not published issues.** Publishing is a visible act on a shared repo — review them, adjust the wording, then publish deliberately.
+All 59 are **published** as `#73`–`#131`. The files here and the issue bodies on the tracker are kept identical — an edit to one is an edit to both. Where they disagree, the tracker is what the team reads.
 
 ---
 
 ## Read this first
 
-**Issue 042 gates six others** but is numbered late. It is the model-pipeline spike, and if it fails, 018, 020, 024, 025, 043 and 044 cannot be finished. Do it early, not in numeric order.
+**Issue #114 (draft 042) gates six others** but is numbered late. It is the model-pipeline spike, and if it fails, #90, #92, #96, #97, #115 and #116 cannot be finished. Do it early, not in numeric order.
 
-**Issue 049 gates 010 and 050.** The player rig has 24 clips and none of them are jump, fall, land or climb. Those four states come from the Universal Animation Library, so the library has to land before those two issues can.
+**Issue #121 (draft 049) gates #82 and #122.** The player rig has 24 clips and none of them are jump, fall, land or climb. Those four states come from the Universal Animation Library, so the library has to land before those two issues can.
 
 ---
 
-## All 44
+## All 59
 
-`D`/`M`/`C` ids in the dependency column are PRD rows, not issues.
+**Tracker number = draft number + 72** (`001` → `#73`, `059` → `#131`), because 72 issues already existed when the batch was published. The tracker never renumbers, and a second batch will get a *different* offset — rebuild the map from the tracker, match on title, and never carry this `+72` forward by hand.
+
+`D`/`M`/`C` ids in the dependency column are PRD rows, not issues. Everything else there is a tracker issue.
 
 | # | Issue | Lane | Pri | Cost | Depends on |
 |---|---|---|---|---|---|
 | 001 | Shared tank + positional refill | paint | MUST | M | — |
 | 002 | Grey slows you | core | MUST | S | — |
-| 003 | Dry out | core | MUST | S | 001, 002 |
+| 003 | Dry out | core | MUST | S | #73, #74 |
 | 004 | Charger recovery window | shaders | MUST | S | — |
 | 005 | Turret: no status procs | shaders | MUST | S | — |
-| 006 | Level select | ui | MUST | S | 007 |
-| 007 | The Primer | levels | MUST | M | 001, 002 |
-| 008 | Drainer eats paint | shaders | MUST | M | 001, 042 |
+| 006 | Level select | ui | MUST | S | #79 |
+| 007 | The Primer | levels | MUST | M | #73, #74 |
+| 008 | Drainer eats paint | shaders | MUST | M | #73, #114 |
 | 009 | Per-level end screens | ui | MUST | S | — |
 | 010 | Player airborne animation | shaders | MUST | S | — |
 | 011 | Outskirts — Island A | levels | MUST | S | — |
-| 012 | Outskirts — Island B | levels | MUST | M | 011, 030 |
-| 013 | Outskirts — The Gap | levels | MUST | M | 001 |
-| 014 | Outskirts — Island C | levels | MUST | M | 012, 029, 031 |
-| 015 | Outskirts — Return loop + side island | levels | MUST | S | 014 |
-| 016 | Outskirts — Pillars + ledge | levels | MUST | M | 015, 013, 031 |
-| 017 | Ascent — Landing + first face | levels | MUST | S | 002 |
-| 018 | Ascent — Terrace one | levels | MUST | M | 017, 042 |
-| 019 | Ascent — Collapsing catwalk | levels | MUST | M | 018, 030 |
-| 020 | Ascent — Terrace two | levels | MUST | M | 019, 005, 043 |
-| 021 | Ascent — The Chain | levels | MUST | M | 020, 013, 032 |
-| 022 | Ascent — The Ledge | levels | MUST | S | 021, 004, 031 |
-| 023 | Ascent — Summit + supply lift | levels | MUST | S | 022 |
-| 024 | Last Colour — Hangar | levels | MUST | M | 008, 042 |
-| 025 | Last Colour — Corridor | levels | MUST | M | 024, 005, 033, 043 |
-| 026 | Last Colour — Core waves | levels | MUST | M | 024, 008, 036, 037 |
-| 027 | Last Colour — Big Arm | levels | SHOULD | L | 026, 044 |
-| 028 | Last Colour — Siphon | levels | SHOULD | M | 026, 034 |
+| 012 | Outskirts — Island B | levels | MUST | M | #83, #102 |
+| 013 | Outskirts — The Gap | levels | MUST | M | #73 |
+| 014 | Outskirts — Island C | levels | MUST | M | #84, #101, #103 |
+| 015 | Outskirts — Return loop + side island | levels | MUST | S | #86 |
+| 016 | Outskirts — Pillars + ledge | levels | MUST | M | #87, #85, #103 |
+| 017 | Ascent — Landing + first face | levels | MUST | S | #74 |
+| 018 | Ascent — Terrace one | levels | MUST | M | #89, #114 |
+| 019 | Ascent — Collapsing catwalk | levels | MUST | M | #90, #102 |
+| 020 | Ascent — Terrace two | levels | MUST | M | #91, #77, #115 |
+| 021 | Ascent — The Chain | levels | MUST | M | #92, #85, #104 |
+| 022 | Ascent — The Ledge | levels | MUST | S | #93, #76, #103 |
+| 023 | Ascent — Summit + supply lift | levels | MUST | S | #94 |
+| 024 | Last Colour — Hangar | levels | MUST | M | #80, #114 |
+| 025 | Last Colour — Corridor | levels | MUST | M | #96, #77, #105, #115 |
+| 026 | Last Colour — Core waves | levels | MUST | M | #96, #80, #108, #109 |
+| 027 | Last Colour — Big Arm | levels | SHOULD | L | #98, #116 |
+| 028 | Last Colour — Siphon | levels | SHOULD | M | #98, #106 |
 | 029 | Trap volume + spike pit | levels | MUST | S | — |
-| 030 | Collapsing surfaces | levels | SHOULD | S | 029 |
-| 031 | Swinging blade | levels | SHOULD | S | 029 |
-| 032 | Rolling boulder | levels | COULD | S | 029, 021 |
-| 033 | Security traps | levels | COULD | S | 029, 025 |
+| 030 | Collapsing surfaces | levels | SHOULD | S | #101 |
+| 031 | Swinging blade | levels | SHOULD | S | #101 |
+| 032 | Rolling boulder | levels | COULD | S | #101, #93 |
+| 033 | Security traps | levels | COULD | S | #101, #97 |
 | 034 | Freeze → crit | paint | SHOULD | M | — |
-| 035 | Enemies paint grey | shaders | SHOULD | M | 008 |
-| 036 | Submerge | core | SHOULD | M | 001 |
-| 037 | Partial stealth | shaders | SHOULD | M | 036 |
-| 038 | Scorecard | ui | SHOULD | S | 009 |
+| 035 | Enemies paint grey | shaders | SHOULD | M | #80 |
+| 036 | Submerge | core | SHOULD | M | #73 |
+| 037 | Partial stealth | shaders | SHOULD | M | #108 |
+| 038 | Scorecard | ui | SHOULD | S | #81 |
 | 039 | Sergeant briefing still | ui | SHOULD | S | — |
-| 040 | Comms bar | ui | SHOULD | S | 039 |
+| 040 | Comms bar | ui | SHOULD | S | #111 |
 | 041 | Audio gaps | ui | SHOULD | S | — |
 | 042 | **Model spike — wall-crawler** | shaders | MUST | S | — |
-| 043 | Turret model | shaders | MUST | S | 042 |
-| 044 | Remaining enemy models | shaders | SHOULD | M | 042 |
-| 045 | ADS tradeoff + splash damage | paint | MUST | S | 034 |
-| 046 | Sprayer reload window | shaders | MUST | S | 004 |
-| 047 | Wall-crawler climbs green | shaders | MUST | M | 042 |
-| 048 | Stalker | shaders | COULD | M | 042 |
+| 043 | Turret model | shaders | MUST | S | #114 |
+| 044 | Remaining enemy models | shaders | SHOULD | M | #114 |
+| 045 | ADS tradeoff + splash damage | paint | MUST | S | #106 |
+| 046 | Sprayer reload window | shaders | MUST | S | #76 |
+| 047 | Wall-crawler climbs green | shaders | MUST | M | #114 |
+| 048 | Stalker | shaders | COULD | M | #114 |
 | 049 | **Animation library integration** | shaders | MUST | M | — |
-| 050 | Player climb animation | core | SHOULD | S | 049 |
+| 050 | Player climb animation | core | SHOULD | S | #121 |
 | 051 | Enemy procedural motion | shaders | MUST | M | — |
-| 052 | Player combat poses | shaders | SHOULD | S | 045 |
+| 052 | Player combat poses | shaders | SHOULD | S | #117 |
 | 053 | Per-level mood | levels | MUST | S | — |
-| 054 | Danger language + readability | shaders | MUST | S | 029 |
-| 055 | Territory readout | ui | SHOULD | S | 001 |
-| 056 | Military base props | levels | MUST | M | 053 |
-| 057 | Killfeed | ui | SHOULD | S | 009 |
+| 054 | Danger language + readability | shaders | MUST | S | #101 |
+| 055 | Territory readout | ui | SHOULD | S | #73 |
+| 056 | Military base props | levels | MUST | M | #125 |
+| 057 | Killfeed | ui | SHOULD | S | #81 |
 | 058 | Deployment + credits | ui | MUST | S | every model issue |
-| 059 | Paintstreak meter | ui | COULD | M | 001, 038 |
+| 059 | Paintstreak meter | ui | COULD | M | #73, #110 |
 
 ---
 
 ## The four chains that matter
 
-**The loop** — 001 → 002 → 003. The game's identity is still not built: ammo is per colour, refill is a keypress, grey is neutral. Cheaper than any level and changes the game more.
+**The loop** — #73 → #74 → #75. The game's identity is still not built: ammo is per colour, refill is a keypress, grey is neutral. Cheaper than any level and changes the game more.
 
-**But first, #55.** Movement friction is frame-rate dependent in `core`. The whole economy is timing-based, so tuning refill, dodge windows and the grey slowdown against a variable speed is wasted work. Fix that, then tune.
+**But first, tracker #55.** Movement friction is frame-rate dependent in `core`. The whole economy is timing-based, so tuning refill, dodge windows and the grey slowdown against a variable speed is wasted work. Fix that, then tune. (This one is a **pre-existing issue, not a draft** — `055` in this folder is Territory readout and depends on it.)
 
-**The model spike** — 042 first, then 043 and 044. One afternoon decides whether seven enemy models are achievable or whether the game ships with shaded boxes. Do it before anyone depends on it.
+**The model spike** — #114 first, then #115 and #116. One afternoon decides whether seven enemy models are achievable or whether the game ships with shaded boxes. Do it before anyone depends on it.
 
-**The animation** — 010 alone. Three clips and one state read, and the game stops looking unfinished the moment you jump.
+**The animation** — #82 alone. Three clips and one state read, and the game stops looking unfinished the moment you jump.
 
-**The levels** — Outskirts (011–016) proves the pattern; Ascent (017–023) and Last Colour (024–028) copy it. The later two depend on Outskirts' *pattern*, not its content, so they can run in parallel once the first is standing.
+**The levels** — Outskirts (#83–#88) proves the pattern; Ascent (#89–#95) and Last Colour (#96–#100) copy it. The later two depend on Outskirts' *pattern*, not its content, so they can run in parallel once the first is standing.
 
 ---
 
 ## Publishing
 
-**Do not publish these blind.** The repo already has **46 issues** (7 open, 39 closed) and five of these drafts overlap live ones: `045`↔#35, `037`↔#54, `001`–`003`↔#39, `058`↔#47, and ADR-0003↔#46.
+**All 59 are published:** milestone `Spec 2026-10`, `#73`–`#131`. This section is now the rule for the *next* batch.
+
+Prior issues the drafts overlap — still unresolved, so triage them rather than leaving both open:
+
+| Draft | Tracker | Overlaps | State |
+|---|---|---|---|
+| 045 | #117 | #35 ADS verify + tune | open |
+| 037 | #109 | #54 Enemies have no activation range | open |
+| 001–003 | #73–#75 | #39 Paint → physics regression pass | open |
+| 058 | #130 | #47 Beta QA day | open |
+| ADR-0003 | #73–#75 | #46 Scrap loadout: all 3 colours | closed |
 
 The labels already exist and are bare names — **use these, do not create `lane:*`**:
 
@@ -106,11 +118,12 @@ The labels already exist and are bare names — **use these, do not create `lane
 core   paint   shaders   levels   ui
 ```
 
-Reconcile first:
+**Numbering is the part that broke.** `Depends on` was written in draft numbers, but the tracker issued `#73`–`#131` because 72 issues already existed. Every cross-reference then either pointed at an unrelated 2026 issue (`#1`, `#2`, `#7`) or was dead plain text. Rules for the next batch:
 
-1. Close or link the five overlaps above.
-2. Publish into a **milestone** (`gh issue create --milestone "Spec 2026-10"`) so the whole set can be closed in bulk if it is rejected.
-3. Publish **in numeric order** so the `Depends on` references stay valid.
+1. **Publish, then map from the tracker** — `gh issue list --json number,title`, match on title, write the map into this file. Never assume an offset carries over; a second batch gets a different one.
+2. **Translate every `Depends on` into tracker numbers before the body leaves this folder.**
+3. **Never write a draft number into an issue body.** `#1` is not a placeholder, it is a real issue about a 2026 refactor.
+4. Publishing in numeric order preserves *order*, not *equality* — it does not keep references valid.
 
 ```bash
 gh issue create \
@@ -120,7 +133,7 @@ gh issue create \
   --milestone "Spec 2026-10"
 ```
 
-Then pin **042** and **049** to the top whatever their numbers, because they gate six and two issues respectively.
+Then pin **#114** and **#121** to the top whatever their numbers, because they gate six and two issues respectively.
 
 ---
 

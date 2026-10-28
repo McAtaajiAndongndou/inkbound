@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E3
 **Cost:** S
-**Depends on:** 021, 004 (the recovery window is what makes this fair)
+**Depends on:** #93, #76 (the recovery window is what makes this fair)
 
 ### Context
 

@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E2
 **Cost:** M
-**Depends on:** 001 for the tank, or the beat punishes the player for using its own lesson
+**Depends on:** #73 for the tank, or the beat punishes the player for using its own lesson
 
 ### Context
 

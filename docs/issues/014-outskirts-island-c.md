@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E2
 **Cost:** M
-**Depends on:** 012, 029 for the trap volume, 031 for the blade
+**Depends on:** #84, #101 for the trap volume, #103 for the blade
 
 ### Context
 
@@ -21,7 +21,7 @@ Design: `docs/levels/01-outskirts.md`, "Island C — the trap room".
 
 - The blade's swing behaviour
 - The waste surface itself
-- The return loop, which is issue 015
+- The return loop, which is issue #87
 
 ### Acceptance criteria
 

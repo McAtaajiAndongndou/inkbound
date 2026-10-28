@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E5
 **Cost:** S
-**Depends on:** #7 for anything to select — build it against stubs first
+**Depends on:** #79 for anything to select — build it against stubs first
 
 ### Context
 

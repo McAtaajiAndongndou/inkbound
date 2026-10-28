@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** M6, M7, M8, M14
 **Cost:** M
-**Depends on:** 042 — **do not start if the spike failed**
+**Depends on:** #114 — **do not start if the spike failed**
 
 ### Context
 
@@ -10,7 +10,7 @@ Four enemies have no model at all: the **Drainer**, the **Charger zombie**, **Bi
 
 Three are chosen and sourced in `docs/ASSETS.md`. The **Stalker is not** — it was invented after that file was written, so nothing has ever been picked for it. Sourcing it is part of this issue.
 
-They are grouped because they share one rig family and one loading path. If 042 proved the pipeline, this is mechanical; if it did not, this issue should not be opened.
+They are grouped because they share one rig family and one loading path. If #114 proved the pipeline, this is mechanical; if it did not, this issue should not be opened.
 
 ### Scope — files you may touch
 
@@ -21,8 +21,8 @@ They are grouped because they share one rig family and one loading path. If 042 
 ### Out of scope — do not touch
 
 - Their behaviours
-- The Drainer's territory eating, which is issue 008
-- Big Arm's phases, which are issue 027
+- The Drainer's territory eating, which is issue #80
+- Big Arm's phases, which are issue #99
 
 ### Acceptance criteria
 

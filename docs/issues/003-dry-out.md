@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** A5
 **Cost:** S
-**Depends on:** #1 (shared tank), #2 (grey slows)
+**Depends on:** #73 (shared tank), #74 (grey slows)
 
 ### Context
 

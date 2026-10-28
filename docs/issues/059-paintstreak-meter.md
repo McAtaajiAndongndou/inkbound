@@ -2,7 +2,7 @@
 **Priority:** COULD
 **PRD:** C7
 **Cost:** M
-**Depends on:** 001, 038 — the gauge measures the loop, so the loop must exist
+**Depends on:** #73, #110 — the gauge measures the loop, so the loop must exist
 
 ### Context
 

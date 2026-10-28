@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** A8
 **Cost:** S
-**Depends on:** 009 (the end screens it sits on)
+**Depends on:** #81 (the end screens it sits on)
 
 ### Context
 

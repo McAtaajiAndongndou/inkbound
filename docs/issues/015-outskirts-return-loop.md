@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E2
 **Cost:** S
-**Depends on:** 014 — it connects Island C back to Island B
+**Depends on:** #86 — it connects Island C back to Island B
 
 ### Context
 

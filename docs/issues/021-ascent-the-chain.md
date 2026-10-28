@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E3
 **Cost:** M
-**Depends on:** 020, 013 for bounce numbers that already work
+**Depends on:** #92, #85 for bounce numbers that already work
 
 ### Context
 

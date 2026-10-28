@@ -75,6 +75,19 @@ export const PLAYER = {
   bounceClearance: 0.05, // lift off red by this so the bounce does not re-hit
 };
 
+// Avatar animation state machine (#82).
+//
+// The blends are deliberately short. The pose has to swap on the FRAME the
+// physics does, or the avatar spends the first tenth of a jump still running —
+// which is the bug this exists to fix, reintroduced as a fade. 0.1 s is the
+// ceiling the issue sets; the air blend goes under it because falling has no
+// anticipation to it.
+export const ANIM = {
+  blend: 0.1,     // ground transitions: idle <-> run
+  airBlend: 0.08, // into and out of jump / fall / land
+  riseSpeed: 0.1, // m/s of upward velocity that counts as RISING, not falling
+};
+
 // Camera rig (#34). TPV is the default; FPV is the V toggle / ADS target.
 export const CAMERA = {
   tpvDistance: 5.0,        // how far behind the player the third-person camera sits
@@ -183,6 +196,27 @@ export const ENEMY_NAV = {
   maxStepDown: 1.0,
 };
 
+// Awareness (#109). The shared substrate from `docs/enemies/algorithms.md`
+// § Awareness — Dormant / Alert / Search, and the numbers that separate them.
+//
+// These are DETECTION numbers, not attack numbers. `ENEMY.*.attackRange` still
+// decides when a shot is fired; this decides whether the enemy knows there is
+// anything to shoot at, which is why the radii here are larger than every
+// attack range in the game.
+//
+// Every enemy uses this. The turret is the one exception and it is declared as
+// data (`ENEMY.turret.ignoresStealth`) rather than checked by name, because a
+// machine that tracks you through a wall for a reason is a rule, and a rule
+// spelled `type === 'turret'` is a rule hidden in a conditional.
+export const AWARENESS = {
+  radius: 16,          // m, against a standing (dry or wet) player
+  submergedRadius: 7,  // m, against a submerged player — halved, not zero
+  fireAlert: 3,        // s of Alert bought by firing, regardless of submerge
+  forget: 6,           // s a last known position is remembered, then Dormant
+  arrive: 1.2,         // m: close enough to the last known position to stop
+  eyeHeight: 1.4,      // m above the feet — the height a sight line is drawn at
+};
+
 // Level 1 plentiful, level 2 starved, level 3 contested.
 export const AMMO = {
   1: 100,
@@ -246,6 +280,13 @@ export const ENEMY = {
     // Melee: walk up and STOP at contact range rather than continuing through the
     // player and turning round. See the `holding` note in _tick (#39).
     stopDistance: HEALTH.contactRange + 0.2,
+    // #76: the third beat. A charge ends by arriving on the player, by a wall or
+    // ledge, by 8 m travelled or by 2 s committed (enemy.js), and then the
+    // Charger stands still and takes full damage for this long. That turns the
+    // fight into bait -> dodge -> punish. If the window feels too generous,
+    // shorten THIS before touching anything else; if it still feels unfair, the
+    // windup is too short — not the recovery.
+    recovery: 1.2,
   },
   wallCrawler: {
     hp: 45,
@@ -267,10 +308,25 @@ export const ENEMY = {
     canMove: false,
     climbsGreen: false,
     drainsPaint: false,
+    // A machine does not get fooled by paint (#109). It never searches, never
+    // goes dormant, and is not halved by submerging: it tracks you whenever you
+    // are inside its attackRange. Out of scope for the enemies lane to change —
+    // this flag is how the rule is stated, not how the turret is built.
+    ignoresStealth: true,
     contactDamage: 0,
     windup: 0.8,
     attackRange: 15,
     attackCooldown: 3,
+    // #77 — THE MATRIX GAP (ENEMIES.md). The turret is the one enemy that paint
+    // does not solve: freeze, pin and knockback do nothing to it and the three
+    // colours are just damage. The answer is line of sight and flanking, and
+    // that only holds if the procs GENUINELY do nothing — a turret you can
+    // freeze is just another enemy with a slower answer.
+    //
+    // `canMove: false` alone was not enough. Red's knockback is applied in the
+    // windup branch too, so a red hit shoved a turret sideways mid-telegraph;
+    // the flag is what makes the promise unconditional.
+    noProcs: true,
   },
   drainer: {
     hp: 20,

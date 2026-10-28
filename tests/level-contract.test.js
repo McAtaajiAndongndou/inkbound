@@ -646,11 +646,15 @@ test('on grey a Charger keeps re-aiming at a sidestepping player', async () => {
   charger._attackCooldown = Infinity;
 
   // Get it moving and committed on grey, then sidestep to +x.
-  charger.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 3);
-  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z));
+  //
+  // Started 6 m out, not 3 m (#76): a Charger that ARRIVES now spends 1.2 s
+  // winded, and this test is about steering, not about the opening. At 6 m the
+  // first second of travel still leaves it short of `stopDistance`.
+  charger.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 4);
+  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z - 2));
 
   const before = charger._vel.clone().setY(0).normalize();
-  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(4, islandB.mesh.position.y, islandB.mesh.position.z));
+  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(4, islandB.mesh.position.y, islandB.mesh.position.z - 2));
   const after = charger._vel.clone().setY(0).normalize();
 
   assert.ok(before.distanceTo(after) > 0.1,

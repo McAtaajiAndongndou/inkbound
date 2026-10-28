@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** D2
 **Cost:** S
-**Depends on:** 004 (the same three-beat pattern, same file)
+**Depends on:** #76 (the same three-beat pattern, same file)
 
 ### Context
 
@@ -17,8 +17,8 @@ The Sprayer is also the enemy that eats your territory, so the reload is the mom
 
 ### Out of scope — do not touch
 
-- The Charger's recovery, which is issue 004
-- Grey conversion — that is issue 035
+- The Charger's recovery, which is issue #76
+- Grey conversion — that is issue #107
 - Pinning, which already works and does not stop it firing
 
 ### Acceptance criteria

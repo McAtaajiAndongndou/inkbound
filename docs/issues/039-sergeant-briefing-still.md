@@ -18,7 +18,7 @@ The tutorial opens with a single still: the sergeant and the player, with a line
 
 ### Out of scope — do not touch
 
-- In-game dialogue — that is issue 040
+- In-game dialogue — that is issue #112
 - Any animated portrait work
 - The tutorial's level geometry
 

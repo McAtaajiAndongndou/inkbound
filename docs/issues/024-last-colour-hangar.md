@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E4
 **Cost:** M
-**Depends on:** 008 (the drainer must eat paint for this room to mean anything), M6 for the model
+**Depends on:** #80 (the drainer must eat paint for this room to mean anything), M6 for the model
 
 ### Context
 

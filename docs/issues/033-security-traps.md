@@ -2,7 +2,7 @@
 **Priority:** COULD
 **PRD:** F3
 **Cost:** S
-**Depends on:** 029, 025 (the corridor they live in)
+**Depends on:** #101, #97 (the corridor they live in)
 
 ### Context
 

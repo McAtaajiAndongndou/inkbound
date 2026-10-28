@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** M10
 **Cost:** M
-**Depends on:** 053 (the level's mood decides what the props are lit by)
+**Depends on:** #125 (the level's mood decides what the props are lit by)
 
 ### Context
 

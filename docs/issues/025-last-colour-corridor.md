@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E4
 **Cost:** M
-**Depends on:** 024, 005 (turret no-procs), M5 and M7 for the models
+**Depends on:** #96, #77 (turret no-procs), M5 and M7 for the models
 
 ### Context
 

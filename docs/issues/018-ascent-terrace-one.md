@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E3
 **Cost:** M
-**Depends on:** 017 (the face the crawler climbs), D3 and M4 for the crawler itself
+**Depends on:** #89 (the face the crawler climbs), D3 and M4 for the crawler itself
 
 ### Context
 
@@ -18,7 +18,7 @@ Design: `docs/levels/02-the-ascent.md`, room R2.
 ### Out of scope — do not touch
 
 - The wall-crawler's climb behaviour
-- The first face (issue 017)
+- The first face (issue #89)
 - The catwalk
 
 ### Acceptance criteria
