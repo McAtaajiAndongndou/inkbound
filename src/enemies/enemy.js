@@ -6,6 +6,7 @@ import { ENEMY, ENEMY_NAV, PAINT, PAINT_IDS, BLUE_FREEZE } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
+import { createFrostMaterial } from "../shaders/frost/frost-material.js";
 
 // Paint ids are indices into the grid (see PAINT_IDS in config.js).
 const ID_TO_NAME = ["grey", "blue", "red", "green"];
@@ -190,16 +191,11 @@ export class Enemy {
     this.mesh.position.copy(position);
     this.position = this.mesh.position;   // alias, not a copy
 
-    const frostMaterial = new THREE.MeshBasicMaterial({
-      color: PAINT.blue.hex,
-      transparent: true,
-      opacity: BLUE_FREEZE.shellOpacity,
-      wireframe: true,
-      depthWrite: false,
-    });
+    const frostMaterial = createFrostMaterial(PAINT.blue.hex, BLUE_FREEZE.shellOpacity);
+
 
     this._frostShell = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 16, 12),
+      new THREE.SphereGeometry(1, 24, 16),
       frostMaterial
     );
 
@@ -346,6 +342,7 @@ export class Enemy {
 
   /** Per-frame entry point: logic first, then animation/gait. */
   update(dt, playerPos) {
+    if (this._frostShell.visible) this._frostShell.material.uniforms.uTime.value += dt;
     if (this.sleeping) {
       // Awake enough to look alive, asleep enough to be harmless: no movement, no
       // telegraph, no attack. The idle clip still plays, so a dormant enemy reads
@@ -424,6 +421,27 @@ export class Enemy {
    * needs no hardcoded ice flag: just read the grid.
    */
 
+  _clearFreeze(){
+    this._frozenTimer = 0;
+    this._blueHitCount = 0;
+    this._blueBuildupTimer = 0;
+
+    if (this._frostShell){
+      this._frostShell.visible = false;
+    }
+  }
+
+  _showBuildUp(){
+    const t = this._blueHitCount / BLUE_FREEZE.hitsToFreeze;
+
+    this._frostShell.material.uniforms.uOpacity.value = THREE.MathUtils.lerp(
+      BLUE_FREEZE.buildupOpacity,
+      BLUE_FREEZE.shellOpacity,
+      t
+    );
+    this._frostShell.visible = true;
+  }
+
   _updateBlueBuildup(dt){
     if (this._blueHitCount <= 0) return;
 
@@ -432,6 +450,10 @@ export class Enemy {
     if (this._blueBuildupTimer <= 0){
       this._blueHitCount = 0;
       this._blueBuildupTimer = 0;
+
+      if (this._frozenTimer <= 0){
+        this._frostShell.visible = false;
+      }
     }
   }
 
@@ -636,30 +658,32 @@ export class Enemy {
 
     const isTurret = this.type === "turret";
     const isFrozen = this._frozenTimer > 0;
-    const isCriticalHit = !isTurret && isFrozen;
+
+    const isArmed = isFrozen && this._frozenTimer <= BLUE_FREEZE.critWindow - BLUE_FREEZE.armDelay;
+    const isCriticalHit = !isTurret && isArmed;
 
     if (isCriticalHit){
       damage *= BLUE_FREEZE.criticalMultiplier;
-
-      this._frozenTimer = 0;
-      this._blueHitCount = 0;
-      this._blueBuildupTimer = 0;
-      this._frostShell.visible = false;
+      this._clearFreeze();
     } else if (!isTurret && colourId === PAINT_IDS.blue){
       damage = Math.max(1, Math.round(damage * BLUE_FREEZE.buildupDamageScale));
     }
 
     this.hp -= damage;
 
-    if (!isTurret && !isCriticalHit){
+    if (!isTurret && !isCriticalHit && !isFrozen){
       if (colourId === PAINT_IDS.blue){
         this._slipTimer = 1.5;
 
         this._blueHitCount++;
-        this._blueBuildupTimer = BLUE_FREEZE.buildupWindow;
+
+        if (this._blueHitCount === 1){
+          this._blueBuildupTimer = BLUE_FREEZE.buildupWindow;
+        }
 
         if (this._blueHitCount >= BLUE_FREEZE.hitsToFreeze){
           this._frozenTimer = BLUE_FREEZE.critWindow;
+          this._frostShell.material.uniforms.uOpacity.value = BLUE_FREEZE.shellOpacity;
           this._frostShell.visible = true;
 
           this._blueHitCount = 0;
@@ -671,13 +695,15 @@ export class Enemy {
           this.mesh.scale.setScalar(1);
           this._vel.set(0,0,0);
           this._knockback.set(0,0,0);
+        } else{
+          this._showBuildUp();
         }
       } else if (colourId === PAINT_IDS.red){
         this._knockback.copy(this.position);
 
         if (sourcePos){
           this._knockback.sub(sourcePos);
-        } else {
+        } else{
           this._knockback.set(
             Math.random() - 0.5,
             0,
@@ -735,13 +761,8 @@ export class Enemy {
     // left alone so the killing hit still reads as coloured.
     this._windupTimer = 0;
     this.mesh.scale.setScalar(1);
-    this._frozenTimer = 0;
-    this._blueHitCount = 0;
-    this._blueBuildupTimer = 0;
+    this._clearFreeze();
 
-    if (this._frostShell){
-      this._frostShell.visible = false;
-    }
     setTimeout(() => this.dispose(), KILL_FLASH_MS);
   }
 
