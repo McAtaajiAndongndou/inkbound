@@ -657,6 +657,11 @@ export class Enemy {
     return this._climbing;
   }
 
+  /** True between letting go of a face and touching floor again. */
+  get falling() {
+    return this._falling;
+  }
+
   /**
    * Pick a face to climb, or null.
    *
@@ -668,18 +673,24 @@ export class Enemy {
    * A face qualifies when all three hold:
    *   1. it is vertical — its world normal has almost no Y,
    *   2. the crawler is in FRONT of it, inside `CLIMB.reach`,
-   *   3. it still has surface `CLIMB.verticalGap` above the crawler's feet, so
-   *      a kerb is not a wall.
+   *   3. it still has surface `CLIMB.verticalGap` further along IN THE
+   *      DIRECTION OF THE PLAYER, so a kerb is not a wall — and so a crawler
+   *      standing on a ledge can still grab the face below it and come down.
    *
    * GREEN WINS when two faces qualify, as the design asks. The comparison is on
    * speed rather than on colour — `_climbSpeed` is the same function the climb
    * itself reads — so "prefers green" can never drift away from "green is
    * faster".
    *
+   * @param {THREE.Vector3} playerPos decides which way the crawl would go
    * @returns {PaintSurface|null} the chosen face, also left in `_climbFace`
    */
-  _findFace() {
+  _findFace(playerPos) {
     if (this._blockers.length === 0) return null;
+
+    // Which way the crawl goes: up to a player above, down to one below. The
+    // face only has to continue THAT way.
+    const toward = playerPos.y > this.position.y ? 1 : -1;
 
     let best = null;
     let bestSpeed = 0;
@@ -701,24 +712,33 @@ export class Enemy {
       if (Math.abs(this._climbScan.y) > 0.5) continue;        // a floor, not a face
 
       // Signed distance to the plane: positive is the front side, which is the
-      // only side a one-sided plane can be climbed from.
+      // only side a one-sided plane can be climbed from. A crawler has no wall
+      // collision, so it walks right up to the plane and can end up flush with
+      // it — a few centimetres past is still "against the face", not "behind
+      // it", and `_updateClimb` snaps it back out to `CLIMB.gap`.
       mesh.getWorldPosition(this._climbAnchor);
       const d = this._climbPoint
         .copy(this.position)
         .sub(this._climbAnchor)
         .dot(this._climbScan);
-      if (d < 0.2 || d > CLIMB.reach) continue;
+      if (d < -0.25 || d > CLIMB.reach) continue;
 
       // The point on the face at the crawler's own height, and the same point
-      // again one step higher: the first says "in reach", the second says
-      // "there is still wall up there".
+      // again one step further along the crawl: the first says "in reach", the
+      // second says "there is still wall that way".
       this._climbPoint
         .copy(this.position)
         .addScaledVector(this._climbScan, -d);
-      if (!surface.worldToCell(this._climbPoint)) continue;
+      // Standing on the ledge above a face puts the feet exactly on its boundary
+      // row, where worldToCell is a coin flip. Ask 5 cm into the face instead,
+      // or a crawler could never come DOWN a face it is standing above.
+      if (!surface.worldToCell(this._climbPoint)) {
+        this._climbPoint.y += 0.05 * toward;
+        if (!surface.worldToCell(this._climbPoint)) continue;
+      }
 
       this._climbProbe.copy(this._climbPoint);   // kept apart: worldToCell reuses
-      this._climbProbe.y += CLIMB.verticalGap;   // its own scratch, not this one
+      this._climbProbe.y += CLIMB.verticalGap * toward;   // its own scratch, not this one
       if (!surface.worldToCell(this._climbProbe)) continue;
 
       const speed = this._climbSpeed(surface, this._climbPoint);
@@ -804,6 +824,13 @@ export class Enemy {
       return;
     }
 
+    // No valid player means no target height to climb to. Let go rather than
+    // read `.y` off nothing: a crawler with nowhere to go belongs on the floor.
+    if (!playerPos || !Number.isFinite(playerPos.y)) {
+      this._detach();
+      return;
+    }
+
     // A pin that is still ticking keeps a climber off the wall for its whole
     // duration: the green hit already detached it, and this stops it grabbing
     // the same face again a frame later.
@@ -838,26 +865,43 @@ export class Enemy {
     this._climbPoint
       .copy(this.position)
       .addScaledVector(this._climbNormal, -CLIMB.gap);
+    // Which way this frame's crawl is going: up to a player above, down to one
+    // below. Read once, used by the edge fallback and by the step itself.
+    const toward = playerPos.y > this.position.y ? 1 : -1;
     if (!face.worldToCell(this._climbPoint)) {
-      this._detach();          // ran out of wall (the top, or off the side)
-      return;
+      // Standing on the ledge above a face, the feet sit exactly on its top
+      // boundary row, where worldToCell is a coin flip. Ask 5 cm into the face
+      // before calling it off the wall, or a descent ends on its first frame.
+      this._climbPoint.y += 0.05 * toward;
+      if (!face.worldToCell(this._climbPoint)) {
+        this._detach();          // ran out of wall (the top, or off the side)
+        return;
+      }
     }
     const speed = this._climbSpeed(face, this._climbPoint);
 
     const dy = playerPos.y - this.position.y;
-    this.position.y += Math.sign(dy) * Math.min(Math.abs(dy), speed * dt);
+    this.position.y += toward * Math.min(Math.abs(dy), speed * dt);
 
     // Face the wall. A bare yaw for the same reason the ground turn is one: it
     // is six operations against lookAt's world matrix and quaternion inverse.
     this.mesh.rotation.y = Math.atan2(-this._climbNormal.x, -this._climbNormal.z);
 
-    // Let go on arrival, or above the player and close enough for the drop to
-    // land on them.
+    // Let go on arrival, or just above the player and close enough for the fall
+    // to land on them.
+    //
+    // The height is capped at `CLIMB.dropRange` on purpose. Uncapped, a crawler
+    // at the top of a tall face is already "above and close" the moment the
+    // player stands at its foot — so it would let go on the first frame and the
+    // descent the design is asking for ("it should come down that face, faster
+    // than over grey") would never be seen. Capped, the crawl down the wall is
+    // the travel and the last 2.5 m is the attack.
     const dx = playerPos.x - this.position.x;
     const dz = playerPos.z - this.position.z;
     const close = dx * dx + dz * dz <= CLIMB.dropRange * CLIMB.dropRange;
-    const above = this.position.y > playerPos.y + 0.2;
-    if (Math.abs(dy) < 0.15 || (above && close)) this._detach();
+    const above = this.position.y - playerPos.y;
+    const inDropRange = above > 0.2 && above <= CLIMB.dropRange;
+    if (Math.abs(dy) < 0.15 || (inDropRange && close)) this._detach();
   }
 
   /**
@@ -905,7 +949,7 @@ export class Enemy {
       && this._windupTimer <= 0 && this._pinnedTimer <= 0
       && playerPos && Number.isFinite(playerPos.y)
       && Math.abs(playerPos.y - this.position.y) > CLIMB.verticalGap
-      && this._findFace()) {
+      && this._findFace(playerPos)) {
       this._beginClimb(this._climbFace);
       this._applyKnockback(dt);
       return;
@@ -1257,6 +1301,13 @@ export class Enemy {
     // A dead enemy never lands its attack: cancel the windup. The colour is
     // left alone so the killing hit still reads as coloured.
     this._windupTimer = 0;
+    // And it is off the wall (#115): `_tick` stops running the moment it dies,
+    // so a climber left holding a face would hang there until the corpse is
+    // disposed. Clearing the state is what makes a shot on the wall kill it
+    // rather than pin a body to the wall.
+    this._climbing = false;
+    this._falling = false;
+    this._climbFace = null;
     this.mesh.scale.setScalar(1);
     setTimeout(() => this.dispose(), KILL_FLASH_MS);
   }

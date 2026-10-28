@@ -70,6 +70,20 @@ function makeCrawler({ at = [0, 0, 1], faces = [makeFace()] } = {}) {
   return { enemy, faces, floor };
 }
 
+/**
+ * A crawler standing on a ledge above a face — the issue's manual check read
+ * the other way round: the wall is below it, and the player is on the ground.
+ */
+function makeLedgeCrawler() {
+  return new Enemy({
+    position: new THREE.Vector3(0, 5, 1),
+    config: ENEMY.wallCrawler,
+    parent: new THREE.Group(),
+    floors: [makeFloor(), makeFloor({ y: 5 })],
+    blockers: [makeFace({ height: 5 })],
+  });
+}
+
 /** The player standing on a ledge above the crawler, on the face's own plane. */
 const ABOVE = new THREE.Vector3(0, 6, 1);
 
@@ -193,4 +207,85 @@ test('a face too far to reach is not grabbed', () => {
   run(enemy, 10);
 
   assert.equal(enemy.climbing, false, `reach is ${CLIMB.reach} m and the face is 3 m away`);
+});
+
+test('standing on the ledge above, it comes DOWN the face', () => {
+  // The issue's manual check is "paint a tall face and stand at the BOTTOM. It
+  // should come down that face." That only works if a crawler standing on the
+  // ledge above a face can grab it — its feet are exactly on the face's top
+  // boundary row, which is the edge case this pins.
+  //
+  // The player stands at the foot of the face, which is the manual check
+  // verbatim. The crawler starts on the ledge at the top and has to crawl DOWN:
+  // the fall is only the last `CLIMB.dropRange` metres of the trip.
+  const enemy = makeLedgeCrawler();
+
+  run(enemy, 30, new THREE.Vector3(0, 0, 1));
+
+  assert.equal(enemy.climbing, true, 'the face below it should be grabbable');
+  assert.ok(
+    enemy.position.y < 4.5,
+    `should be coming down the face (y=${enemy.position.y.toFixed(2)})`,
+  );
+});
+
+test('within drop range above the player, it lets go and falls on them', () => {
+  // Started 2 m up the face with the player at its foot: inside
+  // `CLIMB.dropRange`, so the drop attack takes over from the crawl.
+  const { enemy } = makeCrawler({ at: [0, 2, 1] });
+
+  run(enemy, 10, new THREE.Vector3(0, 0, 1));
+
+  assert.equal(enemy.climbing, false, 'it should have let go');
+  assert.equal(enemy.falling, true, 'and be in the air, not on the wall');
+  assert.ok(
+    enemy.position.y < 2,
+    `should be on the way down (y=${enemy.position.y.toFixed(2)})`,
+  );
+});
+
+test('knocked off by red, it climbs the same face again', () => {
+  const { enemy } = makeCrawler();
+  run(enemy, 20);
+  assert.equal(enemy.climbing, true);
+
+  enemy.takeColourHit(PAINT_IDS.red, 1, new THREE.Vector3(0, 1, -4));
+  assert.equal(enemy.climbing, false);
+
+  // Three seconds: fall, land, walk back to the wall, grab. If it cannot get
+  // back on, knocking one off is a kill rather than a setback.
+  let regrabbed = false;
+  for (let i = 0; i < 180 && !regrabbed; i++) {
+    enemy.update(DT, ABOVE);
+    regrabbed = enemy.climbing;
+  }
+
+  assert.equal(regrabbed, true, 'red should cost it the climb, not the wall');
+});
+
+test('a blue freeze mid-climb drops it', () => {
+  const { enemy } = makeCrawler();
+  run(enemy, 20);
+
+  assert.equal(enemy.climbing, true);
+
+  enemy.takeColourHit(PAINT_IDS.blue, 1);
+
+  assert.equal(enemy.climbing, false, 'freezing a climber takes it off the wall');
+});
+
+test('killed on the wall, it does not stay stuck to it', () => {
+  const { enemy } = makeCrawler();
+  run(enemy, 20);
+  assert.equal(enemy.climbing, true);
+
+  enemy.takeDamage(enemy.hp);
+
+  assert.equal(enemy.alive, false);
+  assert.equal(enemy.climbing, false, 'a corpse cannot hold a face');
+
+  // Its last height is where it stays: nothing ticks a dead enemy.
+  const y = enemy.position.y;
+  run(enemy, 10);
+  assert.equal(enemy.position.y, y, 'the body should not sink or climb on its own');
 });
