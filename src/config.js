@@ -292,3 +292,14 @@ export const DEFENCE = {
   2: { requiredColour: "red", combo: [] },
   3: { requiredColour: null, combo: ["blue", "red"] },
 };
+
+export const BLUE_FREEZE = {
+  hitsToFreeze: 3,
+  buildupWindow: 2.0,
+  critWindow: 2.0,
+  criticalMultiplier: 3,
+  buildupDamageScale: 0.4,
+  shellRadius: 0.72,
+  shellHeight: 0.95,
+  shellOpacity: 0.35,
+};
