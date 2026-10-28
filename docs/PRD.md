@@ -56,7 +56,7 @@ The game is submittable when **all of these are true**:
 | A1 | **One shared tank** across all colours and all uses | MUST | M | paint | ❌ Not built — ammo is per colour |
 | A2 | **Positional refill** — standing in your own paint refills the tank | MUST | S | paint | ❌ Not built — F key |
 | A3 | **Pushback when dry** — firing on empty produces a dry click and no shot | MUST | S | paint | ✅ Built |
-| A4 | **Grey slows you** and refills nothing, as a live modifier | MUST | S | core | ❌ Not built — `SURFACE.grey.speedScale` is 1.0 |
+| A4 | **Grey slows you** and refills nothing, as a live modifier | MUST | S | core | ✅ Built — `SURFACE.grey.standSlow` (0.6), applied live in `player.js` |
 | A5 | **Dry out** — no tank and no territory ends the run, and the game says so | MUST | S | core | ❌ Not built |
 | A6 | **Submerge** — fast refill, hidden, cannot fire | MUST | M | core | ❌ Not built |
 | A7 | **Partial stealth** — submerging halves detection; firing reveals | MUST | M | shaders | ❌ Not built |
