@@ -15,16 +15,16 @@ function makeInput() {
 
 const press = (input, code) => input._onKeyDown({ code, preventDefault: noop });
 
-test('every one-shot action survives consumeActions (refill included)', () => {
+test('every one-shot action survives consumeActions', () => {
   const input = makeInput();
-  for (const code of ['Space', 'KeyV', 'KeyR', 'Digit4', 'KeyF']) press(input, code);
+  for (const code of ['Space', 'KeyV', 'KeyR', 'Digit4']) press(input, code);
 
   const a = input.consumeActions();
   assert.equal(a.jump, true);
   assert.equal(a.toggleView, true);
   assert.equal(a.restart, true);
   assert.equal(a.colour, 3);
-  assert.equal(a.refill, true);
+  assert.equal('refill' in a, false);
 });
 
 test('consumeActions hands out every pending field, whatever gets added later', () => {
@@ -35,13 +35,12 @@ test('consumeActions hands out every pending field, whatever gets added later', 
 
 test('actions fire once: the next frame is cleared', () => {
   const input = makeInput();
-  press(input, 'KeyF');
   press(input, 'Digit2');
   input.consumeActions();
 
   const next = input.consumeActions();
-  assert.equal(next.refill, false);
   assert.equal(next.colour, null);
+  assert.equal('refill' in next, false);
 });
 
 test('consumeMouse returns the delta once, then zero', () => {
@@ -66,7 +65,7 @@ test('consume*() allocate (almost) nothing per frame', async () => {
   const input = makeInput();
   input.locked = true;
   const move = { movementX: 1, movementY: 1 };
-  const key = { code: 'KeyF', preventDefault: noop };
+  const key = { code: 'KeyR', preventDefault: noop };
   // keep the results, like main.js does by handing them to player.update —
   // otherwise V8 sees they never escape and optimises the allocation away
   const sink = { actions: null, mouse: null };
