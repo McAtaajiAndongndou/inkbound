@@ -297,9 +297,11 @@ export const BLUE_FREEZE = {
   hitsToFreeze: 3,
   buildupWindow: 2.0,
   critWindow: 2.0,
+  armDelay: 0.25,
   criticalMultiplier: 3,
   buildupDamageScale: 0.4,
   shellRadius: 0.72,
   shellHeight: 0.95,
-  shellOpacity: 0.35,
+  shellOpacity: 0.55,
+  buildupOpacity: 0.12,
 };
