@@ -38,6 +38,14 @@ export const CREDITS = [
     files: ['assets/pistol.glb'],
   },
   {
+    what: 'Universal Animation Library (player jump start, loop and land)',
+    author: 'Quaternius',
+    source: 'https://quaternius.com/packs/universalanimationlibrary.html',
+    ...CC0,
+    changes: 'Three clips retargeted from its rig onto the player rig and baked; the pack itself is not shipped.',
+    files: ['assets/player-jump.clips.json'],
+  },
+  {
     what: 'Stylized Nature MegaKit (Level 1 forest: trees, bushes, rocks, grass, flowers, ferns, mushrooms)',
     author: 'Quaternius',
     source: 'https://quaternius.itch.io/stylized-nature-megakit',

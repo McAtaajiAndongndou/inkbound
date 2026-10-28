@@ -13,6 +13,20 @@ const CLIPS = {
   armed: {idle: 'Idle_Gun_Pointing', move: 'Run_Shoot'},
 };
 
+// #121. The jump clips are from the Quaternius Universal Animation Library, baked
+// onto this rig ahead of time so they arrive named for the soldier's bones and
+// register exactly like the model's own clips. This table is the one place that
+// names them; the states that play them are #82's and #122's.
+//
+// The pack has no fall clip and no climb clip at all (recorded on #121), which is
+// why there is no `fall` or `climb` entry here rather than a silent omission.
+export const LIBRARY_CLIPS = {
+  jumpStart: 'Jump_Start',
+  jumpLoop: 'Jump_Loop',
+  jumpLand: 'Jump_Land',
+};
+const LIBRARY_FILE = './assets/player-jump.clips.json';
+
 function findBone(root, wanted){
   const clean = (s) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
   const target = clean(wanted);
@@ -106,6 +120,9 @@ export class Avatar {
       this.actions.Death.setLoop(THREE.LoopOnce, 1);
       this.actions.Death.clampWhenFinished = true;
     }
+    // Fetched rather than bundled with the model: a slow or missing file must not
+    // hold up the avatar appearing.
+    this._loadLibraryClips();
 
     this.model = model;
     this.root.add(model);
@@ -150,6 +167,30 @@ export class Avatar {
     const i = this._pendingHand.indexOf(object);
     if (i !== -1) this._pendingHand.splice(i, 1);
       object.removeFromParent();
+  }
+
+  /**
+   * Registers the baked library clips (#121) so `play('Jump_Start')` works like
+   * any other clip. Failure is not fatal: the avatar keeps the clips it has and
+   * whatever state wanted a jump falls back to locomotion, which beats a
+   * half-loaded character.
+   */
+  _loadLibraryClips() {
+    fetch(LIBRARY_FILE)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((list) => {
+        if (this.disposed || !this.mixer) return;
+        for (const raw of list) {
+          const clip = THREE.AnimationClip.parse(raw);
+          this.actions[clip.name] = this.mixer.clipAction(clip);
+        }
+      })
+      .catch((err) => {
+        console.warn(`[avatar] library clips unavailable (${err.message}) - jump states will use locomotion`);
+      });
   }
 
   _locomotionClip() {
