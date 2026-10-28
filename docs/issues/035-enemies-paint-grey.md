@@ -2,13 +2,13 @@
 **Priority:** SHOULD
 **PRD:** B1
 **Cost:** M
-**Depends on:** 008 shares the machinery
+**Depends on:** #80 shares the machinery
 
 ### Context
 
 `ADR-0002` makes grey a **faction colour**, not the absence of colour: enemies convert your territory back to theirs using the same operation your gun uses in reverse. That is what makes combat a fight over ground instead of a fight over health.
 
-Issue 008 wires this for the Drainer at melee range. This issue adds the two that do it at range.
+Issue #80 wires this for the Drainer at melee range. This issue adds the two that do it at range.
 
 ### Scope — files you may touch
 
@@ -18,7 +18,7 @@ Issue 008 wires this for the Drainer at melee range. This issue adds the two tha
 
 ### Out of scope — do not touch
 
-- The Drainer, which is issue 008
+- The Drainer, which is issue #80
 - Turret fire — turrets deliberately leave ground alone
 - The shader's rendering of grey
 

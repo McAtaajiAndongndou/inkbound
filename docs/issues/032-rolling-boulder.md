@@ -2,7 +2,7 @@
 **Priority:** COULD
 **PRD:** F3
 **Cost:** S
-**Depends on:** 029, 021 (the chain room it lives in)
+**Depends on:** #101, #93 (the chain room it lives in)
 
 ### Context
 

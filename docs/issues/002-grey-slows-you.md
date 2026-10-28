@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** A4
 **Cost:** S
-**Depends on:** unrelated to #1, but read it first — both touch the economy
+**Depends on:** unrelated to #73, but read it first — both touch the economy
 
 ### Context
 
@@ -17,8 +17,8 @@ Right now `SURFACE.grey` is `speedScale: 1.0` — identical to any other neutral
 
 ### Out of scope — do not touch
 
-- Refill behaviour — that is issue 001
-- The dying/dry-out state — that is issue 003
+- Refill behaviour — that is issue #73
+- The dying/dry-out state — that is issue #75
 - `src/paint/**`
 
 ### The trap in this issue

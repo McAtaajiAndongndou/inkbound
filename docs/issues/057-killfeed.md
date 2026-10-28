@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** H6
 **Cost:** S
-**Depends on:** 009 for the existing end-of-run messaging
+**Depends on:** #81 for the existing end-of-run messaging
 
 ### Context
 

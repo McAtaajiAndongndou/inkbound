@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** B2
 **Cost:** M
-**Depends on:** #1 — the tank must exist before eating territory means anything
+**Depends on:** #73 — the tank must exist before eating territory means anything
 
 ### Context
 

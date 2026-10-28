@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** AN5
 **Cost:** S
-**Depends on:** 049
+**Depends on:** #121
 
 ### Context
 
@@ -17,7 +17,7 @@ The player climbs green walls, which is one of the game's best traversal verbs â
 ### Out of scope â€” do not touch
 
 - Climb speed, threshold or wall-jump physics
-- Airborne states, which are issue 010
+- Airborne states, which are issue #82
 - Enemy climbing
 
 ### Acceptance criteria
@@ -26,7 +26,7 @@ The player climbs green walls, which is one of the game's best traversal verbs â
 - [ ] It exits when the player reaches the top, drops off, or wall-jumps
 - [ ] Movement direction is reflected â€” up and down do not look identical if the clip allows it
 - [ ] Blending is short enough that the transition does not lag behind the physics
-- [ ] If no climb clip exists after 049, a documented fallback is used rather than a T-pose
+- [ ] If no climb clip exists after #121, a documented fallback is used rather than a T-pose
 
 ### Manual check
 

@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E3, G2
 **Cost:** S
-**Depends on:** 022
+**Depends on:** #94
 
 ### Context
 

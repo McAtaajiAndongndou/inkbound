@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** C4
 **Cost:** M
-**Depends on:** nothing — but issue 028 is blocked on this
+**Depends on:** nothing — but issue #100 is blocked on this
 
 ### Context
 
@@ -22,7 +22,7 @@ Design: `ENEMIES.md` ("Buildup-then-proc"), `docs/enemies/algorithms.md` (status
 ### Out of scope — do not touch
 
 - Other colours' effects
-- The turret, which explicitly has no procs (issue 005)
+- The turret, which explicitly has no procs (issue #77)
 - Enemy HP values
 
 ### Acceptance criteria

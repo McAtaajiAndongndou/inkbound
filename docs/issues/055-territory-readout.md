@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** B3
 **Cost:** S
-**Depends on:** 001 (the number should reflect the shared-tank world, not per-colour ammo)
+**Depends on:** #73 (the number should reflect the shared-tank world, not per-colour ammo)
 
 ### Context
 
@@ -18,7 +18,7 @@ Territory is the game's core resource and the HUD barely mentions it.
 ### Out of scope — do not touch
 
 - The minimap's rendering — it already draws painted ground correctly
-- The scorecard, which is issue 038
+- The scorecard, which is issue #110
 - The paint shader
 
 ### Acceptance criteria

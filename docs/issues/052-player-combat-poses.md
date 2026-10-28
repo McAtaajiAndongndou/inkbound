@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** AN6, AN12
 **Cost:** S
-**Depends on:** 045 (aiming must mean something before a pose is worth having)
+**Depends on:** #117 (aiming must mean something before a pose is worth having)
 
 ### Context
 
@@ -19,7 +19,7 @@ Right now taking damage has no animation, firing has no pose change, and aiming 
 ### Out of scope — do not touch
 
 - The ADS camera, FOV or sensitivity
-- Airborne and climb, which are 010 and 050
+- Airborne and climb, which are #82 and #122
 - Enemy animation
 
 ### Acceptance criteria

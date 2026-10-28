@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E4
 **Cost:** M
-**Depends on:** 024, 008, and the Stalker itself (D6)
+**Depends on:** #96, #80, and the Stalker itself (D6)
 
 ### Context
 

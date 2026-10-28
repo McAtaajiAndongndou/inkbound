@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** F2
 **Cost:** S
-**Depends on:** 029 for the damage volume
+**Depends on:** #101 for the damage volume
 
 ### Context
 

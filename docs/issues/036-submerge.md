@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** A6
 **Cost:** M
-**Depends on:** 001 (the tank and the refill rule)
+**Depends on:** #73 (the tank and the refill rule)
 
 ### Context
 
@@ -19,7 +19,7 @@ That trade is what makes paint a decision rather than a resource. `docs/DECISION
 
 ### Out of scope — do not touch
 
-- Enemy detection — that is issue 037
+- Enemy detection — that is issue #109
 - The paint shader's appearance of you when submerged
 - The gun viewmodel
 

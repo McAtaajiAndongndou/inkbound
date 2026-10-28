@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** J3, J4
 **Cost:** S
-**Depends on:** 029 for traps to colour
+**Depends on:** #101 for traps to colour
 
 ### Context
 
