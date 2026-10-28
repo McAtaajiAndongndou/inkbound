@@ -75,6 +75,19 @@ export const PLAYER = {
   bounceClearance: 0.05, // lift off red by this so the bounce does not re-hit
 };
 
+// Avatar animation state machine (#82).
+//
+// The blends are deliberately short. The pose has to swap on the FRAME the
+// physics does, or the avatar spends the first tenth of a jump still running —
+// which is the bug this exists to fix, reintroduced as a fade. 0.1 s is the
+// ceiling the issue sets; the air blend goes under it because falling has no
+// anticipation to it.
+export const ANIM = {
+  blend: 0.1,     // ground transitions: idle <-> run
+  airBlend: 0.08, // into and out of jump / fall / land
+  riseSpeed: 0.1, // m/s of upward velocity that counts as RISING, not falling
+};
+
 // Camera rig (#34). TPV is the default; FPV is the V toggle / ADS target.
 export const CAMERA = {
   tpvDistance: 5.0,        // how far behind the player the third-person camera sits

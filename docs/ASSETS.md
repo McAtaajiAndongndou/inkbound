@@ -46,9 +46,36 @@ The Sci-Fi Gun Pack **replaced** the Kenney Blaster Kit, so that all player-side
 
 | Asset | Source | Notes |
 |---|---|---|
-| Universal Animation Library | https://quaternius.com/packs/universalanimationlibrary.html (Quaternius) | Shared rig. Both player characters use the same clips |
+| Universal Animation Library | https://quaternius.com/packs/universalanimationlibrary.html (Quaternius) | **Downloaded**, CC0, 43 clips. Not a shared rig, see below |
 
 Only attach clips that are actually driven by a state — idle, locomotion, attack, hit, death. An unused clip is a download and a load cost for nothing.
+
+### Clip audit — Universal Animation Library (#121)
+
+Measured off `UAL1_Standard.glb` from the Standard zip: 43 clips, 65 bones, 7.3 MB.
+The `_RM` variant was rejected because its root motion fights `player.js`, which owns
+the player's position.
+
+| Wanted | In the pack | Notes |
+|---|---|---|
+| Jump | `Jump_Start` 1.33 s, `Jump_Loop` 2.50 s | shipped as `assets/player-jump.clips.json` |
+| Land | `Jump_Land` 1.27 s | shipped |
+| Fall | **none** | hold `Jump_Loop`; there is no airborne loop in the pack |
+| Climb | **none** | #122 needs a documented fallback, not a T-pose |
+
+Two things a later reader will trip over:
+
+1. **The rigs do not match**, contrary to this table's old note. The player is 62 bones
+   named `Root, Hips, Abdomen, WristL`; the library is 65 named `root, pelvis,
+   spine_01, hand_l`. The clips were retargeted bone by bone and baked onto the player
+   rig offline, so the game ships plain `AnimationClip`s and does no bone maths at
+   runtime. 61 of 62 bones map; the player's `Chest` has no counterpart.
+2. **The leap lives in a translation track.** A rotation-only retarget leaves the body
+   in place while the legs extend, so the feet pass 17 cm below the floor during
+   `Jump_Start`. Physics owns the jump arc, so the fix is the state machine's, not the
+   clip's.
+
+Sizes: 471 KB raw, 79 KB gzipped, three clips.
 
 ---
 

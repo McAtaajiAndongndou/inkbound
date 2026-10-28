@@ -227,8 +227,8 @@ The player ships **five clips** and the code wires **two states**. This is why t
 | AN1  | Player idle and run                    | MUST   | —    | shaders        | ✅ Built                                    |
 | AN2  | Player armed idle and run              | MUST   | —    | shaders        | ✅ Built                                    |
 | AN3  | Player death                           | MUST   | —    | shaders        | ✅ Built                                    |
-| AN4  | **Player airborne — jump, fall, land** | MUST   | S    | shaders + core | ❌ Not built: the player runs while falling |
-| AN5  | Player climb                           | SHOULD | S    | shaders        | ❌ Not built                                |
+| AN4  | **Player airborne — jump, fall, land** | MUST   | S    | shaders + core | 🟡 Clips ready (#121): jump start, loop and land drive the player rig. The pack has no fall clip; the state machine that plays them is #82 |
+| AN5  | Player climb                           | SHOULD | S    | shaders        | ❌ Not built, and the animation library has no climb clip (#121), so #122 ships a documented fallback |
 | AN6  | Player ADS pose or transition          | SHOULD | S    | shaders        | ⚠️ Armed idle only                          |
 | AN7  | Enemy walk cycle                       | SHOULD | M    | shaders        | ⚠️ Faked bob — the GLBs have no leg bones   |
 | AN8  | Enemy melee attack                     | MUST   | S    | shaders        | ❌ The Charger is animated with rifle clips |
