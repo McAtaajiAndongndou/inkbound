@@ -204,7 +204,7 @@ The game is submittable when **all of these are true**:
 | M1  | Player character, one, animated            | MUST    | —    | shaders | ✅ `soldier-swat.glb`                            |
 | M2  | Second playable character                  | **Cut** | —    | —       | ⛔ Cut — one character ships                     |
 | M3  | Charger and Sprayer models                 | MUST    | —    | shaders | ✅ Built                                         |
-| M4  | Wall-crawler model                         | MUST    | S    | shaders | ❌ Missing                                       |
+| M4  | Wall-crawler model                         | MUST    | S    | shaders | ✅ Validated and spawned in level 1 (#114). Climb behaviour is #115's |
 | M5  | Turret models                              | MUST    | S    | shaders | ❌ Missing                                       |
 | M6  | Drainer model                              | MUST    | S    | shaders | ❌ Missing                                       |
 | M7  | Charger zombie model                       | SHOULD  | S    | shaders | ❌ Missing                                       |
@@ -213,7 +213,7 @@ The game is submittable when **all of these are true**:
 | M10 | Military base props                        | MUST    | M    | levels  | ❌ Nothing exists for Last Colour                |
 | M11 | Forest props                               | MUST    | —    | levels  | ✅ 32 megakit GLBs                               |
 | M12 | Every CC-BY asset credited in-game         | MUST    | S    | ui      | ⚠️ Partial                                       |
-| M13 | One GLB validated before any bulk download | MUST    | —    | shaders | ⚠️ Done for soldiers, not for zombies or turrets |
+| M13 | One GLB validated before any bulk download | MUST    | —    | shaders | ⚠️ Validated on the soldiers and the wall-crawler (#114); turrets unproven |
 | M14 | Stalker model — **no asset sourced yet**   | SHOULD  | S    | shaders | ❌ Missing. The only enemy with no asset chosen  |
 
 **Missing models are the largest single visual risk.** The forest is dressed; every enemy after the first level and the entire final level are not. `docs/ASSETS.md` has the pipeline rule for this: validate one, never bulk.

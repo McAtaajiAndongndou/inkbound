@@ -59,6 +59,10 @@ const GAIT = {
 const MODEL_URLS = {
   charger: "./assets/soldier-charger.glb",
   sprayer: "./assets/soldier-sprayer.glb",
+  // #114. The first model here from outside the soldier pack, and the first
+  // SkinnedMesh the project has ever shipped: the soldiers are ten rigid parts
+  // with NO skin at all, so nothing so far has tested a bone-deformed mesh.
+  wallCrawler: "./assets/wall-crawler.glb",
 };
 const MODELS = {};                  // type -> { scene, clips, scale } once loaded
 
@@ -66,7 +70,28 @@ const MODELS = {};                  // type -> { scene, clips, scale } once load
 const CLIPS = {
   charger: { idle: "Rifle@Aim", run: "Rifle@Run.001", attack: "Rifle@AimShoot" },
   sprayer: { idle: "Rifle@Aim", run: "Rifle@Run.001", attack: "Rifle@Shoot" },
+  // The zombie pack (#114) has no attack clip at all. `Jump` is the lunge: the
+  // only clip with forward commitment, and short (0.33 s) the way a strike is.
+  // `Crawl` is locomotion rather than idle because this enemy is idle only in
+  // the instant between two moves.
+  wallCrawler: { idle: "Idle", run: "Crawl", attack: "Jump" },
 };
+
+/**
+ * Which clip decides where the floor is (#114).
+ *
+ * The soldiers need no entry: their rig is rigid parts in a standing pose and
+ * every clip measures lowest at the same y — 0.000, measured. A skinned model
+ * is not like that. The wall-crawler's BIND pose is standing, but its clips are
+ * not: `Crawl` plants hands and knees 5 cm below the soles of that pose and
+ * `Run` kicks a foot 12 cm below them. Fit the bind pose and call it done, and
+ * the character crawls through the floor — which is precisely the failure the
+ * manual check in #114 exists to catch.
+ */
+const FEET_CLIP = {
+  wallCrawler: "Crawl",
+};
+
 
 /**
  * Size a model to `targetHeight` AND find where its feet are.
@@ -87,8 +112,11 @@ const CLIPS = {
  *
  * @returns {{ scale: number, feetOffset: number }} metres to LIFT the model so
  *          its lowest vertex sits on the origin.
+ * @param floorY  Optional override for where the bottom is (#114). A skinned
+ *          model's clips can reach below its bind pose, and then the bind pose
+ *          is the wrong floor — see `sampledMinY`. Omitted, this is the box.
  */
-export function fitModelToHeight(object, targetHeight) {
+export function fitModelToHeight(object, targetHeight, floorY) {
   const box = new THREE.Box3().setFromObject(object);
   const height = box.max.y - box.min.y;
   const scale = height > 0 && Number.isFinite(height) ? targetHeight / height : 1;
@@ -97,10 +125,81 @@ export function fitModelToHeight(object, targetHeight) {
   // model would be flung out of the world. A model with no geometry is a real
   // possibility (a GLB with an empty scene), so this is guarded rather than
   // assumed, and the test is `a flat or empty model does not divide by zero`.
-  const feetOffset = Number.isFinite(box.min.y) ? -box.min.y * scale : 0;
+  // `Math.min` of the two bottoms keeps this correct whether or not a clip was
+  // measured, and keeps the bind pose off the floor even if one never gets there.
+  const bottom = Number.isFinite(floorY) ? Math.min(box.min.y, floorY) : box.min.y;
+  const feetOffset = Number.isFinite(bottom) ? -bottom * scale : 0;
 
   return { scale, feetOffset };
 }
+
+/**
+ * Find a clip by its bare name, whichever rig prefix it carries (#114).
+ *
+ * `_buildModel` used to hardcode `Armature|<name>` — true of the soldier pack
+ * and false of everything else. The wall-crawler's rig is `CharacterArmature`,
+ * so all three lookups returned null and `mixer.clipAction(null)` handed back a
+ * do-nothing action: the enemy does not even T-pose, it throws the first time
+ * the windup reads `getClip().duration`.
+ *
+ * Matching the tail after the last `|` leaves the soldier names working exactly
+ * as they did ("Armature|Rifle@Aim" -> "Rifle@Aim") and makes the next pack work
+ * for nothing — which is the whole reason this spike exists (M5-M8).
+ */
+export function findClip(clips, name) {
+  if (!clips || !name) return undefined;
+  for (const c of clips) if (c.name === name) return c;
+  const suffix = `|${name}`;
+  for (const c of clips) if (c.name.endsWith(suffix)) return c;
+  return undefined;
+}
+
+/**
+ * How low a model actually reaches while one clip plays, in the model's own
+ * units (#114). Returns 0 when there is no skinned mesh to sample.
+ *
+ * WHY THE BIND POSE IS NOT ENOUGH. `fitModelToHeight` measures the mesh as it
+ * stands in the file. A skinned mesh whose clips move bones away from that pose
+ * — a crouch, a stride, a crawl — is a different shape the moment the mixer
+ * runs, and the difference is not in the file's bounding box.
+ *
+ * WHY IT SAMPLES VERTICES AND NOT BOXES. `Box3.setFromObject` on a SkinnedMesh
+ * returns the geometry's bind-pose box times the node matrix: the bones are in
+ * the hierarchy and moving them does not move that box. Applying the bone
+ * matrices per vertex is the only way to see the pose.
+ */
+export function sampledMinY(object, clip, samples = 8) {
+  if (!object || !clip) return 0;
+  const meshes = [];
+  object.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
+  if (meshes.length === 0) return 0;
+
+  const mixer = new THREE.AnimationMixer(object);
+  mixer.clipAction(clip).play();
+
+  const v = new THREE.Vector3();
+  let lowest = Infinity;
+  const steps = Math.max(1, samples);
+  for (let s = 0; s <= steps; s++) {
+    mixer.setTime((clip.duration * s) / steps);
+    object.updateMatrixWorld(true);
+    for (const mesh of meshes) {
+      const pos = mesh.geometry.attributes.position;
+      if (!pos) continue;
+      mesh.skeleton.update();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        mesh.applyBoneTransform(i, v);
+        v.applyMatrix4(mesh.matrixWorld);
+        if (v.y < lowest) lowest = v.y;
+      }
+    }
+  }
+  mixer.stopAllAction();
+  mixer.uncacheRoot(object);
+  return Number.isFinite(lowest) ? lowest : 0;
+}
+
 
 /** Await before spawning enemies. Any model that fails falls back to the box. */
 export async function preloadEnemyModel() {
@@ -109,10 +208,24 @@ export async function preloadEnemyModel() {
     Object.entries(MODEL_URLS).map(async ([type, url]) => {
       try {
         const gltf = await loader.loadAsync(url);
+
+        // Where the floor is, before scaling (#114). Measured from the clip the
+        // enemy walks in rather than from the bind pose, because for a skinned
+        // model those are different heights — see `FEET_CLIP`. Soldiers sample
+        // 0.000 here and are fitted exactly as they were.
+        const feetClip = findClip(gltf.animations, FEET_CLIP[type]);
+        const floorY = feetClip ? sampledMinY(gltf.scene, feetClip) : undefined;
+
+        // `_gait` is the fake for rigs that cannot animate their own legs; a
+        // skinned model can, so it must not be given both (#114).
+        let skinned = false;
+        gltf.scene.traverse((o) => { if (o.isSkinnedMesh) skinned = true; });
+
         MODELS[type] = {
           scene: gltf.scene,
           clips: gltf.animations,
-          ...fitModelToHeight(gltf.scene, MODEL_HEIGHT),
+          skinned,
+          ...fitModelToHeight(gltf.scene, MODEL_HEIGHT, floorY),
         };
       } catch (e) {
         console.warn(`Enemy model "${type}" failed to load, using box fallback`, e);
@@ -204,6 +317,9 @@ export class Enemy {
     this._model = null;
     this._feetOffset = 0;
     this._stride = 0;
+    // True when the model has bones of its own, which switches the fake gait off
+    // (#114). Set by `_buildModel` from what preload actually found.
+    this._skinned = false;
 
     this.mesh = this._buildMesh();
     this.mesh.position.copy(position);
@@ -250,13 +366,24 @@ export class Enemy {
 
     const names = CLIPS[this.type] ?? CLIPS.sprayer;
     const mixer = new THREE.AnimationMixer(model);
-    const act = (n) =>
-      mixer.clipAction(THREE.AnimationClip.findByName(m.clips, `Armature|${n}`));
+    const act = (n) => {
+      // Not `AnimationClip.findByName(clips, 'Armature|' + n)` any more (#114):
+      // the prefix belongs to the pack, not to the lookup.
+      const clip = findClip(m.clips, n);
+      if (!clip) {
+        console.warn(`Enemy "${this.type}": no clip "${n}" among ${m.clips?.length ?? 0} loaded clips`);
+        return null;
+      }
+      return mixer.clipAction(clip);
+    };
 
     const attack = act(names.attack);
-    attack.setLoop(THREE.LoopOnce, 1);
-    attack.clampWhenFinished = true;
+    if (attack) {
+      attack.setLoop(THREE.LoopOnce, 1);
+      attack.clampWhenFinished = true;
+    }
 
+    this._skinned = Boolean(m.skinned);
     this._anim = { mixer, idle: act(names.idle), run: act(names.run), attack, current: null };
     this._play("idle");
 
@@ -311,7 +438,9 @@ export class Enemy {
   _play(name) {
     const a = this._anim;
     const next = a[name];
-    if (a.current === next) return;
+    // A clip the pack does not have (#114) leaves `next` null; skipping keeps
+    // the enemy on whatever pose it already holds instead of throwing here.
+    if (!next || a.current === next) return;
     next.reset().play();
     if (a.current) a.current.crossFadeTo(next, 0.15, false);
     a.current = next;
@@ -319,7 +448,7 @@ export class Enemy {
 
   _animate(dt) {
     if (!this._anim) return;
-    if (this._windupTimer > 0) {
+    if (this._windupTimer > 0 && this._anim.attack) {
       // Stretch the clip across the windup so the telegraph and animation line up.
       const a = this._anim.attack;
       a.timeScale = a.getClip().duration / this._windupTotal;
@@ -378,6 +507,12 @@ export class Enemy {
    */
   _gait(dt) {
     if (!this._model) return;
+
+    // A model with a real skeleton does not need the fake (#114). The
+    // wall-crawler's crawl clip already bobs the body; adding GAIT.bob on top
+    // would double it, and the lean would tip a crawling model off its hands.
+    // The soldiers keep it because their rig is arms only — the reason it exists.
+    if (this._skinned) return;
 
     const vx = this._vel.x;
     const vz = this._vel.z;
