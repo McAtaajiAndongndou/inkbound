@@ -83,6 +83,11 @@ export class PaintSurface {
     return this.map.data[(cell.row * this.map.cols + cell.col) * 4];
   }
 
+  isPlayerPaintAtWorld(worldPoint){
+    const paintId = this.paintIdAtWorld(worldPoint);
+    return paintId === PAINT_IDS.blue || paintId === PAINT_IDS.red || paintId === PAINT_IDS.green;
+  }
+
   /** The physics rules in force at a world point. This is what the player reads. */
   surfaceAtWorld(worldPoint) {
     return SURFACE[ID_TO_NAME[this.paintIdAtWorld(worldPoint)]];

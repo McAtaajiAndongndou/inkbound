@@ -28,7 +28,6 @@ export class Hud {
             <div id="dry-fire">EMPTY</div>
           </div>
           <div id="ammo-text">100</div>
-          <div id="refill-warning"><b>F</b> refill</div>
         </div>
         <div id="colours">
           <button class="swatch" data-i="0" style="--c:#3aa7ff"><span>1</span>Ice</button>
@@ -50,7 +49,6 @@ export class Hud {
     this.ammoText = root.querySelector('#ammo-text');
     this.standing = root.querySelector('#standing b');
     this.coverage = root.querySelector('#coverage');
-    this.refillWarning = root.querySelector('#refill-warning');
     this.dryFire = root.querySelector('#dry-fire');
     this.swatches = [...root.querySelectorAll('.swatch')];
     this.hint = root.querySelector('#standing-hint');
@@ -94,18 +92,11 @@ export class Hud {
   }
 
   update(dt, { gun, player, surfaces }) {
-    if (gun.colour === "grey"){
-      this.ammoFill.style.width = "100%";
-      this.ammoFill.style.background = `#${PAINT.grey.hex.toString(16).padStart(6, "0")}`;
-      this.ammoText.textContent = "∞";
-      this.refillWarning.classList.remove("critical");
-    } else {
-      const pct = gun.ammo[gun.colour] / gun.maxAmmo;
-      this.ammoFill.style.width = `${pct * 100}%`;
-      this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;
-      this.ammoText.textContent = Math.floor(gun.ammo[gun.colour]);
-      this.refillWarning.classList.toggle('critical', pct <= 0.25);
-    }
+    const pct = gun.ammo / gun.maxAmmo;
+
+    this.ammoFill.style.width = `${pct * 100}%`;
+    this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;
+    this.ammoText.textContent = Math.floor(gun.ammo);
   
     this.standing.textContent = PAINT[player.currentColour].name;
     this.standing.style.color = `#${PAINT[player.currentColour].hex.toString(16).padStart(6, '0')}`;

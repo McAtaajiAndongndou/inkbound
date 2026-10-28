@@ -13,7 +13,7 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER } from "./config.js";
+import { PLAYER, PAINT_GUN } from "./config.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -214,10 +214,20 @@ function simulate(dt, elapsed, actions, mouse) {
   }
   if (actions.toggleView) rig.toggle();
   if (actions.colour !== null) gun.selectColour(actions.colour);
-  if (actions.refill) gun.refillAmmo();
 
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
+
+ if (!player.dead && player.onGround){
+  const onPlayerPaint = level.surfaces.some((surface)=> surface.isPlayerPaintAtWorld(player.position));
+
+  if (onPlayerPaint){
+    gun.ammo = Math.min(
+      gun.maxAmmo,
+      gun.ammo + PAINT_GUN.refillRate * dt
+    );
+  }
+ }
  
 
   const p = player.mesh.position;
