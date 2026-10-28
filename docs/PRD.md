@@ -17,6 +17,8 @@ When two documents disagree:
 If this file and a design doc contradict on _how_ something behaves, the design doc is right and this file is stale. Fix this file.
 
 A1/A2 re-verified against the implementation at commit `af8862b`.
+A4 verified against `feature/core-grey-slowdown` (PR open).
+A5 verified against `feature/core-dry-out` (PR open).
 Other PRD statuses have not been re-verified.
 
 ---
@@ -56,8 +58,8 @@ The game is submittable when **all of these are true**:
 | A1  | **One shared tank** across all colours and all uses                       | MUST   | M    | paint   | ✅ Built — all colours share one ammo reserve              |
 | A2  | **Positional refill** — standing in your own paint refills the tank       | MUST   | S    | paint   | ✅ Built — automatic refill while grounded on player paint |
 | A3  | **Pushback when dry** — firing on empty produces a dry click and no shot  | MUST   | S    | paint   | ✅ Built                                                   |
-| A4  | **Grey slows you** and refills nothing, as a live modifier                | MUST   | S    | core    | ❌ Not built — `SURFACE.grey.speedScale` is 1.0            |
-| A5  | **Dry out** — no tank and no territory ends the run, and the game says so | MUST   | S    | core    | ❌ Not built                                               |
+| A4  | **Grey slows you** and refills nothing, as a live modifier                | MUST   | S    | core    | ✅ Built — `SURFACE.grey.standSlow` (0.6), applied live in `player.js` |
+| A5  | **Dry out** — no tank and no territory ends the run, and the game says so | MUST   | S    | core    | ✅ Built — `DRY_OUT` config, `Player.kill()`, HUD banner   |
 | A6  | **Submerge** — fast refill, hidden, cannot fire                           | MUST   | M    | core    | ❌ Not built                                               |
 | A7  | **Partial stealth** — submerging halves detection; firing reveals         | MUST   | M    | shaders | ❌ Not built                                               |
 | A8  | **Scorecard** — coverage, time, dry time at level end                     | SHOULD | S    | ui      | ❌ Not built                                               |
@@ -183,7 +185,7 @@ The game is submittable when **all of these are true**:
 | K1  | A painted floor is one mesh, one material, one draw call | MUST | —    | shaders | ✅ Built          |
 | K2  | No per-frame allocation in the render loop               | MUST | —    | core    | ✅ Tested         |
 | K3  | Levels dispose geometry, materials and uniform textures  | MUST | —    | levels  | ✅ Pattern exists |
-| K4  | `npm test` green                                         | MUST | —    | all     | ✅ 165 passing    |
+| K4  | `npm test` green                                         | MUST | —    | all     | ✅ 171 passing    |
 
 ---
 

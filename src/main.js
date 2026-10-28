@@ -8,12 +8,10 @@ import { PaintGun } from "./paint/paint-gun.js";
 import { createLevel, levelEntry, LEVELS, DEFAULT_LEVEL_ID } from "./levels/index.js";
 import { Hud } from "./ui/hud.js";
 import { PaintGunModel } from "./paint/paint-gun-model.js";
-
-
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER, PAINT_GUN } from "./config.js";
+import { PLAYER, PAINT_GUN, DRY_OUT } from "./config.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -43,9 +41,6 @@ let player = null;
 let gun = null;
 let gunModel = null;
 
-// WHICH LEVEL. `?level=ascent` is the dev/QA selector until the pause-menu list
-// lands (issue 006, ui). The ids live in `levels/index.js` — this file must never
-// hold a second list, or adding a level works here and is missing in the menu.
 const requestedLevel = new URLSearchParams(window.location.search).get("level");
 let currentLevelId = requestedLevel ? levelEntry(requestedLevel).id : DEFAULT_LEVEL_ID;
 
@@ -59,15 +54,6 @@ hud.onColourClick((i) => gun && gun.selectColour(i));
 window.addEventListener("pointerdown", () => audio.unlock());
 window.addEventListener("keydown", () => audio.unlock());
 
-// Levels read the scene and report a win back through this object.
-// `game` stays the integration point until core swaps in game.js.
-//
-// `loadGLB` is the ONE glTF loader for the game. MECHANICS.md:196 puts the
-// GLB/animation pipeline in `shaders/`, and the levels lane must not grow a
-// second one -- so a level that wants a model asks for it here instead of
-// importing GLTFLoader itself. Levels treat it as optional: with no loader they
-// build their own fallback geometry, which is what keeps `node --test` (no DOM,
-// no server) from dialling out on every level load.
 const gltfLoader = new GLTFLoader();
 
 const game = {
@@ -77,11 +63,6 @@ const game = {
     hud.showEnd("win");
     audio.play("win");
   },
-
-  // --- level switching (issue 006 is the menu that calls this) --------------
-  // The menu needs three things and no more: the list to render, which one is
-  // current, and the ability to load another. Keeping the list HERE rather than
-  // in the menu is what stops the two drifting apart.
   levels: LEVELS,
   currentLevelId: () => currentLevelId,
   loadLevel: (id) => {
@@ -101,35 +82,15 @@ function hidePlaceholder(p, a) {
   }
 }
 
-/**
- * Show or hide the PLACEHOLDER capsule — the pill-shaped stand-in the player is
- * drawn as until the avatar model arrives.
- *
- * #39 #1, "the pill shows up sometimes when pressing R". The pill is this
- * capsule: `CapsuleGeometry`, white, and it WAS only hidden once the avatar
- * model finished loading. On the first load the `#loading` screen covers that
- * window, so it was never seen; `R` restarts with no loading screen, so every
- * restart put a white capsule on screen for as long as the model took to come
- * back. "Sometimes", because a warm HTTP cache usually hides it.
- *
- * Two things this deliberately does NOT do:
- *
- *   - It does not touch `mesh.visible`. `animate()` sets that every frame from
- *     the camera mode, so a flag there would be overwritten immediately.
- *   - It does not touch the mesh's CHILDREN. The avatar's own root is a child of
- *     this mesh, so hiding the children (which `hidePlaceholder` does, for the
- *     gun) would hide the avatar instead.
- */
 function setPlaceholderVisible(p, visible) {
   if (p.mesh.material) p.mesh.material.visible = visible;
 }
 
 function loadLevel() {
-  if(gun){
+  if (gun) {
     gun.dispose();
   }
- 
-  if (gunModel){
+  if (gunModel) {
     gunModel.dispose();
     gunModel = null;
   }
@@ -149,10 +110,6 @@ function loadLevel() {
   player = new Player(level.surfaces, level.spawn);
   scene.add(player.mesh);
 
-  // Hidden NOW, before the avatar exists, and revealed only if the model never
-  // arrives. See `setPlaceholderVisible` (#39 #1). Order matters: hiding it
-  // after `new Avatar(...)` would need to know to leave the avatar's own root
-  // alone, and this way nothing is hidden that should not be.
   setPlaceholderVisible(player, false);
 
   const thisPlayer = player;
@@ -162,8 +119,6 @@ function loadLevel() {
       if (player === thisPlayer) hidePlaceholder(thisPlayer, avatar);
     },
     () => {
-      // No model, ever: fall back to the capsule rather than leaving the player
-      // as an invisible pair of floating hands.
       if (player === thisPlayer) {
         setPlaceholderVisible(thisPlayer, true);
         console.warn('[main] avatar model unavailable — showing the placeholder capsule');
@@ -179,11 +134,7 @@ function loadLevel() {
     audio.play("lose");
   };
 
-  
-
   gun = new PaintGun(level.surfaces, 1, level.enemies, scene);
-  // Shots land when the projectile arrives, not when fired, so the hit
-  // feedback is driven from the impact rather than from tryFire().
   gun.onImpact = (kind) => {
     audio.play(kind);
     if (kind !== "splat") hud.showHitmarker(kind === "kill");
@@ -197,7 +148,6 @@ preloadEnemyModel().then(() => {
   animate();
 });
 
-// Title + pause menu. Open whenever the pointer is unlocked (load, Escape).
 const menu = new Menu(document.body, {
   audio,
   canvas: renderer.domElement,
@@ -206,9 +156,8 @@ const menu = new Menu(document.body, {
 
 const clock = new THREE.Clock();
 
-/** One step of gameplay. Skipped entirely while the menu is open. */
 function simulate(dt, elapsed, actions, mouse) {
-  if (actions.restart){
+  if (actions.restart) {
     loadLevel();
     return;
   }
@@ -218,17 +167,28 @@ function simulate(dt, elapsed, actions, mouse) {
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
 
- if (!player.dead && player.onGround){
-  const onPlayerPaint = level.surfaces.some((surface)=> surface.isPlayerPaintAtWorld(player.position));
+  if (!player.dead && player.onGround) {
+    const onPlayerPaint = level.surfaces.some((surface) => surface.isPlayerPaintAtWorld(player.position));
 
-  if (onPlayerPaint){
-    gun.ammo = Math.min(
-      gun.maxAmmo,
-      gun.ammo + PAINT_GUN.refillRate * dt
-    );
+    if (onPlayerPaint) {
+      gun.ammo = Math.min(gun.maxAmmo, gun.ammo + PAINT_GUN.refillRate * dt);
+    }
+
+    // ---- dry out (#75) ---------------------------------------------------
+    // Dry = empty tank AND no paint underfoot. The loss only fires after
+    // DRY_OUT.graceTime seconds of continuous dry state, so the player has a
+    // beat to notice the ammo bar pulsing and step back onto paint.
+    player.dry = gun.ammo <= 0 && !onPlayerPaint;
+    if (player.dry) {
+      player.dryTimer += dt;
+      if (player.dryTimer >= DRY_OUT.graceTime) player.kill();
+    } else {
+      player.dryTimer = 0;
+    }
+  } else {
+    player.dry = false;
+    player.dryTimer = 0;
   }
- }
- 
 
   const p = player.mesh.position;
   const dx = p.x - lastPos.x;
@@ -253,26 +213,22 @@ function simulate(dt, elapsed, actions, mouse) {
 function animate() {
   requestAnimationFrame(animate);
 
-  const dt = Math.min(clock.getDelta(), 0.05); // clamp so a stall cannot teleport you
+  const dt = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.elapsedTime;
 
-  // Always drain input, so keys pressed while paused do not fire on resume.
   const actions = input.consumeActions();
   const mouse = input.consumeMouse();
 
-  // Menu up (title or Escape): the world freezes but keeps rendering behind it,
-  // so enemies cannot hurt you while you change settings.
   if (!menu.open) {
     rig.setAiming(input.aiming);
     simulate(dt, elapsed, actions, mouse);
   }
 
-  rig.update(player,dt);
+  rig.update(player, dt);
   player.mesh.visible = !rig.firstPerson;
 
-
-  if (gunModel){
-    gunModel.update(rig.firstPerson,dt);
+  if (gunModel) {
+    gunModel.update(rig.firstPerson, dt);
   }
 
   hud.update(dt, {
@@ -287,23 +243,6 @@ function animate() {
   renderer.setViewport(0, 0, w, h);
   renderer.render(scene, rig.camera);
 
-  // --- minimap, bottom-right, orthographic (Viewing rubric) ---
-  // Two things have to come off for this pass, and both were needed:
-  //
-  //   1. scene.fog. Fog is scaled for the player's camera, which sits ~6 units
-  //      off the ground, but the minimap camera sits 60 units up -- well past
-  //      fogFar -- so every surface would render 100% fogged.
-  //   2. level.atmosphere. That is the level's "air": the sky dome and the mist
-  //      sheets. Those are real geometry, so turning fog off does not touch
-  //      them; without this the mist sheets draw as a grey wash over the map.
-  //
-  // Restored afterwards rather than rebuilt: the level owns both.
-  //
-  // Deliberate tradeoff on the fog toggle: it flips the USE_FOG define, so
-  // three.js switches to the fog-free variant of each program. Programs are
-  // cached after the first two frames, so this is a per-frame program switch,
-  // not a per-frame recompile. If the minimap ever grows expensive, the clean
-  // fix is a separate scene for it -- not worth it at beta.
   const size = Math.round(Math.min(w, h) * 0.2);
   const pad = 16;
   const fog = scene.fog;
@@ -321,8 +260,6 @@ function animate() {
   if (atmosphere) atmosphere.visible = true;
   if (waste) waste.visible = true;
 }
-
-
 
 window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);

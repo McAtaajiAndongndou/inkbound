@@ -113,6 +113,43 @@ canvas {
   white-space: nowrap;
 }
 
+/* ---- dry out warning (#75) ----------------------------------------------
+   Two cues, one persistent. The ammo bar pulses while the tank is low; the
+   fullscreen banner appears only once the player is actually dry, and shows
+   the remaining grace so the player can see the loss coming. Both are
+   deliberately LOUD — the issue calls them the biggest part of the feature. */
+#ammo-bar.critical {
+  animation: ammo-critical 0.5s ease-in-out infinite;
+}
+
+#ammo-bar.critical #ammo-fill {
+  background: #ff4d5a !important;
+}
+
+@keyframes ammo-critical {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+#dry-warning {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #ff4d5a;
+  text-shadow: 0 0 12px rgba(255, 77, 90, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8);
+  animation: dry-pulse 0.4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes dry-pulse {
+  from { transform: translateX(-50%) scale(1);    opacity: 1;   }
+  to   { transform: translateX(-50%) scale(1.06); opacity: 0.7; }
+}
+
 #colours {
   display: flex;
   gap: 8px;
@@ -161,8 +198,8 @@ canvas {
   50% {
     opacity: 0.35;
   }
-
 }
+
 .hidden { display: none !important; }
 #standing-hint { font-size: 12px; opacity: .8; }
 #health-wrap { display: flex; align-items: center; gap: 10px; }
@@ -172,6 +209,7 @@ canvas {
 .end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; background: rgba(15,15,22,.75); }
 .end h1 { margin: 0 0 8px; font-size: 48px; letter-spacing: .05em; }
 .end p { margin: 0; color: var(--ink-dim); }
+
 /* Hitmarker: four ticks around the crosshair. White on hit, red and bigger on kill. */
 #hitmarker {
   position: absolute;

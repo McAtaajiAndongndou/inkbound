@@ -1,4 +1,5 @@
-import { PAINT } from '../config.js';
+import { PAINT, DRY_OUT } from '../config.js';
+
 const HINTS = {
   Grey: 'Dead ground: slow, no refill',
   Ice: 'Slide: low friction',
@@ -6,17 +7,13 @@ const HINTS = {
   Grip: 'Grip: climb walls',
 };
 
-/**
- * HUD. DOM-based, which is cheap and does not cost us a draw call.
- * Ammo counter, current colour, and a live readout of what the player is
- * standing on — that readout is a debug tool AND a teaching tool.
- */
 export class Hud {
   constructor(root) {
     this.root = root;
     root.innerHTML = `
       <div id="crosshair"></div>
       <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+      <div id="dry-warning" class="hidden">DRY OUT</div>
       <div id="hud-bottom">
         <div id="health-wrap" class="hidden">
           <div id="health-bar"><div id="health-fill"></div></div>
@@ -47,9 +44,11 @@ export class Hud {
 
     this.ammoFill = root.querySelector('#ammo-fill');
     this.ammoText = root.querySelector('#ammo-text');
+    this.ammoBar = root.querySelector('#ammo-bar');
     this.standing = root.querySelector('#standing b');
     this.coverage = root.querySelector('#coverage');
     this.dryFire = root.querySelector('#dry-fire');
+    this.dryWarning = root.querySelector('#dry-warning');
     this.swatches = [...root.querySelectorAll('.swatch')];
     this.hint = root.querySelector('#standing-hint');
     this.healthWrap = root.querySelector('#health-wrap');
@@ -69,14 +68,10 @@ export class Hud {
     });
   }
 
-  /**
-   * Flash the hitmarker. The fade is a CSS animation, so nothing ticks per
-   * frame; dropping and re-adding the class restarts it on rapid hits.
-   */
   showHitmarker(kill = false) {
     const el = this.hitmarker;
     el.classList.remove('show', 'kill');
-    void el.offsetWidth; // force a reflow so the animation restarts
+    void el.offsetWidth;
     el.classList.add('show');
     el.classList.toggle('kill', kill);
   }
@@ -97,7 +92,20 @@ export class Hud {
     this.ammoFill.style.width = `${pct * 100}%`;
     this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;
     this.ammoText.textContent = Math.floor(gun.ammo);
-  
+
+    // ---- dry out warning (#75) --------------------------------------------
+    // Two cues: the ammo bar pulses below DRY_OUT.warningBelow, and a
+    // fullscreen banner appears while the player is actually dry, counting
+    // down the grace.
+    const critical = pct < DRY_OUT.warningBelow && gun.ammo > 0;
+    this.ammoBar.classList.toggle('critical', critical);
+
+    this.dryWarning.classList.toggle('hidden', !player.dry);
+    if (player.dry) {
+      const remaining = Math.max(0, DRY_OUT.graceTime - player.dryTimer);
+      this.dryWarning.textContent = `DRY OUT — ${remaining.toFixed(1)}s`;
+    }
+
     this.standing.textContent = PAINT[player.currentColour].name;
     this.standing.style.color = `#${PAINT[player.currentColour].hex.toString(16).padStart(6, '0')}`;
     this.hint.textContent = HINTS[PAINT[player.currentColour].name] ?? '';
@@ -113,7 +121,6 @@ export class Hud {
 
     this.swatches.forEach((el, i) => el.classList.toggle('active', i === gun.current));
 
-    // coverage is a full grid scan — do it 4x a second, not 60
     this._coverageTimer -= dt;
     if (this._coverageTimer <= 0) {
       this._coverageTimer = 0.25;

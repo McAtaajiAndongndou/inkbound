@@ -12,15 +12,8 @@ const ID_TO_NAME = ['grey', 'blue', 'red', 'green'];
  *
  * So painting the floor blue really does make the player slide, and painting
  * a wall green really does let them climb it. Nothing is faked.
- *
- * NOTE: hand-rolled on purpose for the alpha — small, no async WASM init,
- * demonstrates the mechanic today. Rapier replaces it in week 2.
  */
 export class Player {
-  /**
-   * @param {PaintSurface[]} surfaces the level's surfaces
-   * @param {THREE.Vector3} spawn     the level's spawn point — start and respawn here
-   */
   constructor(surfaces, spawn = new THREE.Vector3()) {
     this.surfaces = surfaces;
     this.floors = surfaces.filter((s) => s.isFloor);
@@ -34,22 +27,27 @@ export class Player {
 
     this.onGround = false;
     this.climbing = false;
-    this.touchingWall = null;   // { surface, point, normal, rules }
+    this.touchingWall = null;
     this.currentColour = 'grey';
 
-    // jump feel (#33) — seconds remaining on each grace window
+    // jump feel (#33)
     this._coyoteTimer = 0;
     this._jumpBufferTimer = 0;
 
-    // Speed cap earned from paint, in m/s. See the cap block in update(). (#52)
+    // Speed cap earned from paint (#52)
     this.speedCap = PLAYER.maxSpeed;
 
-    // health — read by the HUD (health, maxHealth, dead)
+    // health
     this.maxHealth = HEALTH.max;
     this.health = HEALTH.max;
     this.dead = false;
-    this.hurtTimer = 0;         // > 0 means recently hit, cannot be hit again yet
-    this.onDeath = null;        // optional callback, fired once when health hits 0
+    this.hurtTimer = 0;
+    this.onDeath = null;
+
+    // dry out (#75). Set by main.js — only main knows the gun and the surfaces.
+    // Player holds the flag so the HUD and any other system can read it.
+    this.dry = false;
+    this.dryTimer = 0;
 
     // visible avatar for third-person
     const geometry = new THREE.CapsuleGeometry(
@@ -75,10 +73,6 @@ export class Player {
     this._normal = new THREE.Vector3();
   }
 
-  /**
-   * Lose `n` health. Ignored while dead or inside the post-hit cooldown.
-   * Returns true if the hit landed.
-   */
   takeDamage(n) {
     if (this.dead || this.hurtTimer > 0 || n <= 0) return false;
 
@@ -94,69 +88,46 @@ export class Player {
   }
 
   /**
-   * Contact damage by proximity: any enemy whose centre is within
-   * HEALTH.contactRange (horizontally) and HEALTH.contactHeight (vertically)
-   * of the player hurts for its config.contactDamage.
-   * Expects each enemy to expose `position` (Vector3) and `config` (an ENEMY entry).
-   *
-   * DEAD ENEMIES ARE SKIPPED, and that check was missing (#39). It is not
-   * hygiene: `Enemy.takeColourHit` sets `alive = false` and `dispose()` detaches
-   * the MESH, but nothing removes the enemy from the level's `enemies` array, and
-   * `position` keeps pointing at the spot where it died. This loop only ever
-   * looked at `position` and `config` — so every corpse stayed a live hazard for
-   * the rest of the level, dealing its full contactDamage to anyone who walked
-   * over it. Invisible damage from a body that is not on screen any more.
-   *
-   * That is the "I died at 50 HP": a Charger corpse deals 25 a hit, on a 0.8 s
-   * cooldown, and nothing on screen explains where it came from.
-   *
-   * `alive === false`, not `!enemy.alive`, so a stand-in enemy without the field
-   * (the tests, and anything not yet an Enemy) is still a hazard rather than
-   * being silently skipped.
+   * Kill the player outside the health system — used by dry out (#75).
+   * Same end path as a death, so the existing lose screen handles it.
    */
+  kill() {
+    if (this.dead) return;
+    this.health = 0;
+    this.dead = true;
+    this.velocity.set(0, 0, 0);
+    this.onDeath?.();
+  }
+
   checkEnemyContact(enemies) {
     if (this.dead) return;
     for (const enemy of enemies) {
-      if (enemy.alive === false) continue;      // a corpse is not a hazard
-      if (enemy.sleeping === true) continue;    // nor is something still dormant
+      if (enemy.alive === false) continue;
+      if (enemy.sleeping === true) continue;
       if (!enemy.position || !enemy.config) continue;
       const dx = enemy.position.x - this.position.x;
       const dz = enemy.position.z - this.position.z;
       const dy = enemy.position.y - this.position.y;
       if (dx * dx + dz * dz > HEALTH.contactRange * HEALTH.contactRange) continue;
       if (Math.abs(dy) > HEALTH.contactHeight) continue;
-      if (this.takeDamage(enemy.config.contactDamage ?? 0)) return; // one hit per frame
+      if (this.takeDamage(enemy.config.contactDamage ?? 0)) return;
     }
   }
 
-  look(dx,dy,aiming = false){
-    if (this.dead){
-      return;
-    }
+  look(dx, dy, aiming = false) {
+    if (this.dead) return;
     let sensitivity = PLAYER.lookSensitivity;
 
-    if (aiming){
+    if (aiming) {
       sensitivity *= PLAYER.adsSensitivityMultiplier;
     }
 
     this.yaw -= dx * sensitivity;
     this.pitch -= dy * sensitivity;
 
-    this.pitch = Math.max(
-      CAMERA.pitchMin,
-      Math.min(CAMERA.pitchMax, this.pitch)
-    );
+    this.pitch = Math.max(CAMERA.pitchMin, Math.min(CAMERA.pitchMax, this.pitch));
   }
 
-  /**
-   * Straight-down ground probe. Returns the nearest floor below the player,
-   * or null. The result object is reused every frame — do not hold onto it.
-   *
-   * Not a THREE.Raycaster: that allocates a hit object (plus point, uv,
-   * normal, face) per hit, every frame. Every floor is a single flat
-   * PaintSurface plane, so we intersect the ray with each plane in its local
-   * space instead — same trick as _resolveWalls, and allocation-free.
-   */
   _probeGround() {
     this._probe.copy(this.position);
     this._probe.y += PLAYER.groundProbeLift;
@@ -165,19 +136,15 @@ export class Player {
     let bestDist = PLAYER.groundProbeRange;
 
     for (const floor of this.floors) {
-      // ray origin and direction (world 0,-1,0) in the floor's local space.
-      // One matrix inverse per floor: the direction is just minus the
-      // inverse's Y column, so we do not need a second worldToLocal.
       floor.mesh.updateWorldMatrix(true, false);
       this._inv.copy(floor.mesh.matrixWorld).invert();
       this._local.copy(this._probe).applyMatrix4(this._inv);
       const e = this._inv.elements;
       this._dirLocal.set(-e[4], -e[5], -e[6]);
 
-      // the plane faces local +Z; only hit it from the front, like the raycast did
       if (this._dirLocal.z >= 0) continue;
 
-      const dist = -this._local.z / this._dirLocal.z;   // world units along the ray
+      const dist = -this._local.z / this._dirLocal.z;
       if (dist < 0 || dist > bestDist) continue;
 
       const hx = this._local.x + this._dirLocal.x * dist;
@@ -197,21 +164,10 @@ export class Player {
     return ground;
   }
 
-  /**
-   * Solid wall collision AND the climb check, in one pass.
-   *
-   * Each wall is a PlaneGeometry lying in its own local XY plane with its
-   * normal down local +Z. So we convert the player into the wall's local
-   * space: if they are inside the plane's bounds and their local z is within
-   * the player radius, they are touching it. We push them back out along the
-   * normal — that is what stops you phasing through, which is what stopped
-   * climbing from ever triggering.
-   */
   _resolveWalls() {
     this.touchingWall = null;
 
     for (const wall of this.walls) {
-      // test at chest height, not at the feet
       this._world.copy(this.position);
       this._world.y += PLAYER.height * 0.5;
 
@@ -221,12 +177,10 @@ export class Player {
       const halfW = wall.width * 0.5;
       const halfH = wall.height * 0.5;
 
-      // outside the panel's footprint? not touching it
       if (Math.abs(this._local.x) > halfW + PLAYER.radius) continue;
       if (Math.abs(this._local.y) > halfH) continue;
       if (Math.abs(this._local.z) > PLAYER.radius) continue;
 
-      // --- push the player back out along the wall normal ---
       const side = this._local.z >= 0 ? 1 : -1;
       const contactZ = this._local.z;
       this._local.z = side * PLAYER.radius;
@@ -235,7 +189,6 @@ export class Player {
       this.position.x = this._local.x;
       this.position.z = this._local.z;
 
-      // --- what colour is the bit of wall we are touching? ---
       this._local.copy(this._world);
       wall.mesh.worldToLocal(this._local);
       this._local.z = 0;
@@ -243,7 +196,6 @@ export class Player {
 
       this._normal.set(0, 0, side).applyQuaternion(wall.mesh.quaternion).normalize();
 
-      // reuse one contact object rather than allocating one per frame
       const contact = this._wallContact;
       contact.surface = wall;
       contact.rules = wall.surfaceAtWorld(this._local);
@@ -251,7 +203,6 @@ export class Player {
       contact.contactZ = contactZ;
       this.touchingWall = contact;
 
-      // kill velocity heading into the wall so we do not grind through it
       const into = this.velocity.dot(this._normal);
       if (into < 0) this.velocity.addScaledVector(this._normal, -into);
     }
@@ -259,10 +210,9 @@ export class Player {
 
   update(dt, input, actions) {
     if (this.hurtTimer > 0) this.hurtTimer -= dt;
-    if (this.dead) return;     // dead: frozen in place until the level restarts
+    if (this.dead) return;
 
     // ---- jump feel (#33) — decay the grace windows -----------------------
-    // onGround here is last frame's value: exactly what coyote time wants.
     if (this.onGround || this.climbing) this._coyoteTimer = PLAYER.coyoteTime;
     else if (this._coyoteTimer > 0)    this._coyoteTimer -= dt;
 
@@ -288,7 +238,7 @@ export class Player {
       ? ID_TO_NAME[ground.surface.paintIdAtWorld(ground.point)]
       : 'grey';
 
-    // ---- climbing: touching a GREEN wall and pushing into it -------------
+    // ---- climbing --------------------------------------------------------
     const wall = this.touchingWall;
     const pushingIntoWall = wall && this._wish.dot(wall.normal) < -PLAYER.climbPushThreshold;
     this.climbing = !!(wall && wall.rules.climbable && pushingIntoWall);
@@ -306,47 +256,39 @@ export class Player {
     this.velocity.x += this._wish.x * accel * dt;
     this.velocity.z += this._wish.z * accel * dt;
 
-    // a trampoline must not slow you down: red flings the speed you arrived with
     if (this.onGround && rules && rules.restitution === 0) {
-      // low friction (blue) is what makes ice — see SURFACE in config.js
       const damping = Math.max(0, 1 - rules.friction * dt);
       this.velocity.x *= damping;
       this.velocity.z *= damping;
     }
 
-    // ---- speed cap: momentum you keep, not the tile under you (#52) -------
-    // Surfaces grant a cap; the player keeps what it earned:
-    //   - over a void, keep the last surface's cap (blue survives the lip)
-    //   - a trampoline never lowers it (red flings the speed, not cancels it)
-    //   - landing on a normal surface re-grants its cap (grey = base)
+    // ---- speed cap (#52 + #74) -------------------------------------------
     const granted = PLAYER.maxSpeed * (rules ? rules.speedScale : 1);
     const settled = rules && this.onGround && rules.restitution === 0;
     if (settled) this.speedCap = granted;
     else if (granted > this.speedCap) this.speedCap = granted;
 
-    // not Math.hypot — V8 allocates on every hypot call
+    const standSlow = (this.onGround && rules && rules.standSlow < 1) ? rules.standSlow : 1;
+    const speedCap = this.speedCap * standSlow;
+    const maxSpeed = speedCap * (input.aiming ? PLAYER.adsSpeedMultiplier : 1);
+
     const vx = this.velocity.x;
     const vz = this.velocity.z;
     const planar = Math.sqrt(vx * vx + vz * vz);
 
-    const maxSpeed = this.speedCap * (input.aiming ? PLAYER.adsSpeedMultiplier : 1);
-
-    if(planar > maxSpeed){
+    if (planar > maxSpeed) {
       this.velocity.x *= maxSpeed / planar;
       this.velocity.z *= maxSpeed / planar;
     }
 
     // ---- jump ------------------------------------------------------------
-    // Jump fires if the buffer has a recent press AND we are grounded,
-    // climbing, or still inside the coyote window (#33).
     const canJump = this.onGround || this.climbing || this._coyoteTimer > 0;
     if (this._jumpBufferTimer > 0 && canJump) {
       this.velocity.y = PLAYER.jumpSpeed;
       this.onGround = false;
-      this._coyoteTimer = 0;       // consume the grace window, no double-jump
-      this._jumpBufferTimer = 0;   // consume the buffered press
+      this._coyoteTimer = 0;
+      this._jumpBufferTimer = 0;
       if (this.climbing) {
-        // hop off the wall so you land on the ledge instead of sticking
         this.velocity.addScaledVector(wall.normal, PLAYER.wallJumpPush);
       }
     }
@@ -354,25 +296,15 @@ export class Player {
     // ---- integrate -------------------------------------------------------
     this.position.addScaledVector(this.velocity, dt);
 
-    // ---- walls: push out, and record what we are touching -----------------
     this._resolveWalls();
 
-    // ---- ground collision + BOUNCE FROM THE PAINT ------------------------
-    // Snap to the floor found at the start of this frame. Not a fresh probe:
-    // that one-frame-late snap is what keeps the player "grounded" for the
-    // frame it takes to cross a ledge, which is what coyote time and the
-    // level's playable gaps are built on (#33, #53).
+    // ---- ground collision + BOUNCE ---------------------------------------
     this.onGround = false;
     if (ground && this.position.y <= feetY + PLAYER.groundSnap) {
       this.position.y = feetY;
 
       const impact = this.velocity.y;
       if (rules && rules.restitution > 0) {
-        // Red paint is a TRAMPOLINE, not just a bouncy landing.
-        // Falling harder throws you higher, but simply standing on it
-        // still launches you at minBounce — otherwise walking onto red
-        // does nothing, because a grounded player has ~zero fall speed.
-        // do NOT set onGround, or friction would eat the bounce.
         this.velocity.y = Math.max(-impact * rules.restitution, PLAYER.minBounce);
         this.position.y = feetY + PLAYER.bounceClearance;
       } else {
@@ -391,9 +323,11 @@ export class Player {
   respawn() {
     this.position.copy(this.spawn);
     this.velocity.set(0, 0, 0);
-    this.speedCap = PLAYER.maxSpeed;   // respawning earns nothing (#52)
+    this.speedCap = PLAYER.maxSpeed;
     this._coyoteTimer = 0;
     this._jumpBufferTimer = 0;
+    this.dry = false;
+    this.dryTimer = 0;
   }
 
   dispose() {
