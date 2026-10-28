@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { ENEMY, ENEMY_NAV, PAINT, PAINT_IDS } from "../config.js";
+import { AWARENESS, ENEMY, ENEMY_NAV, PAINT, PAINT_IDS } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
@@ -55,6 +55,67 @@ const GAIT = {
   maxLean: 0.22,     // radians (~12 deg) forward at full speed
   leanPerSpeed: 0.035,
 };
+
+/**
+ * What every enemy knows about the player, apart from where they are (#109).
+ *
+ * This is a module-level signal, not a property of any one enemy, because two of
+ * the three facts are things one actor does that EVERY enemy must react to:
+ * submerging cuts detection for all of them, and firing reveals you to all of
+ * them at once. A per-enemy copy would need the caller to loop over the enemy
+ * list, and the caller is `main.js` — another lane.
+ *
+ * WHERE THE WRITES COME FROM, and why they are not here: this issue owns the
+ * AWARENESS half of that contract, not the player's half.
+ *   - `submerged` is written by submerge (#036, core lane) as it changes.
+ *   - `shots` is incremented by the gun on every shot fired (paint lane).
+ * Both are one line at the source. Until they exist the game runs the standing,
+ * un-fired case — which is the current behaviour, not a broken one.
+ *
+ * `shots` is a COUNTER rather than a timestamp so that no shared clock has to be
+ * agreed on: each enemy remembers the last value it saw. A shot fired while an
+ * enemy is asleep is one it never hears, which is right — it was not awake to
+ * hear it.
+ */
+export const PLAYER_SIGNAL = {
+  submerged: false,
+  shots: 0,
+};
+
+/** Test/level-teardown reset, so one run cannot leak awareness into the next. */
+export function resetPlayerSignal() {
+  PLAYER_SIGNAL.submerged = false;
+  PLAYER_SIGNAL.shots = 0;
+}
+
+/**
+ * The meshes a sight line is tested against (#109).
+ *
+ * Two ways in, and the order between them is the point: an explicit list wins,
+ * because a caller that names its own walls means them. Otherwise the list is
+ * read off `parent` — the level already adds every wall, gate and pillar face to
+ * its root as a PaintSurface, so "what can this enemy see through" is answerable
+ * without the level being taught a new argument.
+ *
+ * Floors are skipped. A floor is a horizontal plane and cannot stand between two
+ * pairs of eyes; keeping it would only let a ray that grazes the ground report
+ * occlusion that a player looking at the same scene would never see.
+ */
+function sightBlockers(explicit, parent) {
+  const meshes = [];
+  if (explicit) {
+    for (const entry of explicit) {
+      const mesh = entry?.isObject3D ? entry : entry?.mesh;
+      if (mesh) meshes.push(mesh);
+    }
+    return meshes;
+  }
+  parent?.traverse?.((obj) => {
+    const surface = obj.userData?.paintSurface;
+    if (surface && !surface.isFloor) meshes.push(obj);
+  });
+  return meshes;
+}
 
 const MODEL_URLS = {
   charger: "./assets/soldier-charger.glb",
@@ -146,8 +207,12 @@ export class Enemy {
    *                                        straight off the island and glides
    *                                        across the gap, because nothing here
    *                                        ever applies gravity.
+   * @param {THREE.Object3D[]} [opts.blockers] upright surfaces a sight line stops
+   *                                        at (#109). Defaults to every wall the
+   *                                        level has put under `parent`, which is
+   *                                        where they already live.
    */
-  constructor({ position, config, parent, floors, sleeping = false }) {
+  constructor({ position, config, parent, floors, sleeping = false, blockers }) {
     this.config = config;
     // Derived from the config's identity rather than passed alongside it, so
     // `type` and `config` cannot be handed over disagreeing.
@@ -194,6 +259,35 @@ export class Enemy {
     // Without floors we cannot tell ground from void, so the safe fallback is
     // to stand still rather than walk off the edge.
     this._probe = new SurfaceProbe(floors ?? []);
+
+    // --- awareness (#109) ----------------------------------------------------
+    // Dormant -> Alert -> Search, per `docs/enemies/algorithms.md`. An enemy
+    // starts not knowing where you are: it has to see you, and anything it does
+    // afterwards is done to where it last saw you rather than to where you are.
+    //
+    // NOT the same thing as `sleeping` above. `sleeping` is the level saying
+    // "this one is off until you approach" (opt-in difficulty, #54); awareness
+    // is the enemy's own opinion, and it is the only thing that gates attacks.
+    // An awake enemy can still be dormant.
+    this._awareness = "dormant";
+    this._lastKnown = new THREE.Vector3();  // where it last SAW you
+    this._forgetTimer = 0;                  // Search -> Dormant countdown
+    this._fireTimer = 0;                    // Alert bought by your last shot
+    this._seenShots = PLAYER_SIGNAL.shots;  // the shot count this enemy knows of
+
+    // Sight lines are tested against UPRIGHT surfaces only. A floor is a
+    // horizontal plane: it can never come between two pairs of eyes, and adding
+    // it to this list would only let a grazing ray invent a wall that is not
+    // there. Walls, gates and pillar faces are all PaintSurfaces under the
+    // level's root, so an enemy can find them without being handed them — but a
+    // level may pass its own list, and a test that wants one wall passes one.
+    this._blockers = sightBlockers(blockers, parent);
+    this._raycaster = new THREE.Raycaster();
+    this._eye = new THREE.Vector3();
+    this._look = new THREE.Vector3();
+    this._sight = new THREE.Vector3();
+    this._hits = [];                        // reused: intersectObjects fills it
+
 
     // Animation state. Must exist BEFORE _buildMesh: _buildModel fills it in.
     this._anim = null;
@@ -338,6 +432,13 @@ export class Enemy {
       // Awake enough to look alive, asleep enough to be harmless: no movement, no
       // telegraph, no attack. The idle clip still plays, so a dormant enemy reads
       // as standing guard rather than as a frozen prop.
+      //
+      // A sleeping enemy also HEARS NOTHING (#109): the shot counter is kept up
+      // to date while it cannot act on it, so waking an enemy does not hand it a
+      // three-second memory of a shot that was fired at a corpse's back. Without
+      // this line the enemy would wake up already alerted, which reads as the
+      // level having cheated.
+      this._seenShots = PLAYER_SIGNAL.shots;
       if (this.alive) this._animate(dt);
       return;
     }
@@ -419,6 +520,12 @@ export class Enemy {
     // forever. It is called exactly once, here, so no branch below repeats it.
     this._fadeTint(dt);
 
+    // Awareness (#109) first, because everything below is conditional on it: an
+    // enemy that has not seen you has no target to walk at and nothing to shoot
+    // at. Keeping it here, once, is what stops the attack half and the movement
+    // half from disagreeing about whether you exist.
+    this._updateAwareness(dt, playerPos);
+
     // Attack telegraph (#40). Runs for every living enemy, movers or not. While
     // winding up the enemy plants its feet so the tell reads; knockback from a
     // red hit still carries it.
@@ -449,6 +556,20 @@ export class Enemy {
       this._applyKnockback(dt);
       return;
     }
+
+    // Dormant: it does not know there is anything to walk toward. It still comes
+    // to a stop rather than freezing mid-stride with momentum on it, because a
+    // body that resumes at its old speed the instant it spots you reads as a
+    // glitch rather than as noticing. Knockback still applies — being flung by
+    // red does not require being aware.
+    if (this._awareness === "dormant") {
+      const braking = Math.max(0, 1 - 8 * dt);
+      this._vel.x *= braking;
+      this._vel.z *= braking;
+      this._applyKnockback(dt);
+      return;
+    }
+
     if (this._slipTimer > 0) this._slipTimer -= dt;
 
     const ground = this._probe.down(this.position);
@@ -462,7 +583,13 @@ export class Enemy {
     // friction already handles the slide, so this stacks.
     const speedMult = this._slipTimer > 0 ? 0.3 : 1;
 
-    this._toPlayer.copy(playerPos).sub(this.position);
+    // A SEARCHING enemy walks to where it last SAW you, not to where you are.
+    // That one substitution is the whole of "being hunted is only frightening if
+    // the hunter is fallible": steering, the slide, the island-edge rule below
+    // are all untouched and cannot tell the difference — which is exactly why a
+    // search cannot quietly turn back into homing.
+    const target = this._awareness === "search" ? this._lastKnown : playerPos;
+    this._toPlayer.copy(target).sub(this.position);
     this._toPlayer.y = 0;
     const dist = this._toPlayer.length();
 
@@ -484,7 +611,12 @@ export class Enemy {
     // test that caught it is
     // `on blue a Charger commits to its heading and slides past a sidestep`.
     const icy = rules.friction < 1;
-    const holding = !icy && this.config.stopDistance > 0 && dist < this.config.stopDistance;
+    const holding = !icy && (
+      (this.config.stopDistance > 0 && dist < this.config.stopDistance)
+      // A search stops when it REACHES the place, not when it reaches you. It
+      // has no idea where you are any more — that is the state.
+      || (this._awareness === "search" && dist < AWARENESS.arrive)
+    );
 
     // ARRIVAL is the end of a charge (#76). The Charger stops ON the player
     // (#39), and standing glued to them is exactly the "immediately back on you"
@@ -752,6 +884,145 @@ export class Enemy {
     return this._recoverTimer > 0;
   }
 
+  /** "dormant" | "alert" | "search" — see `_updateAwareness`. */
+  get awareness() {
+    return this._awareness;
+  }
+
+  /** Where it last saw the player. Only meaningful while searching. */
+  get lastKnown() {
+    return this._lastKnown;
+  }
+
+  /**
+   * Decide whether this enemy knows where the player is (#109).
+   *
+   * The three states and the one sentence that separates them:
+   *   Dormant — has not seen you. Walks at nothing, attacks nothing.
+   *   Alert   — sees you now. Walks at you, attacks you.
+   *   Search  — saw you, then lost you. Walks at the last known position.
+   *
+   * The rules, in the order they are applied, each for a reason:
+   *
+   * 1. A shot reveals you. Firing sets Alert for `fireAlert` seconds even while
+   *    submerged — that is the restriction that keeps stealth fair, so it is
+   *    checked BEFORE the submerge radius rather than after. It still needs line
+   *    of sight and it still needs to be inside the standing radius: a gunshot
+   *    is loud, but it is not a map marker.
+   *
+   * 2. Being seen needs the radius AND the sight line. The radius halves while
+   *    you are submerged, which is the whole of partial stealth.
+   *
+   * 3. Losing sight does not forget you. Alert -> Search remembers the position
+   *    for `forget` seconds, and that memory is what `_tick` walks to.
+   *
+   * 4. Forgetting drops to Dormant. Six seconds is the dial from the design
+   *    note: too short and the stealth is pointless, too long and the state is
+   *    noise.
+   *
+   * The turret never gets here: `ignoresStealth` short-circuits it into a
+   * permanent Alert, which is what "tracks regardless, it is a machine" means.
+   *
+   * Movement is NOT decided here. This only writes the state and the memory.
+   */
+  _updateAwareness(dt, playerPos) {
+    if (!playerPos || !Number.isFinite(playerPos.x) || !Number.isFinite(playerPos.z)) return;
+
+    if (this.config.ignoresStealth) {
+      this._awareness = "alert";
+      this._lastKnown.copy(playerPos);
+      this._forgetTimer = AWARENESS.forget;
+      return;
+    }
+
+    const dx = playerPos.x - this.position.x;
+    const dz = playerPos.z - this.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    // 1. A shot fired since this enemy last looked.
+    if (PLAYER_SIGNAL.shots !== this._seenShots) {
+      this._seenShots = PLAYER_SIGNAL.shots;
+      if (dist <= AWARENESS.radius && this._canSee(playerPos)) {
+        this._fireTimer = AWARENESS.fireAlert;
+        this._lastKnown.copy(playerPos);
+      }
+    }
+    if (this._fireTimer > 0) this._fireTimer -= dt;
+
+    // 2. Seen, or not.
+    const reach = PLAYER_SIGNAL.submerged ? AWARENESS.submergedRadius : AWARENESS.radius;
+    if (dist <= reach && this._canSee(playerPos)) {
+      this._awareness = "alert";
+      this._lastKnown.copy(playerPos);
+      this._forgetTimer = AWARENESS.forget;
+      return;
+    }
+
+    // 3. Known because it just fired at you, even though you are out of sight.
+    if (this._fireTimer > 0) {
+      this._awareness = "alert";
+      return;
+    }
+
+    // 4. Lost you. Start looking where it last saw you.
+    if (this._awareness === "alert") {
+      this._awareness = "search";
+      this._forgetTimer = AWARENESS.forget;
+      return;
+    }
+
+    // 5. Give up.
+    if (this._awareness === "search") {
+      this._forgetTimer -= dt;
+      if (this._forgetTimer <= 0) this._awareness = "dormant";
+    }
+  }
+
+  /**
+   * Is there a clear sight line to `playerPos`? (#109)
+   *
+   * A single ray at eye height from this enemy to the player, tested against the
+   * walls only, and stopped just short of the player's own position so that the
+   * surface they are standing on cannot occlude them from the inside.
+   *
+   * An empty blocker list means open ground, which is TRUE rather than false: in
+   * a level with no walls there is nothing to hide behind, and reporting "cannot
+   * see" there would make every enemy in a bare test level blind.
+   *
+   * Allocation-free; the raycaster, vectors and hit array are built once.
+   */
+  _canSee(playerPos) {
+    if (this._blockers.length === 0) return true;
+
+    // Raycasting reads `matrixWorld`, and in a headless run NOTHING refreshes it:
+    // the renderer does that once per frame in the browser, so the walls are
+    // correct there and identically wrong everywhere else. A level built a
+    // moment ago still has every wall at the origin with an identity matrix,
+    // which makes a three-metre sight line "hit" nine of them at once and leaves
+    // every enemy in the test suite permanently blind. `true` walks up the
+    // parents because it is the level's ROOT that was never updated, not the
+    // wall.
+    //
+    // Cost is per check, not per frame, and only for enemies already inside a
+    // detection radius — the ones for whom the answer matters.
+    for (let i = 0; i < this._blockers.length; i++) {
+      this._blockers[i].updateWorldMatrix(true, false);
+    }
+
+    this._eye.set(this.position.x, this.position.y + AWARENESS.eyeHeight, this.position.z);
+    this._look.set(playerPos.x, playerPos.y + AWARENESS.eyeHeight, playerPos.z);
+    this._sight.subVectors(this._look, this._eye);
+    const d = this._sight.length();
+    if (!(d > 0.5)) return true;          // nose to nose: nothing can be between
+    this._sight.divideScalar(d);
+
+    this._raycaster.set(this._eye, this._sight);
+    this._raycaster.far = d - 0.25;       // the player is not behind themselves
+    this._hits.length = 0;
+    this._raycaster.intersectObjects(this._blockers, false, this._hits);
+    return this._hits.length === 0;
+  }
+
   /**
    * Begin an attack windup. Returns false if the enemy is dead, already
    * winding up, or still cooling down from its last attack.
@@ -776,8 +1047,12 @@ export class Enemy {
     if (this._windupTimer <= 0) {
       // Enemies with an attackRange start their own windup once the player is
       // inside it. Guard the argument like update() does: a non-Vector3 gives NaN.
+      // An enemy only winds up at something it is aware of (#109). Note the
+      // windup itself is NOT cut short by losing awareness: a committed swing
+      // still lands, which is what makes breaking line of sight a dodge rather
+      // than an undo button.
       const range = this.config.attackRange;
-      if (range && playerPos) {
+      if (range && playerPos && this._awareness === "alert") {
         const dx = playerPos.x - this.position.x;
         const dz = playerPos.z - this.position.z;
         if (dx * dx + dz * dz <= range * range) this.startTelegraph();
