@@ -59,7 +59,7 @@ The game is submittable when **all of these are true**:
 | A4  | **Grey slows you** and refills nothing, as a live modifier                | MUST   | S    | core    | ❌ Not built — `SURFACE.grey.speedScale` is 1.0            |
 | A5  | **Dry out** — no tank and no territory ends the run, and the game says so | MUST   | S    | core    | ❌ Not built                                               |
 | A6  | **Submerge** — fast refill, hidden, cannot fire                           | MUST   | M    | core    | ❌ Not built                                               |
-| A7  | **Partial stealth** — submerging halves detection; firing reveals         | MUST   | M    | shaders | ❌ Not built                                               |
+| A7  | **Partial stealth** — submerging halves detection; firing reveals         | MUST   | M    | shaders | ⚠️ Partial (#109) — awareness states, 16 m/7 m radii, last-known-position search and the turret exemption are built and tested; not yet wired to submerge or fire |
 | A8  | **Scorecard** — coverage, time, dry time at level end                     | SHOULD | S    | ui      | ❌ Not built                                               |
 
 **Acceptance for A1/A2 together:** a player who paints and stands in their own colour never needs to press a key to refill, and a player who paints and walks away can run out.

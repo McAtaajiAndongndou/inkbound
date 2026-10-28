@@ -196,6 +196,27 @@ export const ENEMY_NAV = {
   maxStepDown: 1.0,
 };
 
+// Awareness (#109). The shared substrate from `docs/enemies/algorithms.md`
+// § Awareness — Dormant / Alert / Search, and the numbers that separate them.
+//
+// These are DETECTION numbers, not attack numbers. `ENEMY.*.attackRange` still
+// decides when a shot is fired; this decides whether the enemy knows there is
+// anything to shoot at, which is why the radii here are larger than every
+// attack range in the game.
+//
+// Every enemy uses this. The turret is the one exception and it is declared as
+// data (`ENEMY.turret.ignoresStealth`) rather than checked by name, because a
+// machine that tracks you through a wall for a reason is a rule, and a rule
+// spelled `type === 'turret'` is a rule hidden in a conditional.
+export const AWARENESS = {
+  radius: 16,          // m, against a standing (dry or wet) player
+  submergedRadius: 7,  // m, against a submerged player — halved, not zero
+  fireAlert: 3,        // s of Alert bought by firing, regardless of submerge
+  forget: 6,           // s a last known position is remembered, then Dormant
+  arrive: 1.2,         // m: close enough to the last known position to stop
+  eyeHeight: 1.4,      // m above the feet — the height a sight line is drawn at
+};
+
 // Level 1 plentiful, level 2 starved, level 3 contested.
 export const AMMO = {
   1: 100,
@@ -287,6 +308,11 @@ export const ENEMY = {
     canMove: false,
     climbsGreen: false,
     drainsPaint: false,
+    // A machine does not get fooled by paint (#109). It never searches, never
+    // goes dormant, and is not halved by submerging: it tracks you whenever you
+    // are inside its attackRange. Out of scope for the enemies lane to change —
+    // this flag is how the rule is stated, not how the turret is built.
+    ignoresStealth: true,
     contactDamage: 0,
     windup: 0.8,
     attackRange: 15,

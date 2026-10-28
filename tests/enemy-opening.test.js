@@ -134,8 +134,10 @@ test('a long chase ends by distance, on open floor — not only at the lip (#76)
   const { charger, y, zMax, zMin } = arena(level);
 
   charger.position.set(0, y, zMax - 0.5);
-  // The player is out past the far lip, so nothing but the budget can stop it.
-  const player = new THREE.Vector3(0, y, zMin - 30);
+  // The player is just past the far lip: out of reach, so nothing but the
+  // budget can stop the charge — but still inside #109's 16 m detection radius,
+  // because since then an enemy that has never seen you does not chase at all.
+  const player = new THREE.Vector3(0, y, zMin - 1);
 
   const frames = stepUntilOpen(charger, player);
   assert.ok(frames > 0, `no window after ${frames} frames of chasing`);
