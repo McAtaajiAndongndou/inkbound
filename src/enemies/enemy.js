@@ -1020,7 +1020,7 @@ export class Enemy {
     if (isCriticalHit){
       damage *= BLUE_FREEZE.criticalMultiplier;
       this._clearFreeze();
-    } else if (!isTurret && colourId === PAINT_IDS.blue){
+    } else if (!isTurret && colourId === PAINT_IDS.blue && this._recoverTimer <= 0){
       damage = Math.max(1, Math.round(damage * BLUE_FREEZE.buildupDamageScale));
     }
 
