@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { ENEMY, ENEMY_NAV, PAINT, PAINT_IDS } from "../config.js";
+import { ENEMY, ENEMY_NAV, PAINT, PAINT_IDS, BLUE_FREEZE } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
@@ -160,6 +160,10 @@ export class Enemy {
     this._tintTimer = 0;
     this._pinnedTimer = 0;                 // green: hard root (movement only)
     this._slipTimer = 0;                   // blue: direct hit slow
+    this._blueHitCount = 0;
+    this._blueBuildupTimer = 0;
+    this._frozenTimer = 0;
+    this._frostShell = null;
 
     // Attack telegraph (#40)
     this._windupTimer = 0;                 // > 0 while telegraphing an attack
@@ -185,6 +189,31 @@ export class Enemy {
     this.mesh = this._buildMesh();
     this.mesh.position.copy(position);
     this.position = this.mesh.position;   // alias, not a copy
+
+    const frostMaterial = new THREE.MeshBasicMaterial({
+      color: PAINT.blue.hex,
+      transparent: true,
+      opacity: BLUE_FREEZE.shellOpacity,
+      wireframe: true,
+      depthWrite: false,
+    });
+
+    this._frostShell = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 16, 12),
+      frostMaterial
+    );
+
+    this._frostShell.scale.set(
+      BLUE_FREEZE.shellRadius,
+      BLUE_FREEZE.shellHeight,
+      BLUE_FREEZE.shellRadius
+    );
+
+    this._frostShell.position.y = MODEL_HEIGHT / 2;
+    this._frostShell.visible = false;
+    this._frostShell.renderOrder = 2;
+
+    this.mesh.add(this._frostShell);
 
     parent.add(this.mesh);
   }
@@ -296,16 +325,22 @@ export class Enemy {
 
   _animate(dt) {
     if (!this._anim) return;
-    if (this._windupTimer > 0) {
-      // Stretch the clip across the windup so the telegraph and animation line up.
+
+    if (this._frozenTimer > 0){
+      this._play("idle");
+    }
+    else if (this._windupTimer > 0){
       const a = this._anim.attack;
       a.timeScale = a.getClip().duration / this._windupTotal;
       this._play("attack");
-    } else if (this._vel.x * this._vel.x + this._vel.z * this._vel.z > 0.25) {
+    }
+    else if (this._vel.x * this._vel.x + this._vel.z * this._vel.z > 0.25){
       this._play("run");
-    } else {
+    }
+    else {
       this._play("idle");
     }
+
     this._anim.mixer.update(dt);
   }
 
@@ -388,13 +423,46 @@ export class Enemy {
    * it slides straight past. That is the DESIGN.md Charger lesson, and it
    * needs no hardcoded ice flag: just read the grid.
    */
+
+  _updateBlueBuildup(dt){
+    if (this._blueHitCount <= 0) return;
+
+    this._blueBuildupTimer -= dt;
+
+    if (this._blueBuildupTimer <= 0){
+      this._blueHitCount = 0;
+      this._blueBuildupTimer = 0;
+    }
+  }
+
+  _updateFrozen(dt){
+    if (this._frozenTimer <= 0) return false;
+
+    this._frozenTimer -= dt;
+
+    this._vel.set(0,0,0);
+    this._knockback.set(0,0,0);
+
+    if (this._frozenTimer <= 0){
+      this._frozenTimer = 0;
+      this._frostShell.visible = false;
+    }
+
+    return this._frozenTimer > 0;
+  }
+
+
   _tick(dt, playerPos) {
     if (!this.alive) return;
 
-    // The tint fade runs for EVERY living enemy, movers or not. It used to sit
-    // after the canMove check, so a stationary enemy kept its hit colour
-    // forever. It is called exactly once, here, so no branch below repeats it.
     this._fadeTint(dt);
+
+    this._updateBlueBuildup(dt);
+
+    if (this._frozenTimer > 0){
+      this._updateFrozen(dt);
+      return;
+    }
 
     // Attack telegraph (#40). Runs for every living enemy, movers or not. While
     // winding up the enemy plants its feet so the tell reads; knockback from a
@@ -498,6 +566,7 @@ export class Enemy {
       this.position.x = this._next.x;
       this.position.z = this._next.z;
       this.position.y = nextGround.y;      // stay glued to the floor
+    
 
     // ...and only turn the body when it is actually TRAVELLING. The threshold used
     // to be 1e-6 (0.001 m/s), which meant an enemy pressed up against something
@@ -565,25 +634,68 @@ export class Enemy {
     this._tintTimer = TINT_FADE;
     this._setColour(this._tintTarget);
 
+    const isTurret = this.type === "turret";
+    const isFrozen = this._frozenTimer > 0;
+    const isCriticalHit = !isTurret && isFrozen;
+
+    if (isCriticalHit){
+      damage *= BLUE_FREEZE.criticalMultiplier;
+
+      this._frozenTimer = 0;
+      this._blueHitCount = 0;
+      this._blueBuildupTimer = 0;
+      this._frostShell.visible = false;
+    } else if (!isTurret && colourId === PAINT_IDS.blue){
+      damage = Math.max(1, Math.round(damage * BLUE_FREEZE.buildupDamageScale));
+    }
+
     this.hp -= damage;
 
-    if (colourId === PAINT_IDS.blue) {
-      // Direct-hit slow; on blue floor the grid friction already slides it.
-      this._slipTimer = 1.5;
-    } else if (colourId === PAINT_IDS.red) {
-      this._knockback.copy(this.position);
-      if (sourcePos) {
-        this._knockback.sub(sourcePos);
-      } else {
-        this._knockback.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+    if (!isTurret && !isCriticalHit){
+      if (colourId === PAINT_IDS.blue){
+        this._slipTimer = 1.5;
+
+        this._blueHitCount++;
+        this._blueBuildupTimer = BLUE_FREEZE.buildupWindow;
+
+        if (this._blueHitCount >= BLUE_FREEZE.hitsToFreeze){
+          this._frozenTimer = BLUE_FREEZE.critWindow;
+          this._frostShell.visible = true;
+
+          this._blueHitCount = 0;
+          this._blueBuildupTimer = 0;
+          this._slipTimer = 0;
+          this._pinnedTimer = 0;
+
+          this._windupTimer = 0;
+          this.mesh.scale.setScalar(1);
+          this._vel.set(0,0,0);
+          this._knockback.set(0,0,0);
+        }
+      } else if (colourId === PAINT_IDS.red){
+        this._knockback.copy(this.position);
+
+        if (sourcePos){
+          this._knockback.sub(sourcePos);
+        } else {
+          this._knockback.set(
+            Math.random() - 0.5,
+            0,
+            Math.random() - 0.5
+          );
+        }
+
+        this._knockback.y = 0;
+
+        if (this._knockback.lengthSq() < 1e-6){
+          this._knockback.set(0,0,1);
+        }
+
+        this._knockback.normalize().multiplyScalar(6);
+      } else if (colourId === PAINT_IDS.green){
+        this._pinnedTimer = 1.5;
+        this._vel.set(0,0,0);
       }
-      this._knockback.y = 0;
-      if (this._knockback.lengthSq() < 1e-6) this._knockback.set(0, 0, 1);
-      this._knockback.normalize().multiplyScalar(6);
-    } else if (colourId === PAINT_IDS.green) {
-      // Hard root: no buildup. Stops movement, not threat.
-      this._pinnedTimer = 1.5;
-      this._vel.set(0, 0, 0);
     }
 
     if (this.hp <= 0) this._die();
@@ -623,6 +735,13 @@ export class Enemy {
     // left alone so the killing hit still reads as coloured.
     this._windupTimer = 0;
     this.mesh.scale.setScalar(1);
+    this._frozenTimer = 0;
+    this._blueHitCount = 0;
+    this._blueBuildupTimer = 0;
+
+    if (this._frostShell){
+      this._frostShell.visible = false;
+    }
     setTimeout(() => this.dispose(), KILL_FLASH_MS);
   }
 
@@ -654,7 +773,7 @@ export class Enemy {
    * Anything that attacks (shooting, a charge, a drain) should go through this.
    */
   startTelegraph() {
-    if (!this.alive || this._windupTimer > 0 || this._attackCooldown > 0) return false;
+    if (!this.alive || this._frozenTimer > 0 || this._windupTimer > 0 || this._attackCooldown > 0) return false;
     this._windupTotal = this.config.windup ?? DEFAULT_WINDUP;
     this._windupTimer = this._windupTotal;
     this._vel.set(0, 0, 0);          // plant: the tell has to read
@@ -712,12 +831,21 @@ export class Enemy {
    *  Model clones SHARE geometry with each other (and the cached GLB), so only
    *  the box fallback disposes geometry. The per-enemy material is always ours. */
   dispose() {
-    (this._mats ?? [this.bodyMat]).forEach((m) => m?.dispose());
-    if (!this._anim) {
-      this.mesh.traverse((obj) => {
-        if (obj.geometry) obj.geometry.dispose();
+    this._frostShell?.geometry.dispose();
+    this._frostShell?.material.dispose();
+
+    (this._mats ?? [this.bodyMat]).forEach((material) =>{
+      material?.dispose();
+    });
+
+    if (!this._anim){
+      this.mesh.traverse((obj) =>{
+        if (obj.geometry && obj !== this._frostShell) {
+          obj.geometry.dispose();
+        }
       });
     }
+
     this.mesh.removeFromParent();
   }
 }
