@@ -291,6 +291,16 @@ export const ENEMY = {
     windup: 0.8,
     attackRange: 15,
     attackCooldown: 3,
+    // #77 — THE MATRIX GAP (ENEMIES.md). The turret is the one enemy that paint
+    // does not solve: freeze, pin and knockback do nothing to it and the three
+    // colours are just damage. The answer is line of sight and flanking, and
+    // that only holds if the procs GENUINELY do nothing — a turret you can
+    // freeze is just another enemy with a slower answer.
+    //
+    // `canMove: false` alone was not enough. Red's knockback is applied in the
+    // windup branch too, so a red hit shoved a turret sideways mid-telegraph;
+    // the flag is what makes the promise unconditional.
+    noProcs: true,
   },
   drainer: {
     hp: 20,
