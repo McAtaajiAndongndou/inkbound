@@ -24,6 +24,14 @@ export const CREDITS = [
     files: ['assets/soldier-charger.glb', 'assets/soldier-sprayer.glb'],
   },
   {
+    what: 'Zombie half (enemy Wall-crawler)',
+    author: 'Quaternius',
+    source: 'https://poly.pizza/m/Htcsn9OrXJ',
+    ...CC_BY_3,
+    changes: 'Texture stripped; re-shaded with our flat grey toon material; paint hits tint it.',
+    files: ['assets/wall-crawler.glb'],
+  },
+  {
     what: 'SWAT (player character)',
     author: 'Quaternius',
     source: 'https://poly.pizza/m/Btfn3G5Xv4',
