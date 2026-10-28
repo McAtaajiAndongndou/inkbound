@@ -145,6 +145,7 @@ export const PAINT_GUN = {
   fireDelay: 0.14, // seconds
   hipSpread: 0.025,
   adsSpread: 0.005,
+  refillRate: 8,
 };
 
 // Starting master volume (0..1). The options menu overrides it per player.
@@ -184,9 +185,9 @@ export const ENEMY_NAV = {
 
 // Level 1 plentiful, level 2 starved, level 3 contested.
 export const AMMO = {
-  1: { tank: 100 },
-  2: { tank: 60 },
-  3: { tank: 80 },
+  1: 100,
+  2: 60,
+  3: 80,
 };
 
 // One enemy class, five configs. Not five systems. (Week 2.)

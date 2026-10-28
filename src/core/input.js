@@ -7,7 +7,7 @@
 
 // Every one-shot action and its "nothing pressed" value. The single list:
 // add a new action here and pending, reset and consumeActions() all get it.
-const NO_ACTIONS = { jump: false, toggleView: false, colour: null, restart: false, refill: false };
+const NO_ACTIONS = { jump: false, toggleView: false, colour: null, restart: false };
 
 export class Input {
   constructor(domElement) {
@@ -36,7 +36,6 @@ export class Input {
       if (e.code === 'Digit2') this.pending.colour = 1;
       if (e.code === 'Digit3') this.pending.colour = 2;
       if (e.code === 'Digit4') this.pending.colour = 3;
-      if (e.code === 'KeyF') this.pending.refill = true;
       if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
     };
 
