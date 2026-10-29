@@ -83,3 +83,19 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Island A has no raised deck.** It was built, played and cut the same day. It had no motive (Gap 1 is a trivial jump, so a shortcut bought nothing) and it duplicated Island C's pillars, which already own the verticality lesson. The spawn island stays flat: a safe pocket, one hazard, one dormant Charger.
 - **Enemies can be dormant.** A dormant enemy is visible and inert until the level wakes it; being hit wakes it, and it is not a contact hazard. Hiding an enemy until a trigger is NOT the same thing — that is a reveal, and it removes the player's decision. The pattern is issue #54's missing aggro range, solved per level instead.
 - **A hazard must be on the path or have a use.** A trap that can be walked around without cost is scenery with a damage volume: it costs draw calls and attention and buys nothing. The Island A pit now sits on the line to the Charger, so both the player and the charging enemy cross it.
+
+## 2026-10-29 — levels lane: blockout every level first
+
+- **All four levels are blocked out end to end before any of them is polished.** Then traps → mood → props → tuning run as passes across all four. This reverses the levels roadmap's earlier "build one level to done" order, whose reason was that the loop did not exist yet. It does now: the shared tank and positional refill (#73) and grey slows you (#74) are closed, and every enemy model has landed (#114–#116). The campaign arc (learning → rationing → drowning) can only be judged once all four levels exist.
+- **Blockout done means:** every room is at its spec'd size and height, enemy spawns are placed by `type`, the extraction is reachable, there is no void under any climb, the contract tests pass, and every beat has a viewer shot. No mood, props or traps.
+- **Levels share one kit** (`src/levels/level-kit.js`): platform, face, rock, pillar, block, extraction zone, shading aim, enemy spawn. These were Level01's private helpers, moved unchanged. Outskirts' surface fingerprint is identical before and after.
+- **A level change is checked by eye, not by assertion.** The level viewer (`src/levels/viewer.html`) gives each beat a named shot, and a fix is not called done without a before/after shot or a test that failed first.
+
+## 2026-10-29 — The Ascent, design v2
+
+- **The Ascent is a spiral round one peak**, replacing v1's stacked rooms (`docs/levels/02-the-ascent.md`). 447 m of route, 40 m of climb, 13 enemies, about 6 minutes for a first-timer (fight times estimated until a timed playthrough).
+- **A level's layout is data** (`src/levels/layouts/ascent.js`). The design doc's plan, sections, pacing chart and 3D massing model are generated from it, and the level is built from it by `src/levels/layout-builder.js`, which makes no layout decisions. Change the data, never the drawings.
+- **Every wall is rock unless the data names it a climb strip.** A paintable wall is always a design decision, never a builder default.
+- **Catch floors belong to no room.** A fall puts you out of the fight, so an enemy knocked onto a catch floor counts as gone (this fixed a soft-lock where the ledge never cleared).
+- **Open decisions, all at the recommended default (Renda):** a vista balcony on catwalk rest pillar 1 (out of turret reach) as R3's breather; scaffold posts on the chain pads; wave 2 waits dormant and visible on the trailhead; leg 1's north edge stays a real drop; time a playthrough before adding content.
+- **No mantle.** Every climb keeps a 0.3 m lip (the measured minimum) instead of 1 m.

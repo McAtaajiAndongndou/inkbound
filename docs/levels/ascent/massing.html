@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ascent Massing</title>
+    <!--
+      The Ascent's 3D massing model. A DESIGN tool, not the level: plain boxes
+      built from src/levels/layouts/ascent.js, so it can never disagree with the
+      plan, the side views, or the level built from the same file.
+      Run `npm run dev` and open /docs/levels/ascent/massing.html
+    -->
+    <link rel="icon" href="data:," />
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #dfe6ec; font: 13px/1.4 system-ui, sans-serif; color: #1d232a; }
+      #panel { position: fixed; top: 10px; left: 10px; width: 230px; max-height: calc(100% - 20px); overflow: auto; padding: 10px; background: rgba(255, 255, 255, 0.92); border-radius: 8px; box-sizing: border-box; }
+      #panel h1 { font-size: 13px; margin: 0 0 6px; letter-spacing: 0.04em; }
+      #panel h2 { font-size: 11px; margin: 10px 0 4px; color: #5b6570; text-transform: uppercase; letter-spacing: 0.06em; }
+      #panel button { width: 100%; margin: 2px 0; padding: 4px 6px; background: #f2f4f6; border: 1px solid #cfd6dc; border-radius: 4px; font: inherit; text-align: left; cursor: pointer; }
+      #panel button.on { border-color: #2f6fb3; background: #e3eefa; }
+      #panel label { display: block; margin: 2px 0; cursor: pointer; }
+      .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+      #labels { position: fixed; inset: 0; pointer-events: none; }
+      .tag { position: absolute; transform: translate(-50%, -100%); padding: 1px 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.85); font-size: 11px; white-space: nowrap; }
+      .tag.room { font-weight: 600; font-size: 12px; }
+      #caption { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); max-width: 70%; padding: 6px 10px; background: rgba(255, 255, 255, 0.92); border-radius: 6px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div id="panel">
+      <h1>THE ASCENT — MASSING v2</h1>
+      <div>1 grid square = 10 m · drag to orbit</div>
+      <h2>Views</h2>
+      <div id="views"></div>
+      <h2>Show</h2>
+      <label><input type="checkbox" data-layer="labels" checked /> Labels</label>
+      <label><input type="checkbox" data-layer="enemies" checked /> Enemies</label>
+      <label><input type="checkbox" data-layer="ranges" checked /> Turret range (15 m)</label>
+      <label><input type="checkbox" data-layer="routes" checked /> Routes</label>
+      <label><input type="checkbox" data-layer="sight" /> Sightlines to the lift</label>
+      <h2>Key</h2>
+      <div><span class="swatch" style="background:#2fa58a"></span>Paintable climb strip</div>
+      <div><span class="swatch" style="background:#d9473c"></span>Chain pad</div>
+      <div><span class="swatch" style="background:#e08a3c"></span>Catwalk segment</div>
+      <div><span class="swatch" style="background:#b39b77"></span>Catch floor (a fall lands here)</div>
+      <div><span class="swatch" style="background:#7b8a99"></span>Cover / kerb</div>
+      <div><span class="swatch" style="background:#ffffff;border:1px solid #999"></span>Main route</div>
+      <div><span class="swatch" style="background:#d9473c"></span>Chain route</div>
+      <div><span class="swatch" style="background:#7d4fc4"></span>Wall-crawler</div>
+      <div><span class="swatch" style="background:#d99a1e"></span>Turret</div>
+      <div><span class="swatch" style="background:#c0392b"></span>Charger</div>
+      <div><span class="swatch" style="background:#3b5bdb"></span>Player, 1.7 m</div>
+    </div>
+    <div id="labels"></div>
+    <div id="caption"></div>
+    <script type="module" src="./massing.js"></script>
+  </body>
+</html>
