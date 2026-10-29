@@ -7,6 +7,7 @@ import { CameraRig } from "./core/camera-rig.js";
 import { PaintGun } from "./paint/paint-gun.js";
 import { createLevel, levelEntry, LEVELS, DEFAULT_LEVEL_ID } from "./levels/index.js";
 import { Hud } from "./ui/hud.js";
+import { CommsBar } from "./ui/comms.js";
 import { PaintGunModel } from "./paint/paint-gun-model.js";
 
 
@@ -80,6 +81,8 @@ function applyViewBob(dt) {
 
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
+// #112 — the sergeant's one line per level. Levels ask through `game.say`.
+const comms = new CommsBar(document.getElementById("hud"));
 
 window.addEventListener("pointerdown", () => audio.unlock());
 window.addEventListener("keydown", () => audio.unlock());
@@ -102,6 +105,9 @@ const game = {
     hud.showEnd("win");
     audio.play("win");
   },
+  // #112 — a level asks for a comms line by id at a calm, scripted beat. The
+  // bar holds the text and refuses to show it mid-fight.
+  say: (id) => comms.say(id),
 
   // --- level switching (issue 006 is the menu that calls this) --------------
   // The menu needs three things and no more: the list to render, which one is
@@ -187,6 +193,7 @@ async function loadLevel(id = currentLevelId) {
   }
 
   hud.hideEnd();
+  comms.reset();
 
   level = next;
   // Record the id that ACTUALLY loaded: the registry falls back to the default
@@ -334,6 +341,15 @@ function simulate(dt, elapsed, actions, mouse) {
   const healthBefore = player.health;
   player.checkEnemyContact(level.enemies);
   if (player.health < healthBefore) avatar.hit();
+
+  // #112 — "in combat" for the comms bar: just hit, or any live enemy alerted
+  // or still searching (#109). The bar waits out a fight rather than talk over it.
+  let inCombat = player.hurtTimer > 0;
+  for (let i = 0; !inCombat && i < level.enemies.length; i++) {
+    const enemy = level.enemies[i];
+    inCombat = enemy.alive && enemy.awareness !== "dormant";
+  }
+  comms.update(dt, inCombat);
 
   gun.update(dt);
   if (input.firing && input.locked && !player.dead && !player.submerged && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {

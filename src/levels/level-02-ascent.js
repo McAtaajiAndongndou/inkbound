@@ -98,6 +98,12 @@ export class Level02 extends LevelBase {
     for (let i = 0; i < this.enemies.length; i++) {
       this.enemies[i].update(dt, player.position);
     }
+    // #112 — the sergeant's one line on the summit (R7): no enemies, the base
+    // on the horizon (docs/levels/02-the-ascent.md).
+    if (!this._saidSummit && this.inRoom('R7', player.position)) {
+      this._saidSummit = true;
+      this.game.say?.('ascent-summit');
+    }
     // The lift leaves once the ledge is clear — dead or knocked off it both
     // count, the same soft-lock guard Outskirts' gates use.
     if (!this._complete && this.extraction.containsPoint(player.position) && this.groupCleared('R6')) {

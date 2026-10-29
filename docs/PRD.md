@@ -136,8 +136,8 @@ The game is submittable when **all of these are true**:
 | ID  | Requirement                                       | Pri             | Cost | Lane | Status       |
 | --- | ------------------------------------------------- | --------------- | ---- | ---- | ------------ |
 | G1  | **Sergeant briefing** — one still in the tutorial | SHOULD          | S    | ui   | ⚠️ Partial (#111) — overlay built (`ui/briefing.js`): shows on entering the Primer, fresh click/key skips, pauses the game, under the pause menu; the still itself (`public/assets/sergeant-briefing.png`) is not drawn yet, so the line shows on the plain fallback panel |
-| G2  | **One line per level** in a comms bar             | SHOULD          | S    | ui   | ❌ Not built |
-| G3  | Dialogue skippable and never during combat        | MUST (if G1/G2) | S    | ui   | ❌ Not built |
+| G2  | **One line per level** in a comms bar             | SHOULD          | S    | ui   | ⚠️ Partial (#112) — bar built (`ui/comms.js`), levels ask by id via `game.say`; Outskirts ledge and Ascent summit triggers placed; line text not written yet (`ui/comms-lines.js`), Last Colour has no trigger yet |
+| G3  | Dialogue skippable and never during combat        | MUST (if G1/G2) | S    | ui   | ✅ Built (#111, #112) — briefing skips on a fresh click/key and pauses play; comms bar skips on Enter, waits out combat (alerted enemy or just hit) and clears when a fight starts |
 
 ---
 
