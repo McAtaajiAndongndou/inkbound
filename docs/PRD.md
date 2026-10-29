@@ -243,7 +243,16 @@ The player ships **five clips** and the code wires **two states**. This is why t
 
 ---
 
+## O. Movement
+
+| ID  | Requirement                                                     | Pri   | Cost | Lane | Status                                                       |
+| --- | --------------------------------------------------------------- | ----- | ---- | ---- | ------------------------------------------------------------ |
+| O1  | **Mantle** — a climb ends by pulling the player onto the top    | COULD | M    | core | ✅ Built (#157) — MANTLE config, `player.mantling`, auto at the top edge |
+
+---
+
 ## Out of scope
+
 
 Not shipping, regardless of how good the idea is. If someone proposes one, point here.
 
