@@ -72,7 +72,7 @@ The game is submittable when **all of these are true**:
 | --- | -------------------------------------------------------------------------- | ------ | ---- | ------- | ----------------------------------- |
 | B1  | **Enemies convert your paint to grey** — the Sprayer fights your territory | SHOULD | M    | shaders | ❌ Not built                        |
 | B2  | **Drainer eats painted ground** as it moves                                | MUST   | M    | shaders | ⚠️ Flag exists in config, not wired |
-| B3  | Coverage is readable in the HUD as territory, not just a number            | SHOULD | S    | ui      | ⚠️ Number exists, reads as debug    |
+| B3  | Coverage is readable in the HUD as territory, not just a number            | SHOULD | S    | ui      | ✅ Built (#127) — "Territory" under the minimap, tinted with the colour in hand; turns red with ▼ and a nudge while ground is being lost; 4 scans/s |
 
 ---
 

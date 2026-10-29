@@ -604,3 +604,52 @@ canvas {
   line-height: 1.35;
   color: var(--ink-fg);
 }
+
+/* Territory readout (#127): the minimap's summary, sat directly under it. The
+   minimap is a 20vmin square, 16px in from the top-right (main.js), so this is
+   the same width on the same edge. Tinted per frame with the colour in hand. */
+#territory {
+  position: absolute;
+  top: calc(16px + 20vmin + 6px);
+  right: 16px;
+  width: 20vmin;
+  min-width: 120px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(15, 15, 22, .55);
+  box-sizing: border-box;
+}
+.territory-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.territory-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: color .2s;
+}
+.territory-trend {
+  font-size: 12px;
+  color: #ff4d5a;
+  visibility: hidden;
+}
+/* Losing ground: red, an arrow, and a nudge — motion and colour are what the
+   corner of the eye picks up, so the drop is noticed without being read. */
+#territory.falling { animation: territory-drop .5s ease-out infinite alternate; }
+#territory.falling .territory-value { color: #ff4d5a !important; }
+#territory.falling .territory-trend { visibility: visible; }
+@keyframes territory-drop {
+  from { transform: translateY(0); box-shadow: 0 0 0 1px rgba(255, 77, 90, .6); }
+  to   { transform: translateY(3px); box-shadow: 0 0 0 1px rgba(255, 77, 90, .15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #territory.falling { animation: none; box-shadow: 0 0 0 1px rgba(255, 77, 90, .6); }
+}
