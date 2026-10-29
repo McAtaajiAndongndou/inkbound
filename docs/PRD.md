@@ -96,7 +96,7 @@ The game is submittable when **all of these are true**:
 | --- | ------------------------------------------------------------- | ------ | ---- | ------- | ------------------------------------ |
 | D1  | **Charger recovery** — 1.2 s vulnerable window after a charge | MUST   | S    | shaders | ❌ Not built                         |
 | D2  | **Sprayer reload** — 1.2 s window, telegraphs before firing   | MUST   | S    | shaders | ⚠️ Cooldown exists, no reload window |
-| D3  | **Wall-crawler climbs green paint** faster than grey          | MUST   | M    | shaders | ⚠️ Flag exists, not wired            |
+| D3  | **Wall-crawler climbs green paint** faster than grey          | MUST   | M    | shaders | ⚠️ Built (#115): 3.5 m/s on grey, 5.0 on green, cannot shoot on the wall |
 | D4  | **Turret** — static, slow track, bursts, flankable            | MUST   | —    | shaders | ✅ Built                             |
 | D5  | **Drainer** — feeding and hunting postures                    | MUST   | M    | shaders | ❌ Not built                         |
 | D6  | **Stalker** — fast on your paint, slow on grey                | COULD  | M    | shaders | ❌ Not built                         |

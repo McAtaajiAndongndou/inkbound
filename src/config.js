@@ -217,6 +217,29 @@ export const AWARENESS = {
   eyeHeight: 1.4,      // m above the feet — the height a sight line is drawn at
 };
 
+// Wall-crawler climbing (#115). From `docs/enemies/algorithms.md` § Wall-crawler.
+//
+// The two speeds are the whole feature: a wall-crawler on a face you painted
+// green is FASTER than the 4.5 m/s you climb at, and on bare grey it is slower.
+// That is the design's "your route is its route" — painting green to get up
+// somewhere is always a decision with a cost, because the thing that follows you
+// up the same face does it quicker.
+//
+// The speeds live here rather than on `ENEMY.wallCrawler` because they are read
+// off the PAINT under the crawler every frame, not off the enemy. It can start a
+// climb on grey and finish it on green: the face is the object being read, which
+// is the same rule the player's own climb follows.
+export const CLIMB = {
+  grey: 3.5,        // m/s up, down or sideways on an unpainted face
+  green: 5.0,       // m/s on green — faster than the player's PLAYER.climbSpeed
+  reach: 1.6,       // m: how far in front of itself it can grab a face
+  gap: 0.4,         // m kept between the body and the face, so it is not inside it
+  verticalGap: 1.0, // m: the player has to be this much higher/lower to be worth climbing to
+  dropRange: 2.5,   // m: close enough to the player (and above) to let go
+  gravity: 18,      // m/s² accelerating a fallen crawler — its own, not the player's
+  maxFall: 14,      // m/s cap, so a long drop cannot tunnel through a floor in one step
+};
+
 // Level 1 plentiful, level 2 starved, level 3 contested.
 export const AMMO = {
   1: 100,
