@@ -101,7 +101,7 @@ The game is submittable when **all of these are true**:
 | D5  | **Drainer** — feeding and hunting postures                    | MUST   | M    | shaders | ❌ Not built                                                             |
 | D6  | **Stalker** — fast on your paint, slow on grey                | COULD  | M    | shaders | ⚠️ Built (#120) — behaviour only; no model/spawn yet                     |
 | D7  | **Big Arm** — wave-three arena boss with three phases         | SHOULD | L    | shaders | ❌ Not built                                                             |
-| D8  | **Siphon** — three-phase colour exam, no health bar           | SHOULD | M    | levels  | ❌ Not built                                                             |
+| D8  | **Siphon** — three-phase colour exam, no health bar           | SHOULD | M    | levels  | ✅ Built (#100) — `levels/siphon.js`: intake (blue) → three thrashing arms (green) → core (red), each with a 2 s colour tell and a leaked refill pool; wins only after phase three; `tests/siphon.test.js` incl. the real paint gun. **Not playtested** |
 
 **Acceptance for D1:** a player can bait a charge, sidestep, and land a full combo before the Charger recovers. If they cannot, the window is too short.
 
@@ -111,10 +111,10 @@ The game is submittable when **all of these are true**:
 
 | ID  | Requirement                                                 | Pri  | Cost | Lane   | Status                                                    |
 | --- | ----------------------------------------------------------- | ---- | ---- | ------ | --------------------------------------------------------- |
-| E1  | **The Primer** — tutorial, ends with one Charger and a trap | MUST | M    | levels | ❌ Not built                                              |
-| E2  | **Outskirts** — island-hopping, pillars setpiece, 4 enemies | MUST | M    | levels | ⚠️ Geometry exists, traps and pacing missing              |
-| E3  | **The Ascent** — mountain, terraces and climbs, turrets     | MUST | L    | levels | ⚠️ Stub geometry; per-level tank (60) now correct (#155) |
-| E4  | **Last Colour** — three chambers, waves, Big Arm, Siphon    | MUST | L    | levels | ❌ Stub                                                   |
+| E1  | **The Primer** — tutorial, ends with one Charger and a trap | MUST | M    | levels | ✅ Built — layout level, one verb per room, spike pit, rebel dressing, mood (polish pass 1, #177). Not the default start level until the sergeant lines land |
+| E2  | **Outskirts** — island-hopping, pillars setpiece, 4 enemies | MUST | M    | levels | ✅ Built — islands A–C, gates, the C vent, the Ledge colour reveal, drained mood (polish pass 1, #175). Playtest pending |
+| E3  | **The Ascent** — mountain, terraces and climbs, turrets     | MUST | L    | levels | ✅ Built — design v2 from layout data, 13 enemies, tank 60 (#155); polish pass 1: collapsing catwalk (#102), chain scaffold, base on the horizon, cold dawn |
+| E4  | **Last Colour** — three chambers, waves, Big Arm, Siphon    | MUST | L    | levels | ⚠️ Built except Big Arm — hangar, corridor + crusher, Core waves 2–3, Corp props, amber mood, the Siphon exam (#100). Big Arm (#99) is a cut candidate; its bay stays shut |
 | E5  | **Level select** — any level reachable from the pause menu  | MUST | S    | ui     | ✅ Built (#78) — pause-menu list, fed by the one registry |
 | E6  | Encounter gates — exit sealed until the arena is clear      | MUST | —    | levels | ✅ Built                                                  |
 | E7  | Fail forward — a fall costs time, not the run               | MUST | S    | levels | ⚠️ Partial                                                |
@@ -125,9 +125,9 @@ The game is submittable when **all of these are true**:
 
 | ID  | Requirement                                                   | Pri    | Cost | Lane   | Status                                                                                                                                                                                                                |
 | --- | ------------------------------------------------------------- | ------ | ---- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F1  | **Spike pit** — telegraphed, damages, does not instantly kill | SHOULD | S    | levels | ⚠️ Helper built and tested (`trap-volume.js`), **no hazard placed**: the pit belongs to the Primer's corridor (E1), where it cannot be walked around. Outskirts' traps are the B blade, the C vent and the waste edge |
-| F2  | **One paint-solvable trap** — a hazard with a colour answer   | SHOULD | S    | levels | ❌ Not built                                                                                                                                                                                                          |
-| F3  | Trap density per level per `docs/levels/`                     | COULD  | S    | levels | ❌ Not built                                                                                                                                                                                                          |
+| F1  | **Spike pit** — telegraphed, damages, does not instantly kill | SHOULD | S    | levels | ✅ Built (#101) — the Primer's R6 pit: telegraphed, spares 1 health, blue slides over it |
+| F2  | **One paint-solvable trap** — a hazard with a colour answer   | SHOULD | S    | levels | ✅ Built — Outskirts' vent goes dead on your paint; blue also beats the Primer's pit and Last Colour's crusher |
+| F3  | Trap density per level per `docs/levels/`                     | COULD  | S    | levels | ⚠️ One trap per level, by decision (polish pass 1): pit, vent, catwalk, crusher. Blades, boulders, laser grid and security traps are Parked |
 
 ---
 
@@ -136,7 +136,7 @@ The game is submittable when **all of these are true**:
 | ID  | Requirement                                       | Pri             | Cost | Lane | Status       |
 | --- | ------------------------------------------------- | --------------- | ---- | ---- | ------------ |
 | G1  | **Sergeant briefing** — one still in the tutorial | SHOULD          | S    | ui   | ⚠️ Partial (#111) — overlay built (`ui/briefing.js`): shows on entering the Primer, fresh click/key skips, pauses the game, under the pause menu; the still itself (`public/assets/sergeant-briefing.png`) is not drawn yet, so the line shows on the plain fallback panel |
-| G2  | **One line per level** in a comms bar             | SHOULD          | S    | ui   | ⚠️ Partial (#112) — bar built (`ui/comms.js`), levels ask by id via `game.say`; Outskirts ledge and Ascent summit triggers placed; line text not written yet (`ui/comms-lines.js`), Last Colour has no trigger yet |
+| G2  | **One line per level** in a comms bar             | SHOULD          | S    | ui   | ⚠️ Partial (#112) — bar built (`ui/comms.js`), levels ask by id via `game.say`; Outskirts ledge, Ascent summit and Last Colour arrival triggers placed; line text not written yet (`ui/comms-lines.js`) |
 | G3  | Dialogue skippable and never during combat        | MUST (if G1/G2) | S    | ui   | ✅ Built (#111, #112) — briefing skips on a fresh click/key and pauses play; comms bar skips on Enter, waits out combat (alerted enemy or just hit) and clears when a fight starts |
 
 ---
@@ -170,7 +170,7 @@ The game is submittable when **all of these are true**:
 | ID  | Requirement                                                | Pri    | Cost | Lane    | Status                                                                           |
 | --- | ---------------------------------------------------------- | ------ | ---- | ------- | -------------------------------------------------------------------------------- |
 | J1  | **Grey-to-colour decor reveal** near painted ground        | SHOULD | M    | levels  | ✅ Built in `decor.js` — palette, instanced buckets and delayed reveal all exist |
-| J2  | Per-level mood — fog, light, palette                       | MUST   | S    | levels  | ⚠️ Outskirts only                                                                |
+| J2  | Per-level mood — fog, light, palette                       | MUST   | S    | levels  | ✅ All four — Outskirts drained overcast, Primer dust, Ascent cold dawn, Last Colour amber (`levels/mood.js`) |
 | J3  | Readability — enemies visible from where you fight         | MUST   | S    | levels  | ⚠️ Partial (#126) — state language tested; spawn placement stays with levels     |
 | J4  | Enemies distinguishable by silhouette and telegraph colour | MUST   | S    | shaders | ✅ Built (#126) — one amber in config; distinct GLB per mover; pin holds green   |
 | J5  | Paintable vs sealed faces read before you shoot            | MUST   | S–M  | shaders | ✅ Built (#156) — sealed faces: broken grid, seams, rivets; same grey           |
@@ -211,7 +211,7 @@ The game is submittable when **all of these are true**:
 | M7  | Charger zombie model                       | SHOULD  | S    | shaders | ⚠️ Model in (#116) as `chargerZombie`. No `ENEMY` key until level 3 exists                                           |
 | M8  | Big Arm model                              | SHOULD  | S    | shaders | ⚠️ Body in (#116): fitted to 2.4 m, ~2.8 m of arm. Phases are #99                                                    |
 | M9  | Gun viewmodel                              | MUST    | —    | paint   | ✅ `pistol.glb` — the gun the docs and credits describe (#130); its source is still to confirm, see L2 |
-| M10 | Military base props                        | MUST    | M    | levels  | ❌ Nothing exists for Last Colour                                                                                    |
+| M10 | Military base props                        | MUST    | M    | levels  | ✅ Procedural Corp prop kit (#56, `levels/prop-kit.js`) in Last Colour and on the Ascent's chain; no imported models (ITHappy licence unchecked) |
 | M11 | Forest props                               | MUST    | —    | levels  | ✅ 32 megakit GLBs                                                                                                   |
 | M12 | Every CC-BY asset credited in-game         | MUST    | S    | ui      | ⚠️ All five CC-BY files credited (#130); the gun's source is unconfirmed — see L2 |
 | M13 | One GLB validated before any bulk download | MUST    | —    | shaders | ⚠️ Validated on the soldiers and the wall-crawler (#114); turrets unproven                                           |

@@ -1,6 +1,6 @@
 # Polish pass 1 — all four levels
 
-**Draft, 29 Oct 2026. Status: proposed, waiting on Renda.**
+**Written 29 Oct 2026. Status (30 Oct): all four levels done** — Outskirts (#175), the Primer (#177), Last Colour (#178), the Ascent (catwalk, chain scaffold, base silhouette, cold dawn). The open decision on Last Colour's ending was settled: **build the Siphon (#100)**, now built. Item 0 (the trim) was dropped: the shaders lane solved it in the material (#156).
 
 The plan for one polish pass over the Primer, Outskirts, the Ascent and Last Colour, inside the remaining half of the usage budget.
 

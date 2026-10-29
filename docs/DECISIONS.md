@@ -139,3 +139,20 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **The cargo crusher is built; the laser grid is cut** (BACKLOG Parked). The crusher runs a fixed rhythm with an amber lamp as its tell, and **blue on the floor slides under it**, the same rule as the Primer's spike pit, so blue means "slide past the hazard" everywhere. Numbers in `LAST_COLOUR.crusher`.
 - **Props are layout data, built procedurally, grey only, instanced and without collision** (`prop-kit.js`). Amber is the one colour, and it means warning: the lamps over the bay gates blink while a wave's breath counts down.
 - **Mood numbers live in `LAST_COLOUR.mood`**; `src/levels/mood.js` is shared with the Primer (#177); the two copies were identical at merge.
+
+## 2026-10-30 — The Ascent, polish pass 1
+
+- **The collapsing catwalk is the Ascent's one trap (#102)** (`src/levels/catwalk.js`). A segment falls `ASCENT.catwalk.delay` (0.9 s) after you first step on it, **whether or not you are still on it**: a run at full speed always makes it, a stop to shoot never does, and turning back means stepping onto something already going. It reforms after 5 s and never into the player, so the scree-return climb always leads to a crossing. The tell is the campaign's amber: the segment shakes and flashes amber **on its walking surface** (the slab's edge alone was out of sight from on top; the viewer caught it).
+- **Rolling boulders (#104) and pendulum blades (#103) are Parked**: the catwalk is the trap the level's question needs, and two features per level is the cap.
+- **The chain landmark is a Corp gantry with cold-white floodlights at 44 m** plus a lit bollard on each pad. Floodlights are white, not amber: **amber means "this hurts"; white only means "here"**. 40 m was tried first and the leg 2→3 stair hid a light from R5's entrance (tested).
+- **The base on the summit horizon is an unfogged dark silhouette**, sunk to −120 m so it rises out of the dark band instead of floating on the pale horizon. Its stack is the Siphon: the next level's goal, seen first from here.
+- **Cold dawn mood** (`ASCENT.mood`): far fog (30–170 m) because this level is about seeing the goal; the sun is not moved (the scene light is core's), so the dawn is the sky and the fill.
+
+## 2026-10-30 — The Siphon is in (#100)
+
+- **Renda: build the Siphon**, rather than the cheap stand-in ending. Big Arm (#99) stays a cut candidate and its bay stays shut; the exam begins when the Core is clear.
+- **Every phase is reveal → open → solved.** For 2 s a target shows the colour it wants and refuses paint (the tell before the test); it does not exist before its phase (stowed below the world), so nothing can be done out of order or painted in advance.
+- **A plate is solved by the share of it in the right colour** (≥ 0.5 of a 4 × 4 sample grid), the vent's rule. Damage does nothing; a wrong colour is only paint to shoot over, so no phase soft-locks.
+- **The leak:** each phase spills a pool of its colour at the Siphon's foot. It is a refill (player paint) and a second tell, so the exam tests knowledge, not ammunition.
+- **The win moved from the intake volume to the Siphon** (`LayoutLevel.scriptedWin`). The volume stays as the objective marker.
+- **Parked:** arms that deal contact damage — it would punish standing still to aim, which is the one thing the exam asks for. Add it only if a playtest finds phase two too easy.
