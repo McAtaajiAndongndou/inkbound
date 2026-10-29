@@ -328,6 +328,25 @@ export const ENEMY = {
     // the flag is what makes the promise unconditional.
     noProcs: true,
   },
+  // THE TERRITORY EATER (#80). `drainsPaint` was a flag with no behaviour until
+  // the drain below it existed; these are the numbers behind it.
+  //
+  // WHY IT EXISTS AT ALL: paint is positive feedback — the player paints, gets
+  // faster and better armed, and the arena becomes theirs. Left alone that makes
+  // the climax trivial, so one enemy has to take it back.
+  //
+  //   drainRadius    how far it reaches. A cell outside this is a cell it is NOT
+  //                  touching, which is a rule, not an optimisation: the manual
+  //                  check is "watch the patch shrink from the enemy outward".
+  //                  1.6 m is one paint splat (PAINT_GUN.radius 1.4) plus a step.
+  //   drainRate      painted cells per second, at 4 cells/m (PAINT_GRID.level1Cells)
+  //                  that is 16 / 16 = 1 m² of painted ground per second. This is
+  //                  the difficulty dial for the whole final level: tune it LAST,
+  //                  once the waves exist, and write the number down in ENEMIES.md.
+  //   huntRadius     the player this close interrupts the feed: it stands up.
+  //   resumeRadius   ...and it only lies back down past this. The 6 m gap between
+  //                  the two is deliberate hysteresis — one threshold would flip
+  //                  the posture every other frame on the boundary.
   drainer: {
     hp: 20,
     speed: 4.0,
@@ -335,6 +354,10 @@ export const ENEMY = {
     canMove: true,
     climbsGreen: false,
     drainsPaint: true,
+    drainRadius: 1.6,   // metres it can reach into the grid
+    drainRate: 16,      // painted cells eaten per second (1 m²/s at 4 cells/m)
+    huntRadius: 8,      // player closer than this -> stands up and hunts
+    resumeRadius: 14,   // player further than this -> back down to feed
     contactDamage: 5,
     windup: 0.5,
     attackRange: 3,
