@@ -53,6 +53,14 @@ const MIN_CHARGE_SPEED = 0.5;       // m/s below which it is standing, not charg
 
 // --- GLB soldiers (#50) ------------------------------------------------------
 const MODEL_HEIGHT = 1.6;           // world units tall; tune to taste
+// Per-type exceptions to that height (#116). Big Arm is the only enemy whose
+// job is to read as a boss from across the arena, and "boss" is a size before it
+// is a health bar — at the shared 1.6 m the model is wide but SHORT, which is
+// not a silhouette anyone reads as a threat. 2.4 m makes it a head and shoulders
+// over the soldiers, which is the whole design note for M8.
+const MODEL_HEIGHTS = {
+  bigArm: 2.4,
+};
 
 /**
  * The rigless gait (#39 #7b). See `Enemy._gait`.
@@ -141,6 +149,15 @@ const MODEL_URLS = {
   // SkinnedMesh the project has ever shipped: the soldiers are ten rigid parts
   // with NO skin at all, so nothing so far has tested a bone-deformed mesh.
   wallCrawler: "./assets/wall-crawler.glb",
+  // #116 — the rest of the zombie family, same pack, same rig, same
+  // `CharacterArmature|` prefix, so `findClip` needed no change for them.
+  drainer: "./assets/zombie-drainer.glb",
+  // The two below have no `ENEMY` key yet: the Charger zombie and Big Arm are
+  // level-3 kinds, and level 3 is a stub. They are staged here, measured by
+  // `tests/enemy-models.test.js`, and go live when a level spawns them with
+  // `config.model` (see `type` in the constructor).
+  chargerZombie: "./assets/zombie-charger.glb",
+  bigArm: "./assets/zombie-big-arm.glb",
 };
 const MODELS = {};                  // type -> { scene, clips, scale } once loaded
 
@@ -153,6 +170,16 @@ const CLIPS = {
   // `Crawl` is locomotion rather than idle because this enemy is idle only in
   // the instant between two moves.
   wallCrawler: { idle: "Idle", run: "Crawl", attack: "Jump" },
+  // #116. Unlike the wall-crawler this file HAS an attack (`Punch`), and unlike
+  // it the Drainer needs two postures: `crawl` is the feeding pose, `run` is the
+  // upright shamble it rises into once it has you. `Walk` is the upright
+  // locomotion — `Run` reads as a sprint, which is not what a shambler does.
+  drainer: { idle: "Idle", run: "Walk", attack: "Punch", crawl: "Crawl" },
+  // `Run_Attack` is the straight-line charge, which is the whole behaviour.
+  chargerZombie: { idle: "Idle", run: "Run", attack: "Run_Attack" },
+  // Big Arm has no slam clip in the pack; `Punch` is the weighted arm swing it
+  // does have. #99 owns the real phases, this is only the body.
+  bigArm: { idle: "Idle", run: "Walk", attack: "Punch" },
 };
 
 /**
@@ -168,6 +195,16 @@ const CLIPS = {
  */
 const FEET_CLIP = {
   wallCrawler: "Crawl",
+  // #116, measured off the shipped files by `.tmp` runs and re-measured by
+  // `tests/enemy-models.test.js`:
+  //   drainer       bind 1.194 m, min.y -0.009 -> Crawl reaches -0.055
+  //   chargerZombie bind 1.517 m, min.y +0.001 -> Walk reaches -0.106
+  //   bigArm        bind 1.464 m, min.y +0.176 -> Walk reaches -0.079
+  // Big Arm is the interesting one: its bind pose FLOATS 18 cm above its own
+  // origin, so fitting it from the box alone would sink it into the floor.
+  drainer: "Crawl",
+  chargerZombie: "Walk",
+  bigArm: "Walk",
 };
 
 
@@ -303,7 +340,7 @@ export async function preloadEnemyModel() {
           scene: gltf.scene,
           clips: gltf.animations,
           skinned,
-          ...fitModelToHeight(gltf.scene, MODEL_HEIGHT, floorY),
+          ...fitModelToHeight(gltf.scene, MODEL_HEIGHTS[type] ?? MODEL_HEIGHT, floorY),
         };
       } catch (e) {
         console.warn(`Enemy model "${type}" failed to load, using box fallback`, e);
@@ -347,12 +384,19 @@ export class Enemy {
    *                                        at (#109). Defaults to every wall the
    *                                        level has put under `parent`, which is
    *                                        where they already live.
+   * @param {string} [opts.model]           GLB key from `MODEL_URLS`, when it
+   *                                        differs from the config key (#116)
    */
-  constructor({ position, config, parent, floors, surfaces, walls = [], sleeping = false, blockers }) {
+  constructor({ position, config, parent, floors, surfaces, walls = [], sleeping = false, blockers, model }) {
     this.config = config;
     // Derived from the config's identity rather than passed alongside it, so
-    // `type` and `config` cannot be handed over disagreeing.
-    this.type = Object.keys(ENEMY).find((key) => ENEMY[key] === config) ?? "sprayer";
+    // `type` and `config` cannot be handed over disagreeing. `model` is the
+    // exception (#116): the Charger zombie and Big Arm are level-3 kinds with no
+    // `ENEMY` entry yet, so a spawn names the GLB directly and keeps the config
+    // it borrows for stats. No config edit, no second config.
+    this.type = model
+      ?? Object.keys(ENEMY).find((key) => ENEMY[key] === config)
+      ?? "sprayer";
     this.alive = true;
     this.hp = config.hp;
 
@@ -566,7 +610,16 @@ export class Enemy {
     }
 
     this._skinned = Boolean(m.skinned);
-    this._anim = { mixer, idle: act(names.idle), run: act(names.run), attack, current: null };
+    // `crawl` is only built when the clip map asks for one (#116, the Drainer's
+    // feeding posture). Every other type gets `null` and never sees the name.
+    this._anim = {
+      mixer,
+      idle: act(names.idle),
+      run: act(names.run),
+      attack,
+      crawl: names.crawl ? act(names.crawl) : null,
+      current: null,
+    };
     this._play("idle");
 
     group.userData.enemy = this;
@@ -639,8 +692,16 @@ export class Enemy {
       if (a){
         a.timeScale = a.getClip().duration / this._windupTotal;
         this._play("attack");
-
       }
+    }
+    // DRAINER POSTURES (#116). On its belly (`Crawl`) while it is feeding, up on
+    // its feet the moment it is hunting — "catch them feeding to interrupt the
+    // drain, or they rise into a swarm" (ENEMIES.md). Keyed on `_feeding`, which
+    // is #80's flag rather than a second opinion about the same thing, and gated
+    // on the clip existing: the soldiers and the box fallback have no `crawl` and
+    // must never reach the pose.
+    else if (this._anim.crawl && this._feeding){
+      this._play("crawl");
     }
     else if (this._vel.x * this._vel.x + this._vel.z * this._vel.z > 0.25){
       this._play("run");

@@ -206,9 +206,9 @@ The game is submittable when **all of these are true**:
 | M3  | Charger and Sprayer models                 | MUST    | —    | shaders | ✅ Built                                         |
 | M4  | Wall-crawler model                         | MUST    | S    | shaders | ✅ Validated and spawned in level 1 (#114). Climb behaviour is #115's |
 | M5  | Turret models                              | MUST    | S    | shaders | ❌ Missing                                       |
-| M6  | Drainer model                              | MUST    | S    | shaders | ❌ Missing                                       |
-| M7  | Charger zombie model                       | SHOULD  | S    | shaders | ❌ Missing                                       |
-| M8  | Big Arm model                              | SHOULD  | S    | shaders | ❌ Missing                                       |
+| M6  | Drainer model                              | MUST    | S    | shaders | ⚠️ Model in (#116): `zombie-drainer.glb`, crawl while feeding / upright while hunting. No level spawns a Drainer yet |
+| M7  | Charger zombie model                       | SHOULD  | S    | shaders | ⚠️ Model in (#116) as `chargerZombie`. No `ENEMY` key until level 3 exists |
+| M8  | Big Arm model                              | SHOULD  | S    | shaders | ⚠️ Body in (#116): fitted to 2.4 m, ~2.8 m of arm. Phases are #99 |
 | M9  | Gun viewmodel                              | MUST    | —    | paint   | ✅ `pistol.glb`                                  |
 | M10 | Military base props                        | MUST    | M    | levels  | ❌ Nothing exists for Last Colour                |
 | M11 | Forest props                               | MUST    | —    | levels  | ✅ 32 megakit GLBs                               |

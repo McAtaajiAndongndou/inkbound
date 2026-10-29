@@ -55,6 +55,35 @@ enemy whose attack has to LOOK like one (Big Arm's slam, M8) needs a borrowed
 clip or animation work. Budget that before promising M8.
 
 
+### The rest of the family (#116)
+
+Three of the four remaining enemies, same pack, same rig, same
+`CharacterArmature|` clip prefix, so `findClip` needed no new code. Measured by
+`tests/enemy-models.test.js`, which re-opens all three files on every `npm test`:
+
+| Model | File | Bind height | Lowest clip | Fitted to |
+|---|---|---|---|---|
+| Drainer | `zombie-drainer.glb`, 912 KB | 1.194 m | `Crawl` -0.055 | 1.6 m |
+| Charger zombie | `zombie-charger.glb`, 639 KB | 1.517 m | `Walk` -0.106 | 1.6 m |
+| Big Arm | `zombie-big-arm.glb`, 598 KB | 1.464 m | `Walk` -0.079 | **2.4 m** |
+
+Two findings worth keeping:
+
+1. **Big Arm's bind pose floats 18 cm above its own origin** (`min.y +0.176`).
+   Every other model in the project sits at ~0. Fitting it from the bounding box
+   alone, the way the soldiers are fitted, would sink it through the floor by
+   exactly that much. It is the clearest case yet for "the floor comes from the
+   clip, not the bind pose".
+2. **Big Arm is not a scaled-up soldier.** At the shared 1.6 m it is 1.85 m wide
+   and 1.6 m tall: wide, short, and nothing anyone reads as a boss from 30 m. It
+   gets its own height (2.4 m) and ends up with roughly 2.8 m of arm and
+   shoulder. That is the M8 design note turned into arithmetic.
+
+The clip sets also differ from the wall-crawler's in a way that matters: this
+pack **does** have attacks (`Punch`, `Run_Attack`), so the Drainer, the Charger
+zombie and the boss each animate their own hit instead of borrowing `Jump`.
+
+
 ## Player
 
 | Asset | Source | Licence |
@@ -71,9 +100,9 @@ The Sci-Fi Gun Pack **replaced** the Kenney Blaster Kit, so that all player-side
 |---|---|---|
 | Soldier, no gun — Charger | https://poly.pizza/m/p0wFrzSVLS (KolosStudios) | **CC-BY** |
 | Soldier, with gun — Sprayer | https://poly.pizza/m/XT8jgwSesV (KolosStudios) | **CC-BY** |
-| Zombie 1 — Charger zombie | https://poly.pizza/m/22K0aSZkHV (Quaternius) | **CC-BY** |
-| Zombie 2 — Drainer | https://poly.pizza/m/VlXjG0N8Eg (Quaternius) | CC0 |
-| Zombie 3 — Big Arm boss | https://poly.pizza/m/KaVJET0WHx (Quaternius) | **CC-BY** |
+| Zombie 1 — Charger zombie | https://poly.pizza/m/22K0aSZkHV (Quaternius) | **CC-BY** — **downloaded** as `assets/zombie-charger.glb` |
+| Zombie 2 — Drainer | https://poly.pizza/m/VlXjG0N8Eg (Quaternius) | CC0 — **downloaded** as `assets/zombie-drainer.glb` |
+| Zombie 3 — Big Arm boss | https://poly.pizza/m/KaVJET0WHx (Quaternius) | **CC-BY** — **downloaded** as `assets/zombie-big-arm.glb` |
 | Zombie 4, "Zombie half" — Wall-crawler | https://poly.pizza/m/Htcsn9OrXJ (Quaternius) | **CC-BY** — **downloaded** as `assets/wall-crawler.glb`, spike result under Pipeline rules |
 | Turret Gun | https://poly.pizza/m/ekTQhbJId7 and https://poly.pizza/m/hThPXDCbwl (Quaternius) | CC0 |
 | **Stalker — not yet sourced** | Needs a creature model. Added after this file was written, so no asset was ever chosen | — |
