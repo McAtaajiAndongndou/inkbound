@@ -15,7 +15,7 @@ Ideas, playtest findings and parked work. **Check triage status before building 
 
 - Enemy build-out per `docs/enemies/algorithms.md` — starting with the Charger's recovery window, which is the cheapest combat improvement in the game.
 - Traps: the static spike pit first, then paint-solvable variants.
-- Grey-to-colour decor reveal.
+- Grey-to-colour decor reveal — built for Outskirts (the Ledge, polish pass 1); other levels not yet.
 - Models, validated one asset at a time (see `docs/ASSETS.md`).
 
 ## Parked
@@ -25,6 +25,10 @@ Ideas, playtest findings and parked work. **Check triage status before building 
 - **Jetpack** — rejected as a base ability: it makes every gap in every level trivial and forces a level-design rewrite. If it ever returns, it is a single-level pickup with a fuel limit.
 - **Vehicle level** — rejected: new physics, new camera, new collision and no paint. An on-rails transition gets the same breather for a tenth of the cost.
 - **More enemy types** — rejected. Add enemy *questions*, not enemy types.
+- **Outskirts catwalk return loop** (polish pass 1) — the encounter gates make the level linear, and C's floor already gives room to retreat and repaint.
+- **Outskirts side island** (polish pass 1) — new content, not polish.
+- **Outskirts collapsing bridge** (polish pass 1) — new content, not polish; the Gap already owns the "commit to one motion" question.
+- **Outskirts swinging blades** in B and on the pillar approach (polish pass 1) — the vent is the trap that uses paint; two features per level is the cap.
 
 ---
 

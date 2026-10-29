@@ -197,6 +197,50 @@ export const TRAP = {
     damage: 15,        // a hit, not a kill: seven of them at full health
     cooldown: 1.0,     // seconds between hits on the SAME target, not per frame
   },
+
+  // The paint vent (Outskirts, island C): erupts on grey, goes dead on your paint.
+  // One eruption is one hit: the cooldown only runs while the column stands, so
+  // it equals `erupt`.
+  vent: {
+    damage: 20,
+    cooldown: 1.0,
+    rest: 2.0,         // seconds idle between eruptions
+    tell: 0.8,         // seconds of amber pulse before it erupts — the tell
+    erupt: 1.0,        // seconds the column stands and hurts
+    height: 3.0,       // the column, and the hurting region above the grate
+    coverage: 0.5,     // share of the grate that must be player paint to kill it
+  },
+};
+
+// Outskirts' grey-world mood (polish pass 1). DRAINED, NOT DARK: a pale, bleached
+// overcast with low contrast, so the grey reads as colour taken away rather than
+// as a night scene. The level file explains what each band does.
+export const OUTSKIRTS = {
+  mood: {
+    horizon: 0x9ba1a6,   // the haze; matches the sky's horizon band and the mist
+    zenith:  0x4d5560,   // overhead: washed out, not navy
+    void:    0x1a1c21,   // below the horizon: the pits stay dark
+    fogNear: 8,
+    fogFar:  46,
+    fillColour: 0xb4bcc2,
+    fillIntensity: 0.55,
+  },
+
+  // The toxic waste. Muted from lime (0x86b32d) in polish pass 1: lime was the
+  // most saturated colour in an unpainted frame and sat close to green paint
+  // (PAINT.green), so the poison out-shouted the player's paint. A sickly olive
+  // reads as poison, not as paint.
+  waste: {
+    colour: 0x7a7d34,
+    emissive: 0x1b1c06,  // a little self-lit, so it still reads as something not to touch
+  },
+
+  // The Ledge reveal: reaching the extraction ledge re-reads every prop in the
+  // level, and a prop within `radius` of the player's paint takes that colour.
+  reveal: {
+    radius: 2.5,         // metres from the prop to the nearest paint that counts
+    ring: 8,             // samples on that circle, plus the prop's own spot
+  },
 };
 
 export const PAINT_GUN = {

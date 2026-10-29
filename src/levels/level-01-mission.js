@@ -2,14 +2,15 @@
 // L1 — "OUTSKIRTS". Forest island-hopping, the pillars setpiece, generous paint.
 // WHAT THIS LEVEL DOES THAT THE OTHERS DO NOT: it is the only level with
 // generous paint. The player is LEARNING that colour changes physics.
-// Enemies: Sprayer, Charger. No armour. Low count.
+// Enemies: Sprayer, Charger. No armour. Design doc: docs/levels/01-outskirts.md.
 import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
-import { PAINT, PAINT_GRID } from '../config.js';
+import { PAINT, PAINT_GRID, OUTSKIRTS } from '../config.js';
 import { audio } from '../audio/audio-manager.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
+import { PaintVent } from './paint-vent.js';
 
 /**
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
@@ -17,10 +18,10 @@ import * as kit from './level-kit.js';
  *
  * Route (z runs +26 → −45): vantage island → jump Gap 1 → island B (deck,
  * cover, two lanes; clear it) → [gate B] → blue + RED PAD super jump over
- * Gap 2 → island C (arena: Charger + Sprayer rush you) → [gate C: clear the
- * arena AND the tower] → jump onto the stair tower's first deck (two Shooters
- * waiting behind the block) → green-climb deck 2 → green-climb deck 3 →
- * extraction.
+ * Gap 2 → island C (arena: two Chargers, three Sprayers, the vent) → [gate C:
+ * clear the arena floor] → the hall: green-climb the left pillar → paint its roof
+ * red and bounce to the right pillar (two Sprayers) → green-climb the back wall →
+ * the Ledge (the decor reveal) → extraction.
  */
 const L1 = {
   // WIDENED from 8 to 11 (#39 #5): 16 m was narrow enough that the foliage on
@@ -69,7 +70,7 @@ const L1 = {
   // is empty of every decor kind, hand-placed or scattered. Keep them the size of
   // the thing plus ~1.5 m of breathing room.
   decorAvoid: [
-    { xMin: 5, xMax: 13, zMin: -23, zMax: -17 },
+    { xMin: 5, xMax: 16, zMin: -23, zMax: -17 },   // the block and the vent lane
   ],
 
   bDeck: { xMin: 5, xMax: 9, zMin: -6, zMax: -2, y: 4.6, overhang: 0 },
@@ -90,6 +91,13 @@ const L1 = {
   // that costs a splat and puts you on a 4 x 2 ledge inside the Sprayer's 12 m
   // range, so it is a trade, not an escape.
   cCover: { xMin: 7, xMax: 11, zMin: -21, zMax: -19, y: 3.0, overhang: 0 },
+
+  // THE VENT (polish pass 1). It fills the front-right lane, the short way from
+  // the landing to the pocket behind the block, so the safe spot costs paint:
+  // paint the grate or go round by the open left lane, in the Sprayers'
+  // crossfire. Erupts on grey, dead on your paint; TRAP.vent has the rhythm.
+  // It hurts enemies too, so a red hit can shove a Charger into the column.
+  cVent: { xMin: 11.5, xMax: 14.5, zMin: -21, zMax: -18 },
 
   // --- the ascent (#39 #6, third revision — Renda's pillars) -----------------
   //
@@ -218,18 +226,19 @@ const L1 = {
   // you paint" without a signpost.
 
   // DESIGN.md teaching beats, not just spawn points:
-  //   Charger  — island B. 5 m/s, 25 contact. The answer is paint BLUE: it
+  //   Charger x2 — island B. 5 m/s, 25 contact. The answer is paint BLUE: it
   //              slides straight past. That patch is also the Gap 2 run-up.
-  //   Charger  — island C. Rushes you the moment you land, which is what makes
-  //              the arena unavoidable now the exit is a door rather than a
-  //              launch you could paint past.
-  //   Sprayer  — island C. Ranged pressure while you fight the Charger.
+  //   Sprayer  — island B, on the deck: elevation is the enemy's.
+  //   Charger x2 + Sprayer x3 — island C. The Chargers make the arena
+  //              unavoidable now the exit is a door; the Sprayers are the
+  //              crossfire that makes the block's pocket worth reaching.
   //   Sprayer x2 — on the RIGHT pillar's top, which is where the bounce puts you.
   //              These are the shooters Renda asked for (#39 #6): you land among
   //              them, and the bounce is the only way up.
   //
-  // Spawns are a starting hint, not a hold: there is no aggro radius, so enemies
-  // walk at the player from load and freeze where the next step would fall off.
+  // The arena enemies sleep until the player lands in their island (`wakeOn`);
+  // there is no aggro radius. Awake, an enemy walks at the player and stops
+  // where its next step would fall off.
   spawns: [
     // island A — NOTHING. The entry is a vantage, not a fight (playtest, 24 Oct).
     // The first enemy is the first thing past Gap 1.
@@ -355,9 +364,12 @@ const L1 = {
  * sky above it and the pits below it stay their own colour.
  */
 const MOOD = {
-  horizon: 0x8a93a3,   // the haze: what distance fades toward. Matches the sky's horizon band.
-  zenith:  0x232a38,   // drained sky overhead — deliberately NOT the haze colour
-  void:    0x12141b,   // below the horizon: the pits are dark, not foggy
+  // Colours and fog numbers live in config (OUTSKIRTS.mood). Polish pass 1 lifted
+  // the sky from navy to a washed overcast: the grey has to read as DRAINED,
+  // colour taken away, and a dark sky read as night instead.
+  horizon: OUTSKIRTS.mood.horizon,   // the haze: what distance fades toward. Matches the sky's horizon band.
+  zenith:  OUTSKIRTS.mood.zenith,   // drained sky overhead — deliberately NOT the haze colour
+  void:    OUTSKIRTS.mood.void,   // below the horizon: the pits are dark, not foggy
 
   // Distance fog. Tightened from 12/60 once the decor landed, and the reason is
   // worth recording: 60 was tuned against a corridor that was mostly EMPTY,
@@ -367,8 +379,8 @@ const MOOD = {
   // standing inside. 48 puts the back wall (43 from the spawn) at ~95% haze.
   //
   // `fogNear` still clears the TPV camera's 6.5 offset, so the player never fogs.
-  fogNear: 9,
-  fogFar:  48,
+  fogNear: OUTSKIRTS.mood.fogNear,
+  fogFar:  OUTSKIRTS.mood.fogFar,
 
   // Where the drifting mist sheets lie. They are CENTRED on mistZ and
   // mistLength is their full length, so these two numbers decide which parts of
@@ -402,8 +414,8 @@ const MOOD = {
   // `sunDir` through their uniforms instead. So this light is close to
   // invisible right now, and it starts earning its place when the animated GLB
   // characters land (#49, #50), which must use built-in materials.
-  fillColour: 0x9fb0bb,
-  fillIntensity: 0.45,
+  fillColour: OUTSKIRTS.mood.fillColour,
+  fillIntensity: OUTSKIRTS.mood.fillIntensity,
 
   // The trees are NOT here. Their colours and their reaction to paint are the
   // forest module's business (`./forest.js`), because they are not mood: the
@@ -472,8 +484,8 @@ const WASTE = {
   // visible where the floor is not.
   y: -0.10,
   tuck: 2.5,
-  colour: 0x86b32d,    // toxic green, in the same drained family as the dead ground
-  emissive: 0x1d2c07,  // a little self-lit, so it reads as something you should not touch
+  colour: OUTSKIRTS.waste.colour,      // sickly olive; see config for why not lime
+  emissive: OUTSKIRTS.waste.emissive,
   wave: 0.05,          // crests peak at -0.02: below the floor, above the shelves
   bob: 0.03,
   bobSpeed: 0.7,
@@ -613,6 +625,11 @@ export class Level01 extends LevelBase {
     { name: 'island-c', label: 'Island C — the arena', position: [-12, 14, -10], target: [3, 0, -23], fog: false },
     // From above C's gate: any lower and the camera is behind that wall.
     { name: 'pillars', label: 'Pillars + last climb', position: [-9, 14, -27], target: [0, 5, -38], fog: false },
+    // The vent from the landing: the lane it fills and the pocket behind the block.
+    { name: 'vent', label: 'Island C — the vent', position: [6, 3.7, -14], target: [12, 0.5, -21], fog: true },
+    // The Ledge looking back the way you came: the frame the decor reveal is for.
+    // Aimed low enough that gate C, closed in the tests, sits past halfway.
+    { name: 'ledge', label: 'The Ledge — looking back', position: [0, 14.5, -38.5], target: [0, 0, -24], fog: true },
   ];
 
   async load() {
@@ -626,6 +643,7 @@ export class Level01 extends LevelBase {
 
     this._islandBShape();
     this._islandCShape();
+    this._vent();
     this._ascent();
     this._shoulders();
     this._extraction();
@@ -1048,6 +1066,15 @@ export class Level01 extends LevelBase {
     for (const props of Object.values(this.decor)) {
       props.update(dt, player.position);
     }
+    this._revealOnLedge(player.position);
+
+    // The vent hurts whatever stands in its column: the player and any enemy.
+    // One reused array, so the frame allocates nothing.
+    const targets = this._ventTargets;
+    targets.length = 0;
+    targets.push(player);
+    for (let i = 0; i < this.enemies.length; i++) targets.push(this.enemies[i]);
+    this.vent.update(dt, targets);
 
     // Encounter gates: an arena's exit opens the moment that arena is clear.
     // The field is animated either way — drifting static while it holds you, and
@@ -1250,6 +1277,31 @@ export class Level01 extends LevelBase {
    */
   _islandCShape() {
     kit.block(this, { ...L1.cCover, unpaintable: true, cells: L1.cells });
+  }
+
+  /** The vent in C's front-right lane. See `L1.cVent`. */
+  _vent() {
+    const r = L1.cVent;
+    // C's own floor: the one centred on the island at ground height.
+    const c = L1.islands.C;
+    const floor = this.surfaces.find((s) => s.isFloor && s.mesh.position.y === 0
+      && s.mesh.position.z === (c.zMin + c.zMax) / 2 && s.width === c.half * 2);
+    this.vent = new PaintVent({ parent: this.root, floor, rect: r, y: 0 });
+    this._ventTargets = [];
+  }
+
+  /**
+   * The Ledge reveal: landing on the extraction ledge re-reads every prop in the
+   * level, and the ones near the player's paint come back to colour. Once.
+   */
+  _revealOnLedge(p) {
+    if (this.revealed) return;
+    const { y, zMin, zMax } = L1.ledge;
+    if (p.y < y - 0.5 || p.z < zMin || p.z > zMax) return;
+    this.revealed = true;
+    for (const props of Object.values(this.decor)) {
+      props.reveal(OUTSKIRTS.reveal.radius, OUTSKIRTS.reveal.ring);
+    }
   }
 
   /**
