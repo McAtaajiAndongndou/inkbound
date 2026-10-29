@@ -1,4 +1,4 @@
-import { PAINT } from '../config.js';
+import { PAINT,DRY_OUT } from '../config.js';
 const HINTS = {
   Grey: 'Dead ground: slow, no refill',
   Ice: 'Slide: low friction',
@@ -35,6 +35,7 @@ export class Hud {
     root.innerHTML = `
       <div id="crosshair"></div>
       <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+      <div id="dry-warning" class="hidden">DRY OUT</div>
       <div id="hud-bottom">
         <div id="health-wrap" class="hidden">
           <div id="health-bar"><div id="health-fill"></div></div>
@@ -69,8 +70,10 @@ export class Hud {
 
     this.ammoFill = root.querySelector('#ammo-fill');
     this.ammoText = root.querySelector('#ammo-text');
+    this.ammoBar = root.querySelector('#ammo-bar');
     this.standing = root.querySelector('#standing b');
     this.coverage = root.querySelector('#coverage');
+    this.dryFire = root.querySelector('#dry-fire');
     this.dryFire = root.querySelector('#dry-fire');
     this.swatches = [...root.querySelectorAll('.swatch')];
     this.hint = root.querySelector('#standing-hint');
@@ -139,6 +142,20 @@ export class Hud {
     this.ammoFill.style.width = `${pct * 100}%`;
     this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;
     this.ammoText.textContent = Math.floor(gun.ammo);
+
+    
+    // ---- dry out warning (#75) --------------------------------------------
+    // Two cues: the ammo bar pulses below DRY_OUT.warningBelow, and a
+    // fullscreen banner appears while the player is actually dry, counting
+    // down the grace.
+    const critical = pct < DRY_OUT.warningBelow && gun.ammo > 0;
+    this.ammoBar.classList.toggle('critical', critical);
+
+    this.dryWarning.classList.toggle('hidden', !player.dry);
+    if (player.dry) {
+      const remaining = Math.max(0, DRY_OUT.graceTime - player.dryTimer);
+      this.dryWarning.textContent = `DRY OUT — ${remaining.toFixed(1)}s`;
+    }
   
     this.standing.textContent = PAINT[player.currentColour].name;
     this.standing.style.color = `#${PAINT[player.currentColour].hex.toString(16).padStart(6, '0')}`;

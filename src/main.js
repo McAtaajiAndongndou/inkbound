@@ -13,7 +13,7 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER, PAINT_GUN, ANIM } from "./config.js";
+import { PLAYER, PAINT_GUN, ANIM, DRY_OUT } from "./config.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -232,7 +232,9 @@ async function loadLevel(id = currentLevelId) {
 
   player.onDeath = () => {
     avatar.die();
-    hud.showEnd("lose");
+    // #75 — dry out and death share this one lose path; `reason` picks the
+    // wording. `player.dry` is set by simulate() each frame.
+    hud.showEnd("lose", { level: currentLevelId, reason: player.dry ? "dry" : "dead" });
     audio.play("lose");
   };
 
@@ -282,16 +284,28 @@ function simulate(dt, elapsed, actions, mouse) {
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
 
- if (!player.dead && player.onGround){
-  const onPlayerPaint = level.surfaces.some((surface)=> surface.isPlayerPaintAtWorld(player.position));
+   if (!player.dead && player.onGround) {
+    const onPlayerPaint = level.surfaces.some((surface) => surface.isPlayerPaintAtWorld(player.position));
 
-  if (onPlayerPaint){
-    gun.ammo = Math.min(
-      gun.maxAmmo,
-      gun.ammo + PAINT_GUN.refillRate * dt
-    );
+    if (onPlayerPaint) {
+      gun.ammo = Math.min(gun.maxAmmo, gun.ammo + PAINT_GUN.refillRate * dt);
+    }
+
+    // ---- dry out (#75) ---------------------------------------------------
+    // Dry = empty tank AND no paint underfoot. The loss only fires after
+    // DRY_OUT.graceTime seconds of continuous dry state, so the player has a
+    // beat to notice the ammo bar pulsing and step back onto paint.
+    player.dry = gun.ammo <= 0 && !onPlayerPaint;
+    if (player.dry) {
+      player.dryTimer += dt;
+      if (player.dryTimer >= DRY_OUT.graceTime) player.kill();
+    } else {
+      player.dryTimer = 0;
+    }
+  } else {
+    player.dry = false;
+    player.dryTimer = 0;
   }
- }
  
 
   const p = player.mesh.position;
