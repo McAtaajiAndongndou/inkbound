@@ -71,9 +71,9 @@ export class Hud {
     this.ammoFill = root.querySelector('#ammo-fill');
     this.ammoText = root.querySelector('#ammo-text');
     this.ammoBar = root.querySelector('#ammo-bar');
+    this.dryWarning = root.querySelector('#dry-warning');
     this.standing = root.querySelector('#standing b');
     this.coverage = root.querySelector('#coverage');
-    this.dryFire = root.querySelector('#dry-fire');
     this.dryFire = root.querySelector('#dry-fire');
     this.swatches = [...root.querySelectorAll('.swatch')];
     this.hint = root.querySelector('#standing-hint');
