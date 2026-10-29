@@ -24,6 +24,46 @@ const END_LOSE = {
 
 const RESTART_HINT = '<b>R</b> restart level · <b>Esc</b> menu';
 
+// Territory readout (#127). The minimap is the territory VIEW; this number,
+// sat right under it, is its summary. It is a full grid scan, so it samples
+// TERRITORY.interval apart, and a drop — enemy grey eating the level — holds
+// the "falling" look for TERRITORY.fallHold so it reads in the corner of the eye.
+export const TERRITORY = { interval: 0.25, fallHold: 1.5 };
+
+/**
+ * Tracks the displayed percentage and whether it is falling. A drop of a whole
+ * point (what the player can see) starts or extends the hold; a rise clears it.
+ */
+export class TerritoryTrend {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.pct = null;
+    this.fallTimer = 0;
+  }
+
+  get falling() {
+    return this.fallTimer > 0;
+  }
+
+  /** @param {number} fraction 0..1 of the level painted  @returns {number} the whole percent shown */
+  sample(fraction) {
+    const pct = Math.round(Math.max(0, Math.min(1, fraction)) * 100);
+    if (this.pct !== null && pct < this.pct) this.fallTimer = TERRITORY.fallHold;
+    else if (this.pct !== null && pct > this.pct) this.fallTimer = 0;
+    this.pct = pct;
+    return pct;
+  }
+
+  update(dt) {
+    if (this.fallTimer > 0) this.fallTimer -= dt;
+  }
+}
+
+const hex = (name) => `#${PAINT[name].hex.toString(16).padStart(6, '0')}`;
+
 /**
  * HUD. DOM-based, which is cheap and does not cost us a draw call.
  * Ammo counter, current colour, and a live readout of what the player is
@@ -58,7 +98,10 @@ export class Hud {
       <div id="hud-top">
         <div id="standing">Standing on: <b>Dead</b></div>
         <div id="standing-hint"></div>
-        <div id="coverage">Coverage: 0%</div>
+      </div>
+      <div id="territory" aria-live="off">
+        <span class="territory-label">Territory</span>
+        <b class="territory-value">0%</b><span class="territory-trend" aria-hidden="true">▼</span>
       </div>
       <div id="end-win" class="end hidden" role="status">
         <h1>EXTRACTED</h1><p class="end-detail"></p><p class="end-restart">${RESTART_HINT}</p>
@@ -73,7 +116,9 @@ export class Hud {
     this.ammoBar = root.querySelector('#ammo-bar');
     this.dryWarning = root.querySelector('#dry-warning');
     this.standing = root.querySelector('#standing b');
-    this.coverage = root.querySelector('#coverage');
+    this.territory = root.querySelector('#territory');
+    this.territoryValue = root.querySelector('.territory-value');
+    this._territoryTrend = new TerritoryTrend();
     this.dryFire = root.querySelector('#dry-fire');
     this.swatches = [...root.querySelectorAll('.swatch')];
     this.hint = root.querySelector('#standing-hint');
@@ -134,6 +179,9 @@ export class Hud {
   hideEnd() {
     this.endWin.classList.add('hidden');
     this.endLose.classList.add('hidden');
+    // main.js calls this on every level load: a fresh level starting below the
+    // last one's territory is not ground being lost.
+    this._territoryTrend.reset();
   }
 
   update(dt, { gun, player, surfaces }) {
@@ -172,14 +220,18 @@ export class Hud {
 
     this.swatches.forEach((el, i) => el.classList.toggle('active', i === gun.current));
 
-    // coverage is a full grid scan — do it 4x a second, not 60
+    // Territory (#127): a full grid scan, so 4x a second, not 60. Tinted with
+    // the colour in hand, so it reads as ground held rather than a counter.
+    this.territoryValue.style.color = hex(gun.colour);
+    this._territoryTrend.update(dt);
     this._coverageTimer -= dt;
     if (this._coverageTimer <= 0) {
-      this._coverageTimer = 0.25;
+      this._coverageTimer = TERRITORY.interval;
       const total = surfaces.reduce((sum, s) => sum + s.coverage(), 0) / surfaces.length;
       this._coverageValue = total;
-      this.coverage.textContent = `Coverage: ${Math.round(total * 100)}%`;
+      this.territoryValue.textContent = `${this._territoryTrend.sample(total)}%`;
     }
+    this.territory.classList.toggle('falling', this._territoryTrend.falling);
     this.dryFire.style.display = gun.dryFire ? 'flex' : 'none';
   }
 }
