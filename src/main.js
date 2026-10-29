@@ -13,7 +13,7 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER, PAINT_GUN, ANIM } from "./config.js";
+import { PLAYER, PAINT_GUN, ANIM, DRY_OUT, SUBMERGE } from "./config.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -232,7 +232,9 @@ async function loadLevel(id = currentLevelId) {
 
   player.onDeath = () => {
     avatar.die();
-    hud.showEnd("lose");
+    // #75 — dry out and death share this one lose path; `reason` picks the
+    // wording. `player.dry` is set by simulate() each frame.
+    hud.showEnd("lose", { level: currentLevelId, reason: player.dry ? "dry" : "dead" });
     audio.play("lose");
   };
 
@@ -282,16 +284,30 @@ function simulate(dt, elapsed, actions, mouse) {
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
 
- if (!player.dead && player.onGround){
-  const onPlayerPaint = level.surfaces.some((surface)=> surface.isPlayerPaintAtWorld(player.position));
+   if (!player.dead && player.onGround) {
+    const onPlayerPaint = level.surfaces.some((surface) => surface.isPlayerPaintAtWorld(player.position));
 
-  if (onPlayerPaint){
-    gun.ammo = Math.min(
-      gun.maxAmmo,
-      gun.ammo + PAINT_GUN.refillRate * dt
-    );
+    if (onPlayerPaint) {
+      // #108 — submerged refills 3× faster. That is the "commit" half of the
+      // trade: you cannot fire, but you come back up with a full tank.
+      const refillMult = player.submerged ? SUBMERGE.refillMultiplier : 1;
+      gun.ammo = Math.min(gun.maxAmmo, gun.ammo + PAINT_GUN.refillRate * refillMult * dt);
+    }
+    // ---- dry out (#75) ---------------------------------------------------
+    // Dry = empty tank AND no paint underfoot. The loss only fires after
+    // DRY_OUT.graceTime seconds of continuous dry state, so the player has a
+    // beat to notice the ammo bar pulsing and step back onto paint.
+    player.dry = gun.ammo <= 0 && !onPlayerPaint;
+    if (player.dry) {
+      player.dryTimer += dt;
+      if (player.dryTimer >= DRY_OUT.graceTime) player.kill();
+    } else {
+      player.dryTimer = 0;
+    }
+  } else {
+    player.dry = false;
+    player.dryTimer = 0;
   }
- }
  
 
   const p = player.mesh.position;
@@ -301,10 +317,8 @@ function simulate(dt, elapsed, actions, mouse) {
   lastPos.copy(p);
   viewSpeed = speed;              // #124, for the viewmodel bob
   if (!player.dead) {
-    // #82 — the ONE call this issue adds to this file (coordinated with Ozuko):
-    // the physics already knows whether we are on the floor, so the avatar is
-    // only told. It goes before setMoving because setMoving defers to the air
-    // state; the order is what stops a run cycle appearing mid-jump.
+    // #82 + #122: the physics already knows; the avatar is only told. Climbing goes first because it outranks the air states, and setMoving goes last because it defers to both.
+    avatar.setClimbing(player.climbing, player.velocity.y);
     avatar.setAirborne(player.onGround, player.velocity.y);
     // #124 — the SAME flag the ADS camera reads in `animate`, so the body and the
     // camera raise the gun together instead of one lagging the other.
@@ -322,7 +336,7 @@ function simulate(dt, elapsed, actions, mouse) {
   if (player.health < healthBefore) avatar.hit();
 
   gun.update(dt);
-  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {
+  if (input.firing && input.locked && !player.dead && !player.submerged && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {
     gunModel?.kick();
     audio.play("fire");
     avatar.fire();                // #124 — the shot accent, after the shot lands

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER, HEALTH, CAMERA } from '../config.js';
+import { PLAYER, HEALTH, CAMERA, SUBMERGE } from '../config.js';
 
 const ID_TO_NAME = ['grey', 'blue', 'red', 'green'];
 
@@ -50,7 +50,14 @@ export class Player {
     this.dead = false;
     this.hurtTimer = 0;         // > 0 means recently hit, cannot be hit again yet
     this.onDeath = null;        // optional callback, fired once when health hits 0
-
+    // dry out (#75). Set by main.js — only main knows the gun and the surfaces.
+    // Player holds the flag so the HUD and any other system can read it.
+    this.dry = false;
+    this.dryTimer = 0;
+    // submerge (#108). Set every frame from `input.isDown(SUBMERGE.key)` AND
+    // "on your own paint". Off either, it is `false` that frame — no timer,
+    // no stuck state.
+    this.submerged = false;
     // visible avatar for third-person
     const geometry = new THREE.CapsuleGeometry(
       PLAYER.radius, PLAYER.height - PLAYER.radius * 2, 4, 12,
@@ -91,6 +98,18 @@ export class Player {
       this.onDeath?.();
     }
     return true;
+  }
+  
+  /**
+   * Kill the player outside the health system — used by dry out (#75).
+   * Same end path as a death, so the existing lose screen handles it.
+   */
+  kill() {
+    if (this.dead) return;
+    this.health = 0;
+    this.dead = true;
+    this.velocity.set(0, 0, 0);
+    this.onDeath?.();
   }
 
   /**
@@ -295,7 +314,15 @@ export class Player {
     this.currentColour = ground
       ? ID_TO_NAME[ground.surface.paintIdAtWorld(ground.point)]
       : 'grey';
-
+    
+    // ---- submerge (#108) — a deliberate input on your own paint -----------
+    // Both conditions must hold, and both are re-checked every frame:
+    //   1. The player is holding the submerge key.
+    //   2. The ground under them is painted (not grey).
+    // The "own paint" test is `currentColour !== 'grey'` — the same check the
+    // speed cap and HUD already trust. Step off your paint and the state
+    // drops the same frame; no timer, no stuck state.
+    this.submerged = input.isDown(SUBMERGE.key) && this.currentColour !== 'grey';
     // ---- climbing: touching a GREEN wall and pushing into it -------------
     const wall = this.touchingWall;
     const pushingIntoWall = wall && this._wish.dot(wall.normal) < -PLAYER.climbPushThreshold;
@@ -307,10 +334,15 @@ export class Player {
       this.velocity.y += PLAYER.gravity * dt;
     }
 
-    // ---- horizontal acceleration + friction FROM THE PAINT ---------------
+        // ---- horizontal acceleration + friction FROM THE PAINT ---------------
+    // #108 — submerge multiplies the ACCELERATION, not just the cap. Raising
+    // the cap alone does nothing at walking speed: acceleration is what limits
+    // you, and the equilibrium velocity (accel / friction) is below maxSpeed
+    // at base. So submerge has to speed up the push, not just the ceiling.
+    const submergeSpeed = this.submerged ? SUBMERGE.speedMultiplier : 1;
     const accel = this.onGround
-      ? PLAYER.accel * (rules ? rules.traction : 1)
-      : PLAYER.airAccel;
+      ? PLAYER.accel * submergeSpeed * (rules ? rules.traction : 1)
+      : PLAYER.airAccel * submergeSpeed;
     this.velocity.x += this._wish.x * accel * dt;
     this.velocity.z += this._wish.z * accel * dt;
 
@@ -342,8 +374,10 @@ export class Player {
     const speedCap = this.speedCap * standSlow;
 
     // ---- absolute movement cap ------------------------------------------
-    // ADS also reduces speed; both modifiers compose.
-    const maxSpeed = speedCap * (input.aiming ? PLAYER.adsSpeedMultiplier : 1);
+    // Submerge raises the ceiling; ADS reduces it. Both compose. `submergeSpeed`
+    // was declared above, in the acceleration block — one declaration, used
+    // twice, no re-declare.
+    const maxSpeed = speedCap * submergeSpeed * (input.aiming ? PLAYER.adsSpeedMultiplier : 1);
 
     // not Math.hypot — V8 allocates on every hypot call
     const vx = this.velocity.x;
@@ -413,6 +447,8 @@ export class Player {
     this.speedCap = PLAYER.maxSpeed;   // respawning earns nothing (#52)
     this._coyoteTimer = 0;
     this._jumpBufferTimer = 0;
+    this.dry = false;
+    this.dryTimer = 0;
   }
 
   dispose() {
