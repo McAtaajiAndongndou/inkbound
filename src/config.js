@@ -174,6 +174,7 @@ export const OPTIONS = {
 
 export const PAINT_GRID = {
   level1Cells: 4,
+  level2Cells: 4,   // the Ascent: same density, so a splat is the same size on every face
 };
 
 /**
