@@ -135,7 +135,7 @@ The game is submittable when **all of these are true**:
 
 | ID  | Requirement                                       | Pri             | Cost | Lane | Status       |
 | --- | ------------------------------------------------- | --------------- | ---- | ---- | ------------ |
-| G1  | **Sergeant briefing** — one still in the tutorial | SHOULD          | S    | ui   | ❌ Not built |
+| G1  | **Sergeant briefing** — one still in the tutorial | SHOULD          | S    | ui   | ⚠️ Partial (#111) — overlay built (`ui/briefing.js`): shows on entering the Primer, fresh click/key skips, pauses the game, under the pause menu; the still itself (`public/assets/sergeant-briefing.png`) is not drawn yet, so the line shows on the plain fallback panel |
 | G2  | **One line per level** in a comms bar             | SHOULD          | S    | ui   | ❌ Not built |
 | G3  | Dialogue skippable and never during combat        | MUST (if G1/G2) | S    | ui   | ❌ Not built |
 

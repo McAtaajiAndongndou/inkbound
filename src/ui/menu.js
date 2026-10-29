@@ -19,6 +19,10 @@
 import { OPTIONS } from '../config.js';
 import { CREDITS, OURS } from './credits.js';
 import { LEVELS } from '../levels/index.js';
+import { Briefing } from './briefing.js';
+
+// The level that opens on the sergeant's briefing still (#111).
+const BRIEFING_LEVEL = 'primer';
 
 const STORAGE_KEY = 'inkbound.options';
 
@@ -131,6 +135,11 @@ export class Menu {
     parent.appendChild(el);
     this.el = el;
 
+    // #111: shown the first time the pointer locks into the Primer — entered
+    // from a fresh load or from level select, not again on restart.
+    this.briefing = new Briefing(parent, { isBlocked: () => this.menuShowing });
+    this._briefingPending = currentLevel === BRIEFING_LEVEL;
+
     const $ = (sel) => el.querySelector(sel);
     this.title = $('#menu-sub');
     this.resumeBtn = $('#menu-resume');
@@ -199,8 +208,16 @@ export class Menu {
     this._setOpen(true);
   }
 
-  /** True while the menu is showing — main.js pauses the game on this. */
+  /**
+   * True while the menu OR the briefing still is up — main.js pauses the game
+   * on this, so the world waits while the sergeant talks.
+   */
   get open() {
+    return this.menuShowing || this.briefing.open;
+  }
+
+  /** The menu card itself, not counting the briefing. */
+  get menuShowing() {
     return !this.el.classList.contains('hidden');
   }
 
@@ -214,6 +231,10 @@ export class Menu {
 
   /** Mark which level is loaded — main.js calls this if it swaps levels itself. */
   setCurrentLevel(id) {
+    // A restart reloads the same id and keeps the still skipped; arriving in
+    // the Primer from another level is the tutorial opening again.
+    if (id === BRIEFING_LEVEL && id !== this.currentLevel) this._briefingPending = true;
+    if (id !== BRIEFING_LEVEL) this._briefingPending = false;
     this.currentLevel = id;
     this._syncLevels();
   }
@@ -266,6 +287,10 @@ export class Menu {
     if (!open) {
       this.started = true;
       this._showView('main'); // next pause opens on the main view; closes the level list
+      if (this._briefingPending) {
+        this._briefingPending = false;
+        this.briefing.show();
+      }
     }
     this.el.classList.toggle('hidden', !open);
     // first load reads as a title screen; afterwards it is a pause menu
@@ -304,6 +329,7 @@ export class Menu {
   dispose() {
     window.removeEventListener('keydown', this._onKey);
     document.removeEventListener('pointerlockchange', this._onLock);
+    this.briefing.dispose();
     this.el.remove();
   }
 }
