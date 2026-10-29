@@ -99,7 +99,7 @@ The game is submittable when **all of these are true**:
 | D3  | **Wall-crawler climbs green paint** faster than grey          | MUST   | M    | shaders | ⚠️ Built (#115): 3.5 m/s on grey, 5.0 on green, cannot shoot on the wall |
 | D4  | **Turret** — static, slow track, bursts, flankable            | MUST   | —    | shaders | ✅ Built                             |
 | D5  | **Drainer** — feeding and hunting postures                    | MUST   | M    | shaders | ❌ Not built                         |
-| D6  | **Stalker** — fast on your paint, slow on grey                | COULD  | M    | shaders | ❌ Not built                         |
+| D6  | **Stalker** — fast on your paint, slow on grey                | COULD  | M    | shaders | ⚠️ Built (#120) — behaviour only; no model/spawn yet |
 | D7  | **Big Arm** — wave-three arena boss with three phases         | SHOULD | L    | shaders | ❌ Not built                         |
 | D8  | **Siphon** — three-phase colour exam, no health bar           | SHOULD | M    | levels  | ❌ Not built                         |
 

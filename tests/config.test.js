@@ -21,8 +21,8 @@ test('ammo tanks are ordered by level pressure (L1 plentiful, L2 starved)', () =
   assert.equal(AMMO[1] > AMMO[2], true);
 });
 
-test('one enemy class, five configs — not five systems', () => {
-  assert.deepEqual(Object.keys(ENEMY).sort(), ['charger', 'drainer', 'sprayer', 'turret', 'wallCrawler']);
+test('one enemy class, six configs — not six systems', () => {
+  assert.deepEqual(Object.keys(ENEMY).sort(), ['charger', 'drainer', 'sprayer', 'stalker', 'turret', 'wallCrawler']);
   assert.equal(ENEMY.charger.canShoot, false);
   assert.equal(ENEMY.wallCrawler.climbsGreen, true);
   assert.equal(ENEMY.turret.canMove, false);
