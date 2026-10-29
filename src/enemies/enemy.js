@@ -462,6 +462,13 @@ export class Enemy {
     this._reloadTimer = 0;
     this._telegraphColour = new THREE.Color(DANGER.amber);
     this.onAttack = null;                  // fired when a windup completes: (enemy) => void
+    // #129 killfeed: fired once from `_die`. `cause` is reused — read it, do not keep it.
+    //   colour  'blue' | 'red' | 'green' | null (nothing coloured did it)
+    //   effect  what the colour DID: 'knockback' | 'pin' | 'slip' | 'shatter',
+    //           'paint' for a no-procs enemy (#77), 'trap' for colourless damage
+    this.onDeath = null;                   // (enemy, cause) => void
+    this._cause = { colour: null, effect: null };
+    this._lastColour = null;               // colour of the last paint hit, for colourless kills
 
     // Charge recovery (#76). `recovery: 0` means this enemy has no such state,
     // which is what keeps every other enemy in the game unaffected by it.
@@ -1935,7 +1942,15 @@ export class Enemy {
       if (this._climbing) this._detach();
     }
 
-    if (this.hp <= 0) this._die();
+    this._lastColour = name;
+    if (this.hp <= 0) {
+      const effect = isTurret ? "paint"
+        : isCriticalHit ? "shatter"
+        : name === "red" ? "knockback"
+        : name === "green" ? "pin"
+        : "slip";
+      this._die(name, effect);
+    }
 
     return true;
   }
@@ -1958,7 +1973,12 @@ export class Enemy {
     if (!this.alive || !(damage > 0)) return false;
     this.sleeping = false;   // a trap that hurts you also wakes you
     this.hp -= damage;
-    if (this.hp <= 0) this._die();
+    if (this.hp <= 0) {
+      // Still being thrown by red (#129): the knockback put it in the trap, so
+      // red gets the credit — that is the "red into a pit" play (PRD F1).
+      const flung = this._lastColour === "red" && this._knockback.lengthSq() > 1;
+      this._die(flung ? "red" : null, flung ? "knockback" : "trap");
+    }
     return true;
   }
 
@@ -1966,7 +1986,7 @@ export class Enemy {
    * The one death path. Both a paint kill and a colourless kill end here, so the
    * corpse cannot behave differently depending on what killed it.
    */
-  _die() {
+  _die(colour = null, effect = null) {
     this.alive = false;
     // A dead enemy never lands its attack: cancel the windup. The colour is
     // left alone so the killing hit still reads as coloured.
@@ -1991,6 +2011,10 @@ export class Enemy {
     // update(), which the level runs for every enemy, alive or not.
     this._deathTimer = GAIT.deathTime;
     this._deathY = this.position.y;
+
+    this._cause.colour = colour;
+    this._cause.effect = effect;
+    this.onDeath?.(this, this._cause);
   }
 
   /**

@@ -150,7 +150,7 @@ The game is submittable when **all of these are true**:
 | H3  | Per-level win and lose screens                                                    | MUST   | S    | ui   | ⚠️ Generic text today |
 | H4  | Minimap                                                                           | MUST   | —    | ui   | ✅ Built              |
 | H5  | Loading screen                                                                    | MUST   | —    | ui   | ✅ Built              |
-| H6  | **Killfeed** — a line when an enemy dies, naming it and the colour that killed it | SHOULD | S    | ui   | ❌ Not built          |
+| H6  | **Killfeed** — a line when an enemy dies, naming it and the colour that killed it | SHOULD | S    | ui   | ✅ Built (#129) — "SPRAYER — FLUNG", tinted with the killing colour; verb from what the colour did (enemy `onDeath` cause); repeats coalesce (×N), max 3 lines, fades on its own; right edge under the minimap |
 
 ---
 

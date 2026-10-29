@@ -220,6 +220,8 @@ async function loadLevel(id = currentLevelId) {
   // damage number lives on each config (`attackDamage`) beside `contactDamage`.
   for (const enemy of level.enemies) {
     enemy.onAttack = (e) => player.takeDamage(e.config.attackDamage ?? 0);
+    // #129 killfeed: the enemy says what killed it; the HUD words it.
+    enemy.onDeath = (e, cause) => hud.reportKill(e.type, cause);
   }
 
   // Hidden NOW, before the avatar exists, and revealed only if the model never
