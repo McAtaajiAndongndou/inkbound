@@ -63,6 +63,9 @@ export const CREDITS = [
     files: ['assets/soldier-swat.glb'],
   },
   {
+    // UNCONFIRMED (#130): nobody recorded where pistol.glb came from. The file
+    // looks like a Quaternius poly.pizza export, so this credit is the best
+    // guess until Dikeledi confirms it — see docs/ASSETS.md, "The gun".
     what: 'Sci-Fi Gun Pack (player paint gun)',
     author: 'Quaternius',
     source: 'https://poly.pizza/bundle/Scifi-Gun-Pack-rBroUbKkqM',
