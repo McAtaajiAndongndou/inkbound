@@ -46,6 +46,7 @@ export class Hud {
             <div id="ammo-fill"></div>
             <div id="dry-fire">EMPTY</div>
           </div>
+          <div id="streak" title="Paintstreak — Q when full"><div id="streak-fill"></div></div>
           <div id="ammo-text">100</div>
         </div>
         <div id="colours">
@@ -71,6 +72,8 @@ export class Hud {
     this.ammoFill = root.querySelector('#ammo-fill');
     this.ammoText = root.querySelector('#ammo-text');
     this.ammoBar = root.querySelector('#ammo-bar');
+    this.streak = root.querySelector('#streak');
+    this.streakFill = root.querySelector('#streak-fill');
     this.dryWarning = root.querySelector('#dry-warning');
     this.standing = root.querySelector('#standing b');
     this.coverage = root.querySelector('#coverage');
@@ -136,8 +139,15 @@ export class Hud {
     this.endLose.classList.add('hidden');
   }
 
-  update(dt, { gun, player, surfaces }) {
+  update(dt, { gun, player, surfaces, streak }) {
     const pct = gun.ammo / gun.maxAmmo;
+
+    // Paintstreak (#131): a line under the ammo bar, not a fifth element — it is
+    // part of the paint readout. Full = it glows and shows the key.
+    if (streak) {
+      this.streakFill.style.width = `${streak.fraction * 100}%`;
+      this.streak.classList.toggle('full', streak.full);
+    }
 
     this.ammoFill.style.width = `${pct * 100}%`;
     this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;

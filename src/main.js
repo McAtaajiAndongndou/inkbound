@@ -13,7 +13,8 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER, PAINT_GUN, ANIM, DRY_OUT, SUBMERGE } from "./config.js";
+import { PLAYER, PAINT_GUN, ANIM, DRY_OUT, SUBMERGE, PAINTSTREAK } from "./config.js";
+import { Paintstreak } from "./paint/paintstreak.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -79,6 +80,13 @@ function applyViewBob(dt) {
 }
 
 const hud = new Hud(document.getElementById("hud"));
+
+// #131 paintstreak: new ground and kills fill it; Q spends a FULL gauge on a
+// zone at your feet. Edge-triggered here (no input.js action), so holding the
+// key cannot auto-fire it the moment the gauge fills again.
+const streak = new Paintstreak();
+let streakKeyWasDown = false;
+let lastPaintColour = "blue"; // the zone's colour if grey is in hand
 hud.onColourClick((i) => gun && gun.selectColour(i));
 
 window.addEventListener("pointerdown", () => audio.unlock());
@@ -187,6 +195,7 @@ async function loadLevel(id = currentLevelId) {
   }
 
   hud.hideEnd();
+  streak.reset();
 
   level = next;
   // Record the id that ACTUALLY loaded: the registry falls back to the default
@@ -231,6 +240,7 @@ async function loadLevel(id = currentLevelId) {
   lastPos.copy(player.mesh.position);
 
   player.onDeath = () => {
+    streak.reset(); // #131: a death empties the gauge
     avatar.die();
     // #75 — dry out and death share this one lose path; `reason` picks the
     // wording. `player.dry` is set by simulate() each frame.
@@ -245,6 +255,7 @@ async function loadLevel(id = currentLevelId) {
   // feedback is driven from the impact rather than from tryFire().
   gun.onImpact = (kind) => {
     audio.play(kind);
+    if (kind === "kill") streak.onKill();
     if (kind !== "splat") hud.showHitmarker(kind === "kill");
   };
   gunModel = new PaintGunModel(rig.camera, player, avatar);
@@ -280,6 +291,15 @@ function simulate(dt, elapsed, actions, mouse) {
   }
   if (actions.toggleView) rig.toggle();
   if (actions.colour !== null) gun.selectColour(actions.colour);
+  if (gun.colour !== "grey") lastPaintColour = gun.colour;
+
+  // #131 — spend on the press, never on a hold, and only a full gauge.
+  const streakKey = input.isDown(PAINTSTREAK.key);
+  if (streakKey && !streakKeyWasDown && !player.dead && streak.full) {
+    streak.spend({ surfaces: level.surfaces, enemies: level.enemies, centre: player.position, colour: lastPaintColour });
+    audio.play("splat");
+  }
+  streakKeyWasDown = streakKey;
 
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
@@ -316,6 +336,7 @@ function simulate(dt, elapsed, actions, mouse) {
   const speed = dt > 0 ? Math.hypot(dx, dz) / dt : 0;
   lastPos.copy(p);
   viewSpeed = speed;              // #124, for the viewmodel bob
+  if (!player.dead) streak.update(dt, { surfaces: level.surfaces, speed });
   if (!player.dead) {
     // #82 + #122: the physics already knows; the avatar is only told. Climbing goes first because it outranks the air states, and setMoving goes last because it defers to both.
     avatar.setClimbing(player.climbing, player.velocity.y);
@@ -376,6 +397,7 @@ function animate() {
     gun,
     player,
     surfaces: level.surfaces,
+    streak,
   });
 
   const w = window.innerWidth;
