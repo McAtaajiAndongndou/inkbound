@@ -187,6 +187,38 @@ canvas {
 #end-win h1 { color: #4ee08a; }
 #end-lose h1 { color: #ff4d5a; }
 #end-lose.dry h1 { color: #3aa7ff; }
+
+/* Scorecard on the win screen (#110). Three numbers side by side, no rank. */
+.scorecard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 150px));
+  justify-content: center;
+  gap: 12px;
+  margin: 0 0 22px;
+}
+.scorecard > div {
+  padding: 12px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .06);
+}
+.scorecard dt {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.scorecard dd {
+  margin: 4px 0 2px;
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-fg);
+}
+.scorecard span { display: block; font-size: 12px; color: var(--ink-dim); }
+@media (max-width: 520px) {
+  .scorecard { grid-template-columns: minmax(0, 220px); }
+}
 /* Hitmarker: four ticks around the crosshair. White on hit, red and bigger on kill. */
 #hitmarker {
   position: absolute;

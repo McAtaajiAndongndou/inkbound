@@ -95,11 +95,17 @@ window.addEventListener("keydown", () => audio.unlock());
 // no server) from dialling out on every level load.
 const gltfLoader = new GLTFLoader();
 
+// Scorecard (#110): how long the run took and how much of it was spent on
+// grey. Both only count while the run is live — alive, not yet won, menu
+// closed (simulate() does not run behind the menu) — and reset on restart.
+const run = { time: 0, dryTime: 0, over: false };
+
 const game = {
   scene,
   loadGLB: (url) => gltfLoader.loadAsync(url),
   onWin: () => {
-    hud.showEnd("win");
+    run.over = true;
+    hud.showEnd("win", { stats: { time: run.time, dryTime: run.dryTime } });
     audio.play("win");
   },
 
@@ -187,6 +193,9 @@ async function loadLevel(id = currentLevelId) {
   }
 
   hud.hideEnd();
+  run.time = 0;
+  run.dryTime = 0;
+  run.over = false;
 
   level = next;
   // Record the id that ACTUALLY loaded: the registry falls back to the default
@@ -231,6 +240,7 @@ async function loadLevel(id = currentLevelId) {
   lastPos.copy(player.mesh.position);
 
   player.onDeath = () => {
+    run.over = true;
     avatar.die();
     // #75 — dry out and death share this one lose path; `reason` picks the
     // wording. `player.dry` is set by simulate() each frame.
@@ -283,6 +293,10 @@ function simulate(dt, elapsed, actions, mouse) {
 
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
+  if (!run.over && !player.dead) {
+    run.time += dt;
+    if (player.currentColour === "grey") run.dryTime += dt;
+  }
 
    if (!player.dead && player.onGround) {
     const onPlayerPaint = level.surfaces.some((surface) => surface.isPlayerPaintAtWorld(player.position));

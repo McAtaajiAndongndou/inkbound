@@ -60,7 +60,7 @@ The game is submittable when **all of these are true**:
 | A5  | **Dry out** — no tank and no territory ends the run, and the game says so | MUST   | S    | core    | ❌ Not built                                                                                                                                                      |
 | A6  | **Submerge** — fast refill, hidden, cannot fire                           | MUST   | M    | core    | ✅ Built — `SUBMERGE` config, `player.submerged`, Shift to commit                                                                                                 |
 | A7  | **Partial stealth** — submerging halves detection; firing reveals         | MUST   | M    | shaders | ⚠️ Partial (#109) — awareness states, 16 m/7 m radii, last-known-position search and the turret exemption are built and tested; not yet wired to submerge or fire |
-| A8  | **Scorecard** — coverage, time, dry time at level end                     | SHOULD | S    | ui      | ❌ Not built                                                                                                                                                      |
+| A8  | **Scorecard** — coverage, time, dry time at level end                     | SHOULD | S    | ui      | ✅ Built (#110) — win-screen scorecard: HUD's own coverage %, run time, dry time % (time on grey while alive); resets on restart, no rank or persistence            |
 
 **Acceptance for A1/A2 together:** a player who paints and stands in their own colour never needs to press a key to refill, and a player who paints and walks away can run out.
 
