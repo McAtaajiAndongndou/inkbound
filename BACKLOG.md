@@ -25,6 +25,9 @@ Ideas, playtest findings and parked work. **Check triage status before building 
 - **Jetpack** — rejected as a base ability: it makes every gap in every level trivial and forces a level-design rewrite. If it ever returns, it is a single-level pickup with a fuel limit.
 - **Vehicle level** — rejected: new physics, new camera, new collision and no paint. An on-rails transition gets the same breather for a tenth of the cost.
 - **More enemy types** — rejected. Add enemy *questions*, not enemy types.
+- **Primer: a fourth free-play toy (the gap)** — its own design doc says it comes after a playtest (polish pass 1).
+- **Primer: a controls list or extra signage** — the design teaches by room, not by text; the doc refuses them (polish pass 1).
+- **Outskirts onto `src/levels/mood.js`** — the Primer's shared mood helper repeats Outskirts' sky/fog/fill; fold Outskirts onto it once its polish branch is merged.
 
 ---
 

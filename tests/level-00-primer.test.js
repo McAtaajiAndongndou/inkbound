@@ -25,7 +25,7 @@ function groundAt(level, x, y, z) {
   return floor?.surfaceAtWorld(p);
 }
 
-test('the package: one Charger, one gate, three painted walls', async () => {
+test('the package: one Charger, one gate, every painted wall at its size', async () => {
   const level = await loaded();
   assert.equal(level.enemies.length, 1);
   assert.equal(level.gates.length, 1);

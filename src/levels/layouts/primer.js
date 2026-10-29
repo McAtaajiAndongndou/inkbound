@@ -88,6 +88,23 @@ const solids = [
   // R7's exit: a doorway with the gate in it.
   { id: 'r7-door-w', box: [-12, -4, 8, 18, -50.5, -49.5], kind: 'wall' },
   { id: 'r7-door-e', box: [4, 12, 8, 18, -50.5, -49.5], kind: 'wall' },
+
+  // --- Dressing (polish pass 1): "the rebels built this" ----------------------
+  // Crates and target boards from plain boxes, no new models. All of it hugs a
+  // wall, clear of the route and every climb (tests/primer-layout.test.js).
+  // Crates have no `top`: you can stand on one, but no route may rely on it.
+  // Boards are paintable (a `climb: false` strip): shooting a target and
+  // seeing your colour on it is the range doing its job.
+  { id: 'r1-crate-a', room: 'R1', box: [4.6, 6.4, 0, 1.2, 79, 80.8], kind: 'crate' },
+  { id: 'r1-crate-b', room: 'R1', box: [5, 6.2, 1.2, 2.2, 79.3, 80.5], kind: 'crate' },
+  { id: 'r1-crate-c', room: 'R1', box: [-6.6, -5.2, 0, 1.2, 72, 73.4], kind: 'crate' },
+  { id: 'r1-board-w', room: 'R1', box: [-5.5, -3.5, 1, 3, 70.5, 70.7], kind: 'board' },
+  { id: 'r1-board-e', room: 'R1', box: [3.5, 5.5, 1, 3, 70.5, 70.7], kind: 'board' },
+  { id: 'r7-crate-a', room: 'R7', box: [-11.6, -9.8, 8, 9.2, -27, -25.2], kind: 'crate' },
+  { id: 'r7-crate-b', room: 'R7', box: [-11.4, -10.2, 9.2, 10.2, -26.6, -25.6], kind: 'crate' },
+  { id: 'r7-crate-c', room: 'R7', box: [9.8, 11.6, 8, 9.2, -46, -44.2], kind: 'crate' },
+  { id: 'r7-board-w', room: 'R7', box: [-10, -6, 9, 11.5, -49.5, -49.3], kind: 'board' },
+  { id: 'r7-board-e', room: 'R7', box: [6, 10, 9, 11.5, -49.5, -49.3], kind: 'board' },
 ];
 
 /**
@@ -98,6 +115,29 @@ const strips = [
   { id: 'r2-first-splat', room: 'R2', face: '+z', at: 59, span: [-4, 4], y: [0, 5], climb: false, note: 'The first splat — on a wall, so the colour stays in view' },
   { id: 'r5-green', room: 'R5', face: '+z', at: 4, span: [-2, 2], y: [3, 8], note: 'The only way up: 5 m, beyond a red bounce' },
   { id: 'r8-platform-climb', room: 'R8', face: '+z', at: -70, span: [6, 8], y: [8, 12], note: 'Free play: climb it or bounce it' },
+  // The range's target boards (dressing): paint them, never climb them.
+  { id: 'r1-board-w', room: 'R1', face: '+z', at: 70.7, span: [-5.5, -3.5], y: [1, 3], climb: false, note: 'Target board' },
+  { id: 'r1-board-e', room: 'R1', face: '+z', at: 70.7, span: [3.5, 5.5], y: [1, 3], climb: false, note: 'Target board' },
+  { id: 'r7-board-w', room: 'R7', face: '+z', at: -49.3, span: [-10, -6], y: [9, 11.5], climb: false, note: 'Target board' },
+  { id: 'r7-board-e', room: 'R7', face: '+z', at: -49.3, span: [6, 10], y: [9, 11.5], climb: false, note: 'Target board' },
+];
+
+/**
+ * Chalk lane markings (dressing): `rect` is x0, x1, z0, z1 on the floor at `y`.
+ * Chalk, not paint: they change nothing underfoot (config PRIMER.dressing).
+ */
+const W = 0.075;   // half of PRIMER.dressing.lineWidth
+const markings = [
+  // R1: a lane down the middle, broken by the low wall, and a start line.
+  { id: 'r1-start', room: 'R1', y: 0, rect: [-2, 2, 83 - W, 83 + W] },
+  { id: 'r1-lane-w-1', room: 'R1', y: 0, rect: [-2 - W, -2 + W, 77, 83] },
+  { id: 'r1-lane-e-1', room: 'R1', y: 0, rect: [2 - W, 2 + W, 77, 83] },
+  { id: 'r1-lane-w-2', room: 'R1', y: 0, rect: [-2 - W, -2 + W, 71, 75.6] },
+  { id: 'r1-lane-e-2', room: 'R1', y: 0, rect: [2 - W, 2 + W, 71, 75.6] },
+  // R7: a firing line where you enter, and the lane to the gate.
+  { id: 'r7-line', room: 'R7', y: 8, rect: [-6, 6, -23 - W, -23 + W] },
+  { id: 'r7-lane-w', room: 'R7', y: 8, rect: [-2 - W, -2 + W, -48, -24] },
+  { id: 'r7-lane-e', room: 'R7', y: 8, rect: [2 - W, 2 + W, -48, -24] },
 ];
 
 /**
@@ -116,7 +156,7 @@ const gates = [
   { id: 'gate-r7', box: [-4, 4, 8, 18, -50.2, -49.8], opens: 'cleared:R7' },
 ];
 
-/** Trap zones — placed now, built in the trap pass (#101). Damages, never kills. */
+/** Trap zones (built: src/levels/spike-pit.js, #101). Damages, never kills. */
 const traps = [
   { id: 'r6-spike-pit', room: 'R6', kind: 'spikes', box: [-7, 7, 8, 9, -12, -8], note: 'Telegraphed: a sagging floor and a creak. Damages, does not kill. Blue slides over it.' },
 ];
@@ -182,6 +222,6 @@ const doc = {
 
 export const PRIMER = {
   id: 'primer', name: 'The Primer', cells: PAINT_GRID.level0Cells,
-  solids, slabs: [], strips, kerbs: [], landmarks: [], gates, traps, targets: [], prepaint,
+  solids, slabs: [], strips, kerbs: [], landmarks: [], gates, traps, targets: [], prepaint, markings,
   enemies, routes, rooms, win, doc,
 };

@@ -169,6 +169,39 @@ export const TRAP = {
     damage: 15,        // a hit, not a kill: seven of them at full health
     cooldown: 1.0,     // seconds between hits on the SAME target, not per frame
   },
+
+  // The Primer's spike pit (R6, #101). It teaches "this place is dangerous"
+  // without killing (issue #79): a hit never takes the last `spare` health.
+  pit: {
+    spare: 1,          // health a pit hit always leaves behind
+    spikeHeight: 0.3,  // how far a spike pokes through the floor
+    spikeRows: 4,      // across the pit's depth (z), a spike every ~1 m
+    sag: 0.07,         // radians the edge boards tilt toward the pit: the tell
+    bedOpacity: 0.45,  // the dark recess; see-through so blue paint still reads
+  },
+};
+
+// The Primer's mood and dressing (polish pass 1). Borrowed from Outskirts'
+// drained overcast and nudged WARM: this is the rebels' own course, so its air
+// is dusty daylight, not the Corp's bleach. Same rules as OUTSKIRTS.mood: fog
+// matches the horizon band, never the whole sky (see src/levels/mood.js).
+export const PRIMER = {
+  mood: {
+    horizon: 0xa59f94,   // warm dust haze
+    zenith:  0x56606b,
+    void:    0x1c1b1a,
+    fogNear: 10,         // clears the TPV camera; a room is ~12-30 m deep
+    fogFar:  58,         // the next room is hazy, the one after is gone
+    fillColour: 0xc4bdb0,
+    fillIntensity: 0.55,
+  },
+  // Training-course dressing: lane markings are chalk, NOT paint — cream is
+  // none of the three paint colours, so a marking never reads as ice or bounce.
+  dressing: {
+    chalk: 0xd9cfb6,
+    lineWidth: 0.15,
+    crate: 0x8a6a45,     // rebel timber
+  },
 };
 
 export const PAINT_GUN = {

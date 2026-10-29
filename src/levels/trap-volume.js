@@ -35,8 +35,12 @@ export class TrapVolume {
    * @param {THREE.Box3} spec.region   world-space region that hurts
    * @param {number} spec.damage       per hit
    * @param {number} [spec.cooldown]   seconds between hits on one target
+   * @param {number} [spec.spare]      if set, a hit never takes a target's
+   *                                   `health` below this: the trap hurts and
+   *                                   cannot kill (the Primer's pit, issue #79).
+   *                                   A target with no `health` takes full damage.
    */
-  constructor({ region, damage, cooldown = 1 }) {
+  constructor({ region, damage, cooldown = 1, spare = null }) {
     if (!(region instanceof THREE.Box3)) {
       throw new TypeError('TrapVolume: region must be a THREE.Box3');
     }
@@ -47,6 +51,7 @@ export class TrapVolume {
     this.region = region;
     this.damage = damage;
     this.cooldown = cooldown;
+    this.spare = spare;
 
     // One timer per target, and weak so a target that dies and is dropped from
     // the level cannot be kept alive by this map. No per-frame allocation.
@@ -81,7 +86,12 @@ export class TrapVolume {
       if (!target.position || typeof target.takeDamage !== 'function') continue;
       if (!this.region.containsPoint(target.position)) continue;
 
-      target.takeDamage(this.damage);
+      let n = this.damage;
+      if (this.spare !== null && typeof target.health === 'number') {
+        n = Math.min(n, target.health - this.spare);
+        if (n <= 0) continue;   // already at the floor: nothing left to take
+      }
+      target.takeDamage(n);
       this._until.set(target, this.cooldown);
     }
   }

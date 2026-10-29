@@ -116,3 +116,12 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Blue and red examples are pre-painted at load; green is not**, so the third lesson is the first you paint yourself. Paint at load is a layout feature (`prepaint`), applied by `LayoutLevel`.
 - **Nothing in the Primer kills** (#79): every wall beats its floor plus a bounce, and the blue pit is enclosed with stairs out (both tested).
 - **The default start level stays Outskirts** until the Primer's sergeant (#111/#112) and trap (#101) land.
+
+## 2026-10-29 — The Primer, polish pass 1
+
+- **The spike pit is built (#101).** `TrapVolume` gained an optional `spare`: a hit never takes a target's `health` below it. The Primer's pit spares 1 health, so it can hurt and cannot kill (#79). A target with no `health` field (enemies use `hp`) still takes full damage.
+- **Blue is the pit's answer, and only blue.** A target standing on blue paint is not hit. Same idea as Outskirts' vent ("paint is safety"), narrowed to the colour the room before taught.
+- **The tell is visual only:** sagging amber edge boards, a see-through recess and visible spikes. The floor does not really dip: the player has no step-up, so a real 0.3 m sag would be a wall.
+- **The Primer has a mood** (`PRIMER.mood`), from a shared `src/levels/mood.js`. Outskirts still uses its own copy (parked).
+- **Dressing is layout data** (`kind: 'crate' | 'board'` solids, `markings`), so the layout tests can prove it blocks nothing. Lane markings are chalk, never paint.
+- **Cut to Parked:** a fourth free-play toy, and any controls list or extra signage.
