@@ -151,7 +151,36 @@ const landmarks = [
   // The lift tower. Its beacon is the goal you can see from the trailhead.
   { id: 'lift-tower', box: [-3, 3, 43, 56, 12, 18], beacon: [0, 57, 15] },
   // Corrupt Corp's base on the north-west horizon, seen from the summit.
-  { id: 'the-base', box: [-210, -150, 0, 34, -190, -140] },
+  // `silhouette`: unfogged and dark, so it stays a SHAPE against the dawn sky
+  // at ~245 m (polish pass 1). The stack is the tallest thing in the skyline:
+  // the Siphon, where the campaign ends. Its foot is sunk to -120 m: there is
+  // no ground out there, and a base that stops at 0 floats on the pale horizon
+  // band (the R5 frame caught it). Sunk, it rises out of the dark below.
+  { id: 'the-base', box: [-210, -150, -120, 34, -190, -140], silhouette: true },
+  { id: 'the-base-tower-w', box: [-206, -198, 34, 62, -186, -178], silhouette: true },
+  { id: 'the-base-tower-e', box: [-162, -156, 34, 54, -156, -150], silhouette: true },
+  { id: 'the-base-stack', box: [-178, -172, 34, 92, -170, -164], silhouette: true },
+];
+
+/**
+ * Corp props (prop-kit.js), no collision. The chain landmark (polish pass 1):
+ * a scaffold gantry over the two pads, with floodlights on its masts that read
+ * from R5's entrance 41 m away, where the doc found the bare pads unreadable,
+ * and a lit bollard on each pad's north-east corner, which reads from the stop
+ * before it (the launch point, then pad 1). Masts stand 2.6 m off the chain's
+ * line (x 0) and the gantry is at 44 m, well above the highest bounce, so
+ * nothing is in the jump. 40 m was tried first: the leg 2→3 stair hid a light.
+ */
+const MAST_X = [-2.6, 2.6];
+const MASTS = [{ z: -35, y: 20 }, { z: -30, y: 26 }];   // on leg 1, and on leg 2
+const props = [
+  ...MASTS.flatMap(({ z, y }) => MAST_X.map((x) => ({ kind: 'rail', room: 'R5', box: [x - 0.15, x + 0.15, y, 44, z - 0.15, z + 0.15] }))),
+  ...MASTS.map(({ z }) => ({ kind: 'pipe', room: 'R5', box: [-2.75, 2.75, 44, 44.3, z - 0.15, z + 0.15] })),
+  { kind: 'pipe', room: 'R5', box: [2.45, 2.75, 44, 44.3, -35, -30] },
+  { kind: 'pipe', room: 'R5', box: [-2.75, -2.45, 44, 44.3, -35, -30] },
+  ...MASTS.flatMap(({ z }) => MAST_X.map((x) => ({ kind: 'floodlight', room: 'R5', box: [x - 0.35, x + 0.35, 44.3, 44.8, z - 0.35, z + 0.35] }))),
+  { kind: 'floodlight', room: 'R5', box: [1.85, 2.15, 24, 24.6, -36, -35.7] },
+  { kind: 'floodlight', room: 'R5', box: [1.85, 2.15, 28, 28.6, -31, -30.7] },
 ];
 
 /**
@@ -260,5 +289,5 @@ const doc = {
 
 export const ASCENT = {
   id: 'ascent', name: 'The Ascent', cells: PAINT_GRID.level2Cells,
-  solids, slabs, strips, kerbs, landmarks, enemies, routes, rooms, win, doc,
+  solids, slabs, strips, kerbs, landmarks, props, enemies, routes, rooms, win, doc,
 };

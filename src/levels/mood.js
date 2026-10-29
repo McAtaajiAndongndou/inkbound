@@ -48,7 +48,7 @@ export function skyDome(mood, radius = 200) {
 export function applyMood(level, mood) {
   level.atmosphere = new THREE.Group();
   level.root.add(level.atmosphere);
-  level.atmosphere.add(skyDome(mood));
+  level.atmosphere.add(skyDome(mood, mood.skyRadius));
 
   level.game.scene.fog = new THREE.Fog(mood.horizon, mood.fogNear, mood.fogFar);
   level.game.scene.background = new THREE.Color(mood.void);

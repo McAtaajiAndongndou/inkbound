@@ -248,9 +248,9 @@ The cage at the tower's foot is the extraction, on the far side of the summit fr
 
 | Trap | Where | The answer it must allow |
 |---|---|---|
-| Collapsing catwalk (#102) | spans 1 and 2 | Blue to cross fast, or nerve |
-| Rolling boulder (#104) | down legs 2 and 3 | The chain outruns it |
-| Pendulum blades (#103) | across the ledge, two | Standing still to pin a Charger costs something |
+| Collapsing catwalk (#102) — **built, polish pass 1** | spans 1 and 2 | Blue to cross fast, or nerve |
+| Rolling boulder (#104) — *Parked* | down legs 2 and 3 | The chain outruns it |
+| Pendulum blades (#103) — *Parked* | across the ledge, two | Standing still to pin a Charger costs something |
 
 ---
 
@@ -308,6 +308,16 @@ Building the level from the data, and testing the build against the data, found 
 
 The paint is refused on the rock and lands only on the two strips, exactly their size. The level is right; the readability isn't there yet.
 
+## Polish pass 1 (30 Oct 2026)
+
+Pass question: *does the climb feel like rationing, and is the goal always in view?* Tests: `tests/ascent-polish.test.js`.
+
+- **The collapsing catwalk (#102)**, `src/levels/catwalk.js`. Each segment falls 0.9 s after you first step on it, whether or not you are still there: at full speed a 4 m segment takes 0.57 s, so a run always makes it and a stop to shoot never does. It shakes and flashes amber on its walking surface while it goes, lands you on the scree, and reforms after 5 s (never into you). Numbers in `ASCENT.catwalk`.
+- **The chain landmark (R5)**: a Corp scaffold gantry over the two pads, masts 2.6 m off the chain's line, cold-white floodlights at 44 m that read from R5's entrance 41 m away, and a lit bollard on each pad that reads from the stop before it. Built from the Corp prop kit (`prop-kit.js`, new `floodlight` kind: white means "here", amber still means "this hurts").
+- **The base on the horizon**: three towers and the Siphon's stack, an unfogged dark silhouette from the summit, sunk to −120 m so it rises out of the dark band.
+- **Cold dawn (#125)**: `ASCENT.mood`, pale rose-grey horizon, slate-blue zenith, fog 30–170 m so the lift beacon reads the whole climb.
+- **Parked:** rolling boulders (#104) and pendulum blades (#103).
+
 ## Deliberately undecided
 
-Trap behaviour, mood (cold dawn: #125), props and the military-base dressing (#128), turret facing and fire rates, every combat paint number, the sergeant's line, and what the lift ride looks like. Those are the campaign-wide passes.
+Turret facing and fire rates, every combat paint number, the sergeant's line, and what the lift ride looks like. Those are the campaign-wide passes.

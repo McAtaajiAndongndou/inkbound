@@ -185,6 +185,7 @@ export function buildLayout(level, layout, { cells }) {
     const slab = new THREE.Mesh(new THREE.BoxGeometry(w, 0.3, d), under);
     slab.position.set((s.x[0] + s.x[1]) / 2, s.y - 0.17, (s.z[0] + s.z[1]) / 2);
     level.root.add(slab);
+    surf.underside = slab;   // a collapsing segment (catwalk.js) drops this
     if (s.scaffold) {
       const floor = highestTopBelow(layout, (s.x[0] + s.x[1]) / 2, (s.z[0] + s.z[1]) / 2, s.y);
       const h = s.y - 0.3 - floor;
@@ -208,6 +209,7 @@ export function buildLayout(level, layout, { cells }) {
     if (lm.beacon) {
       const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffd23f }));
       beacon.position.set(...lm.beacon);
+      beacon.name = `${lm.id}-beacon`;
       level.root.add(beacon);
     }
   }
