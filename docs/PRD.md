@@ -192,8 +192,8 @@ The game is submittable when **all of these are true**:
 
 | ID  | Requirement                                       | Pri  | Cost | Lane | Status                      |
 | --- | ------------------------------------------------- | ---- | ---- | ---- | --------------------------- |
-| L1  | Builds, zips and plays from the department server | MUST | S    | ui   | ⚠️ Verify before submission |
-| L2  | Every CC-BY asset credited in-game                | MUST | S    | ui   | ⚠️ Partial                  |
+| L1  | Builds, zips and plays from the department server | MUST | S    | ui   | ⚠️ Local checks pass (#130) — `deploy:zip` path/case checks, zip unpacks with `index.html` on top, all four levels load and run from a case-sensitive subdirectory in headless Chrome with no console errors or 404s; **the published URL has not been played yet** |
+| L2  | Every CC-BY asset credited in-game                | MUST | S    | ui   | ⚠️ All five CC-BY files credited (#130); the gun's source is unconfirmed, so its CC0 credit is a best guess until Dikeledi confirms |
 | L3  | Relative asset paths, lowercase filenames         | MUST | —    | all  | ✅                          |
 
 ---
@@ -210,10 +210,10 @@ The game is submittable when **all of these are true**:
 | M6  | Drainer model                              | MUST    | S    | shaders | ⚠️ Model in (#116): `zombie-drainer.glb`, crawl while feeding / upright while hunting. No level spawns a Drainer yet |
 | M7  | Charger zombie model                       | SHOULD  | S    | shaders | ⚠️ Model in (#116) as `chargerZombie`. No `ENEMY` key until level 3 exists                                           |
 | M8  | Big Arm model                              | SHOULD  | S    | shaders | ⚠️ Body in (#116): fitted to 2.4 m, ~2.8 m of arm. Phases are #99                                                    |
-| M9  | Gun viewmodel                              | MUST    | —    | paint   | ✅ `pistol.glb`                                                                                                      |
+| M9  | Gun viewmodel                              | MUST    | —    | paint   | ✅ `pistol.glb` — the gun the docs and credits describe (#130); its source is still to confirm, see L2 |
 | M10 | Military base props                        | MUST    | M    | levels  | ❌ Nothing exists for Last Colour                                                                                    |
 | M11 | Forest props                               | MUST    | —    | levels  | ✅ 32 megakit GLBs                                                                                                   |
-| M12 | Every CC-BY asset credited in-game         | MUST    | S    | ui      | ⚠️ Partial                                                                                                           |
+| M12 | Every CC-BY asset credited in-game         | MUST    | S    | ui      | ⚠️ All five CC-BY files credited (#130); the gun's source is unconfirmed — see L2 |
 | M13 | One GLB validated before any bulk download | MUST    | —    | shaders | ⚠️ Validated on the soldiers and the wall-crawler (#114); turrets unproven                                           |
 | M14 | Stalker model — **no asset sourced yet**   | SHOULD  | S    | shaders | ❌ Missing. The only enemy with no asset chosen                                                                      |
 

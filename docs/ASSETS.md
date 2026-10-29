@@ -88,31 +88,38 @@ zombie and the boss each animate their own hit instead of borrowing `Jump`.
 
 | Asset | Source | Licence |
 |---|---|---|
-| Girl soldier | https://poly.pizza/m/oAArCNHjFB (Quaternius) | **CC-BY** |
-| Guy soldier | https://poly.pizza/m/Btfn3G5Xv4 (Quaternius) | CC0 |
-| Gun viewmodel — **Sci-Fi Gun Pack** | https://poly.pizza/bundle/Scifi-Gun-Pack-rBroUbKkqM (Quaternius) | CC0 |
+| Girl soldier | https://poly.pizza/m/oAArCNHjFB (Quaternius) | **CC-BY** — **not shipped**: the second character is cut (`docs/DECISIONS.md`) |
+| Guy soldier ("SWAT") | https://poly.pizza/m/Btfn3G5Xv4 (Quaternius) | CC0 — **ships** as `assets/soldier-swat.glb` |
+| Gun viewmodel | **Source to confirm with Dikeledi Mokoatle**, who added it (15 Oct, no source recorded) | **Unconfirmed** — **ships** as `assets/pistol.glb` |
 
-The Sci-Fi Gun Pack **replaced** the Kenney Blaster Kit, so that all player-side assets stay in one family.
+**The gun.** `pistol.glb` is the gun in the build and is authoritative
+(`docs/DECISIONS.md`). This file used to say the Sci-Fi Gun Pack replaced the
+Kenney Blaster Kit; there was no replacement — the Kenney kit never shipped, and
+`pistol.glb` has been the gun since it was first added. What the file shows: exported by
+FBX2glTF, one mesh named `Rifle`, materials `Detail`, `ScopeHandle`, `Main`,
+`Barrel` and `Glass` — the shape of a Quaternius poly.pizza model, which is why
+`src/ui/credits.js` still credits it to Quaternius' Sci-Fi Gun Pack (CC0). Until
+the source is confirmed, that credit is a best guess, not a record (#130).
 
 ## Enemies
 
 | Asset | Source | Licence |
 |---|---|---|
-| Soldier, no gun — Charger | https://poly.pizza/m/p0wFrzSVLS (KolosStudios) | **CC-BY** |
-| Soldier, with gun — Sprayer | https://poly.pizza/m/XT8jgwSesV (KolosStudios) | **CC-BY** |
+| Soldier, no gun — Charger | https://poly.pizza/m/p0wFrzSVLS (KolosStudios) | **CC-BY** — **ships** as `assets/soldier-charger.glb` |
+| Soldier, with gun — Sprayer | https://poly.pizza/m/XT8jgwSesV (KolosStudios) | **CC-BY** — **ships** as `assets/soldier-sprayer.glb` |
 | Zombie 1 — Charger zombie | https://poly.pizza/m/22K0aSZkHV (Quaternius) | **CC-BY** — **downloaded** as `assets/zombie-charger.glb` |
 | Zombie 2 — Drainer | https://poly.pizza/m/VlXjG0N8Eg (Quaternius) | CC0 — **downloaded** as `assets/zombie-drainer.glb` |
 | Zombie 3 — Big Arm boss | https://poly.pizza/m/KaVJET0WHx (Quaternius) | **CC-BY** — **downloaded** as `assets/zombie-big-arm.glb` |
 | Zombie 4, "Zombie half" — Wall-crawler | https://poly.pizza/m/Htcsn9OrXJ (Quaternius) | **CC-BY** — **downloaded** as `assets/wall-crawler.glb`, spike result under Pipeline rules |
-| Turret Gun | https://poly.pizza/m/ekTQhbJId7 and https://poly.pizza/m/hThPXDCbwl (Quaternius) | CC0 |
+| Turret Gun | https://poly.pizza/m/ekTQhbJId7 and https://poly.pizza/m/hThPXDCbwl (Quaternius) | CC0 — **not shipped**; the turret has no model file and draws as the code-built fallback box |
 | **Stalker — not yet sourced** | Needs a creature model. Added after this file was written, so no asset was ever chosen | — |
 
 ## Environment
 
 | Asset | Source | Licence |
 |---|---|---|
-| Forest — Stylized Nature MegaKit | https://quaternius.com/packs/stylizednaturemegakit.html (Quaternius) | CC0 |
-| Military base — Military Free | https://ithappystudios.com/free/military-free/ (ITHappy Studios) | **Check the pack page before shipping** |
+| Forest — Stylized Nature MegaKit | https://quaternius.com/packs/stylizednaturemegakit.html (Quaternius) | CC0 — **ships**, 29 models under `assets/megakit/` |
+| Military base — Military Free | https://ithappystudios.com/free/military-free/ (ITHappy Studios) | **Not shipped.** Check the pack page's licence before it ever is |
 
 ## Animation
 
@@ -150,6 +157,26 @@ Two things a later reader will trip over:
 Sizes: 471 KB raw, 79 KB gzipped, three clips.
 
 ---
+
+## What ships
+
+Everything under `public/` at #130, and nothing else. `tests/credits.test.js`
+fails if a shipped file has no credits entry, or an entry names a file that is
+not shipped.
+
+| File | Credited as | Licence |
+|---|---|---|
+| `assets/soldier-charger.glb`, `assets/soldier-sprayer.glb` | Soldier, KolosStudios | **CC-BY 3.0** |
+| `assets/wall-crawler.glb` | Zombie half, Quaternius | **CC-BY 3.0** |
+| `assets/zombie-charger.glb` | Zombie (Charger zombie), Quaternius | **CC-BY 3.0** — staged for Last Colour, not spawned yet |
+| `assets/zombie-big-arm.glb` | Big arm, Quaternius | **CC-BY 3.0** — staged for Last Colour, not spawned yet |
+| `assets/zombie-drainer.glb` | Zombie (Drainer), Quaternius | CC0 |
+| `assets/soldier-swat.glb` | SWAT, Quaternius | CC0 |
+| `assets/pistol.glb` | Sci-Fi Gun Pack, Quaternius — **unconfirmed, see Player** | CC0 (unconfirmed) |
+| `assets/player-jump.clips.json` | Universal Animation Library, Quaternius (three baked clips) | CC0 |
+| `assets/megakit/*.glb` (29) | Stylized Nature MegaKit, Quaternius | CC0 |
+
+Five CC-BY files, all from two authors; every one is named in the credits screen.
 
 ## Attribution
 
