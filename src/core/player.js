@@ -309,7 +309,7 @@ export class Player {
     // a trampoline must not slow you down: red flings the speed you arrived with
     if (this.onGround && rules && rules.restitution === 0) {
       // low friction (blue) is what makes ice — see SURFACE in config.js
-      const damping = Math.max(0, 1 - rules.friction * dt);
+      const damping = Math.exp(-rules.friction * dt);
       this.velocity.x *= damping;
       this.velocity.z *= damping;
     }
