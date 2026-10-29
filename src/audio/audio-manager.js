@@ -13,6 +13,11 @@ const STORAGE_KEY = 'inkbound.audio';
  * volume and mute, so the options menu only ever touches that.
  *
  *   audio.play('fire' | 'splat' | 'hit' | 'kill' | 'telegraph' | 'win' | 'lose')
+ *   world (#113): 'claim' | 'charge' | 'gate' | 'jump' | 'land'
+ *   traps (#113): 'spike' | 'collapse' | 'blade'
+ *
+ * Every gameplay sound is played from the gameplay step, which main.js skips
+ * while the menu is open — so nothing new plays behind the pause menu.
  *
  * Safe to call before unlock() or in Node: play() is a no-op without a context.
  */
@@ -138,7 +143,8 @@ export class AudioManager {
 }
 
 // Each sound is a tiny recipe on top of _tone/_burst. Tweak by ear here.
-const SFX = {
+// Exported for the tests only; call sites go through audio.play(name).
+export const SFX = {
   fire: (a, t) => {
     a._burst(t, { filter: 'bandpass', f0: 2400, f1: 700, q: 1.2, dur: 0.09, gain: 0.25 });
   },
@@ -157,6 +163,50 @@ const SFX = {
   telegraph: (a, t) => {
     // a rising whine: long enough to read as "something is about to happen"
     a._tone(t, { type: 'sawtooth', f0: 220, f1: 660, dur: 0.45, gain: 0.08 });
+  },
+
+  // --- the world around combat (#113) --------------------------------------
+  // Short and quiet on purpose: none of these may be louder than a splat. The
+  // test suite holds that line (tests/audio-manager.test.js).
+
+  // A shot that TAKES ground — grey or another colour turned yours — rather than
+  // repainting your own. The splat plus a small upward lift, so claiming reads
+  // apart from just hitting the floor.
+  claim: (a, t) => {
+    a._burst(t, { filter: 'lowpass', f0: 1600, f1: 220, q: 2, dur: 0.16, gain: 0.28 });
+    a._tone(t + 0.02, { type: 'sine', f0: 320, f1: 560, dur: 0.12, gain: 0.07 });
+  },
+  // The Charger's coil before a charge: the telegraph's whine, shorter and lower,
+  // because the coil itself is only ~0.2 s.
+  charge: (a, t) => {
+    a._tone(t, { type: 'sawtooth', f0: 140, f1: 420, dur: 0.24, gain: 0.07 });
+  },
+  // An encounter gate opening: a low clunk, then the field lifting.
+  gate: (a, t) => {
+    a._burst(t, { filter: 'lowpass', f0: 500, f1: 90, q: 1, dur: 0.3, gain: 0.16 });
+    a._tone(t + 0.08, { type: 'triangle', f0: 220, f1: 440, dur: 0.5, gain: 0.1 });
+  },
+  jump: (a, t) => {
+    a._burst(t, { filter: 'bandpass', f0: 900, f1: 1800, q: 1.5, dur: 0.06, gain: 0.06 });
+  },
+  land: (a, t) => {
+    a._burst(t, { filter: 'lowpass', f0: 420, f1: 110, q: 1, dur: 0.1, gain: 0.12 });
+  },
+
+  // Traps (#113). Each plays when the trap fires, not every frame it exists.
+  // Spike pit: a dry metallic snap as the spikes come up.
+  spike: (a, t) => {
+    a._burst(t, { filter: 'highpass', f0: 2600, f1: 1800, q: 1, dur: 0.07, gain: 0.12 });
+    a._tone(t, { type: 'square', f0: 1700, f1: 1500, dur: 0.04, gain: 0.05 });
+  },
+  // Collapsing segment: a crumble, falling in pitch as it gives way.
+  collapse: (a, t) => {
+    a._burst(t, { filter: 'lowpass', f0: 900, f1: 120, q: 1, dur: 0.5, gain: 0.16 });
+    a._burst(t + 0.12, { filter: 'lowpass', f0: 600, f1: 90, q: 1, dur: 0.35, gain: 0.1 });
+  },
+  // Swinging blade: an airy swoosh through the swing.
+  blade: (a, t) => {
+    a._burst(t, { filter: 'bandpass', f0: 500, f1: 2200, q: 3, dur: 0.28, gain: 0.12 });
   },
   win: (a, t) => {
     [523, 659, 784, 1047].forEach((f, i) =>

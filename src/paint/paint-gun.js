@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PAINT_GUN, AMMO } from "../config.js";
+import { PAINT_GUN, AMMO, PAINT_IDS } from "../config.js";
 
 const PROJECTILE_COLOURS = {
   blue: 0x3b82f6,
@@ -45,7 +45,8 @@ export class PaintGun {
     this.cooldown = 0;
     this.lastSplat = null;  // { point, colour, age } of the latest splat, reused
     this.lastShot = null;   // 'splat' | 'hit' | 'kill' — set when the projectile lands
-    this.onImpact = null;   // optional (kind) => {}, fired when a shot lands (HUD + SFX)
+    this.onImpact = null;   // optional (kind, claimed) => {}, fired when a shot lands (HUD + SFX);
+                            // `claimed` is true when a splat changed the ground's colour (#113)
     this.dryFire = false;
 
     this._raycaster = new THREE.Raycaster();
@@ -266,17 +267,24 @@ export class PaintGun {
     this._spawnImpactBurst(p.target, p.colour, p.normal);
 
     let kind = null;
+    let claimed = false;   // #113: did this splat take ground that was not already ours in this colour?
     if (p.enemy) {
       // false if an earlier shot killed it while this one was in flight
       if (p.enemy.takeColourHit(p.colourId, PAINT_GUN.damage, p.target)) {
         kind = p.enemy.alive ? "hit" : "kill";
       }
-    } else if (p.surface.splat(p.target, p.colour, PAINT_GUN.radius)) {
-      if (!this.lastSplat) this.lastSplat = { point: new THREE.Vector3(), colour: p.colour, age: 0 };
-      this.lastSplat.point.copy(p.target);
-      this.lastSplat.colour = p.colour;
-      this.lastSplat.age = 0;
-      kind = "splat";
+    } else {
+      // Read the ground BEFORE the splat overwrites it. Optional: a surface
+      // that cannot report its paint just never counts as claimed.
+      const before = p.surface.paintIdAtWorld?.(p.target) ?? PAINT_IDS[p.colour];
+      if (p.surface.splat(p.target, p.colour, PAINT_GUN.radius)) {
+        if (!this.lastSplat) this.lastSplat = { point: new THREE.Vector3(), colour: p.colour, age: 0 };
+        this.lastSplat.point.copy(p.target);
+        this.lastSplat.colour = p.colour;
+        this.lastSplat.age = 0;
+        kind = "splat";
+        claimed = before !== PAINT_IDS[p.colour];
+      }
     }
     if (!p.aiming){
       const splash = this._splash(p);
@@ -289,7 +297,7 @@ export class PaintGun {
 
     if (kind) {
       this.lastShot = kind;
-      this.onImpact?.(kind);
+      this.onImpact?.(kind, claimed);
     }
   }
 

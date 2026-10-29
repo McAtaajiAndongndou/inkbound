@@ -173,3 +173,22 @@ test('Enemy.takeDamage is colourless: damage and death, no paint proc', () => {
   assert.equal(enemy.takeDamage(5), false, 'a corpse cannot take more damage');
 });
 
+
+test('a trap with a sound plays it each time it fires, not every frame (#113)', async () => {
+  const { audio } = await import('../src/audio/audio-manager.js');
+  const played = [];
+  const play = audio.play;
+  audio.play = (name) => played.push(name);
+  try {
+    const trap = volume({ sound: 'spike' });
+    const target = makeTarget(0, 0, 0);
+    trap.update(0.016, [target]);   // fires
+    trap.update(0.016, [target]);   // cooling down: silent
+    assert.deepEqual(played, ['spike']);
+
+    volume().update(0.016, [makeTarget(0, 0, 0)]);
+    assert.deepEqual(played, ['spike'], 'no sound unless the level gives one');
+  } finally {
+    audio.play = play;
+  }
+});

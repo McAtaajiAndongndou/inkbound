@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
 import { PAINT, PAINT_GRID } from '../config.js';
+import { audio } from '../audio/audio-manager.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
 
@@ -1439,6 +1440,7 @@ export class Level01 extends LevelBase {
     gate.open = true;
     gate.surface.mesh.position.y = -100;
     gate.light.material.color.setHex(PAINT.green.hex);
+    audio.play('gate'); // #113 — the arena is won; you hear the way open
   }
 
   /**

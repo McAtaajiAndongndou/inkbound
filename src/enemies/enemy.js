@@ -1592,6 +1592,9 @@ export class Enemy {
     // that a hit is coming before the body commits forward.
     if (this._chargeTime <= 0 && this._chargeDistance <= 0) {
       this._chargeWindup = GAIT.chargeWindup;
+      // #113: the coil is a telegraph, so it is heard as well as seen. Only
+      // while alert — a Charger drifting on its search path is not attacking.
+      if (this._awareness === "alert") audio.play("charge");
     }
     if (this._chargeWindup > 0) this._chargeWindup -= dt;
 
