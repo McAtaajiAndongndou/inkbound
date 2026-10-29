@@ -541,3 +541,26 @@ export const BLUE_FREEZE = {
   shellOpacity: 0.55,
   buildupOpacity: 0.12,
 };
+
+// Dry out (#75). The player is dry when the tank is empty and no cell under
+// them is theirs. This declares the loss rather than leaving them stuck.
+export const DRY_OUT = {
+  warningBelow: 0.25,   // tank % under which the HUD pulses the ammo bar
+  graceTime: 1.0,       // seconds of continuous dry state before the run ends
+};
+
+// Submerge (#108). The commitment half of the loop: standing on your own paint
+// refills you slowly and you can still fire; submerging is faster to move
+// through, faster to refill, and you CANNOT FIRE.
+//
+// The trade is the whole feature. Without it, paint is just a resource. With
+// it, "do I stay standing or do I commit?" is the question every fight asks.
+//
+// All numbers live here so the tuning dial is one file.
+export const SUBMERGE = {
+  key: 'ShiftLeft',          // hold this key to submerge (coordinate with team)
+  speedMultiplier: 1.4,      // faster than normal walking — the reward for committing
+  refillMultiplier: 3,       // 3× the base PAINT_GUN.refillRate
+  cameraOffset: 0.9,         // metres the TPV camera drops, so you read as "in" the paint
+  maxAngle: 1.1,             // radians — how far the camera tilts down while submerged
+};
