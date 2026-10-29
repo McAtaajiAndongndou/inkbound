@@ -86,9 +86,27 @@ const game = {
   currentLevelId: () => currentLevelId,
   loadLevel: (id) => {
     currentLevelId = levelEntry(id).id;
-    loadLevel();
+    loadLevel().catch(reportLoadError);
   },
 };
+
+// Level select (#78). The id -> level mapping is `levels/index.js`, the ONE
+// list (INTEGRATION.md) — this file holds no second copy of it. An unknown id
+// falls back to the default inside the registry; it never throws here.
+/**
+ * Build and load a level WITHOUT touching the one being played, so a load that
+ * throws leaves the current level running and the menu usable (#78).
+ */
+async function buildLevel(id) {
+  const next = createLevel(id, game);
+  try {
+    await next.load();
+  } catch (err) {
+    next.dispose();
+    throw err;
+  }
+  return next;
+}
 
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
 scene.add(rig.camera);
@@ -124,7 +142,10 @@ function setPlaceholderVisible(p, visible) {
   if (p.mesh.material) p.mesh.material.visible = visible;
 }
 
-function loadLevel() {
+/** Swap in level `id` (default: reload the current one). Rejects if it fails. */
+async function loadLevel(id = currentLevelId) {
+  const next = await buildLevel(id);
+
   if(gun){
     gun.dispose();
   }
@@ -142,8 +163,11 @@ function loadLevel() {
 
   hud.hideEnd();
 
-  level = createLevel(currentLevelId, game);
-  level.load();
+  level = next;
+  // Record the id that ACTUALLY loaded: the registry falls back to the default
+  // on an unknown id, and the menu must mark the level the player is really in.
+  currentLevelId = levelEntry(id).id;
+  menu.setCurrentLevel(currentLevelId);
   scene.add(level.root);
 
   player = new Player(level.surfaces, level.spawn);
@@ -191,17 +215,24 @@ function loadLevel() {
   gunModel = new PaintGunModel(rig.camera, player, avatar);
 }
 
-preloadEnemyModel().then(() => {
-  loadLevel();
+const reportLoadError = (err) => console.error("[main] level failed to load", err);
+
+preloadEnemyModel().then(async () => {
+  await loadLevel();
   document.getElementById("loading").remove();
   animate();
 });
 
 // Title + pause menu. Open whenever the pointer is unlocked (load, Escape).
+// The level list comes from the registry through `game` (INTEGRATION.md: the
+// ONE list — the menu must not carry its own copy).
 const menu = new Menu(document.body, {
   audio,
   canvas: renderer.domElement,
-  onRestart: loadLevel,
+  onRestart: () => loadLevel().catch(reportLoadError),
+  onSelectLevel: (id) => loadLevel(id),
+  levels: game.levels,
+  currentLevel: currentLevelId,
 });
 
 const clock = new THREE.Clock();
@@ -209,7 +240,7 @@ const clock = new THREE.Clock();
 /** One step of gameplay. Skipped entirely while the menu is open. */
 function simulate(dt, elapsed, actions, mouse) {
   if (actions.restart){
-    loadLevel();
+    loadLevel().catch(reportLoadError);
     return;
   }
   if (actions.toggleView) rig.toggle();

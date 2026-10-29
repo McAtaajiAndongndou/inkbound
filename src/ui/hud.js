@@ -6,9 +6,9 @@ const HINTS = {
   Grip: 'Grip: climb walls',
 };
 
-// End screens (#81). Keyed by the level ids in ui/menu.js LEVELS, so a marker
-// is told WHICH level they finished. An unknown id falls back to the generic
-// wording rather than a blank title.
+// End screens (#81). Keyed by the level ids in the ONE list (levels/index.js),
+// so a marker is told WHICH level they finished. An unknown id falls back to the
+// generic wording rather than a blank title.
 const END_LEVELS = {
   primer: { name: 'The Primer', win: 'PRIMER COMPLETE' },
   outskirts: { name: 'Outskirts', win: 'OUTSKIRTS CLEARED' },
@@ -106,7 +106,7 @@ export class Hud {
   /**
    * @param {'win' | 'lose'} kind
    * @param {object} [opts]
-   * @param {string} [opts.level]            a LEVELS id from ui/menu.js
+   * @param {string} [opts.level]            a LEVELS id from levels/index.js
    * @param {'dead' | 'dry'} [opts.reason]   why the player lost (default dead)
    */
   showEnd(kind, { level, reason = 'dead' } = {}) {

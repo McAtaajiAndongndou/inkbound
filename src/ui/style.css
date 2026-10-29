@@ -375,3 +375,49 @@ canvas {
   border-radius: 50%;
   background: #4ee08a;
 }
+
+/* Level select view inside the menu card (#78). The loaded level is marked. */
+.level-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.level-list button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.level-num {
+  width: 22px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.level-list button.current {
+  background: rgba(78, 224, 138, .16);
+  box-shadow: inset 3px 0 0 #4ee08a;
+}
+
+.level-list button.current::after {
+  content: 'Playing';
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #4ee08a;
+}
+
+.level-list button:disabled { opacity: .5; cursor: wait; }
+
+.level-error {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #ff4d5a;
+}

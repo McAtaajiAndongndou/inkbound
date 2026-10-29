@@ -115,7 +115,7 @@ The game is submittable when **all of these are true**:
 | E2  | **Outskirts** — island-hopping, pillars setpiece, 4 enemies | MUST | M    | levels | ⚠️ Geometry exists, traps and pacing missing |
 | E3  | **The Ascent** — mountain, terraces and climbs, turrets     | MUST | L    | levels | ❌ Stub                                      |
 | E4  | **Last Colour** — three chambers, waves, Big Arm, Siphon    | MUST | L    | levels | ❌ Stub                                      |
-| E5  | **Level select** — any level reachable from the pause menu  | MUST | S    | ui     | ❌ Not built                                 |
+| E5  | **Level select** — any level reachable from the pause menu  | MUST | S    | ui     | ✅ Built (#78) — pause-menu list, fed by the one registry        |
 | E6  | Encounter gates — exit sealed until the arena is clear      | MUST | —    | levels | ✅ Built                                     |
 | E7  | Fail forward — a fall costs time, not the run               | MUST | S    | levels | ⚠️ Partial                                   |
 
