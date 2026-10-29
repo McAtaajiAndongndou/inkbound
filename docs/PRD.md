@@ -85,7 +85,7 @@ The game is submittable when **all of these are true**:
 | C3  | **Red knockback** flings an enemy, and impact damages it                                                                                                                | MUST   | —    | core    | ✅ Built                                                                                              |
 | C4  | **Freeze → crit window** — three blue hits, then a punishing shot                                                                                                       | SHOULD | M    | paint   | ✅ Built — 3 blue hits freeze for 2 s, next hit crits ×3, turrets excluded, frost shell shows buildup |
 | C5  | **Turrets have no status procs** — positioning is the only answer                                                                                                       | MUST   | S    | shaders | ⚠️ Verify — likely procs apply today                                                                  |
-| C6  | **ADS is a real tradeoff** — right mouse tightens spread and enables crits at reduced movement speed; hipfire paints a wider area and splashes every enemy in the splat | MUST   | S    | core    | ⚠️ Spread and M2 exist; crit payoff missing (C4), splash missing                                      |
+| C6  | **ADS is a real tradeoff** — right mouse tightens spread and enables crits at reduced movement speed; hipfire paints a wider area and splashes every enemy in the splat | MUST   | S    | core    | ✅ Built — ADS: tight spread, slower movement, single target, can crit a frozen enemy; hipfire: half-damage splash in a 1.4 m radius, never crits, blocked by walls and floors                                      |
 | C7  | **Paintstreak meter** — coverage and kills fill a gauge, spent on a splat that claims a zone and stuns everything inside                                                | COULD  | M    | ui      | ❌ Not built. Build last of everything                                                                |
 
 ---
@@ -183,7 +183,7 @@ The game is submittable when **all of these are true**:
 | K1  | A painted floor is one mesh, one material, one draw call | MUST | —    | shaders | ✅ Built          |
 | K2  | No per-frame allocation in the render loop               | MUST | —    | core    | ✅ Tested         |
 | K3  | Levels dispose geometry, materials and uniform textures  | MUST | —    | levels  | ✅ Pattern exists |
-| K4  | `npm test` green                                         | MUST | —    | all     | ✅ 175 passing    |
+| K4  | `npm test` green                                         | MUST | —    | all     | ✅ 256 passing    |
 
 ---
 
