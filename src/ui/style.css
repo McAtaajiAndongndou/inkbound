@@ -490,3 +490,73 @@ canvas {
   from { transform: translateX(-50%) scale(1);    opacity: 1;   }
   to   { transform: translateX(-50%) scale(1.06); opacity: 0.7; }
 }
+
+/* Sergeant briefing still (#111). Above the HUD, below the pause menu (15), so
+   Escape always reaches the menu. Text sizes ride the viewport height so the
+   line reads the same at 720p and 1080p. */
+#briefing {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2vh;
+  padding: 16px;
+  background: rgba(10, 10, 16, .92);
+}
+.briefing-frame {
+  position: relative;
+  width: min(1100px, 100%, 140vh);
+  aspect-ratio: 16 / 9;
+  margin: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #181822; /* the plain panel the line sits on when there is no art */
+  border: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+.briefing-still {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#briefing.no-still .briefing-still { display: none; }
+.briefing-comms {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2.2vh 3vh 2.6vh;
+  background: linear-gradient(transparent, rgba(10, 10, 16, .88) 35%);
+}
+#briefing.no-still .briefing-comms {
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: none;
+}
+.briefing-who {
+  font-size: clamp(12px, 1.6vh, 18px);
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #4ee08a;
+}
+.briefing-line {
+  max-width: 46em;
+  margin: .4em 0 0;
+  font-size: clamp(18px, 2.6vh, 30px);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink-fg);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .6);
+}
+.briefing-hint {
+  margin: 0;
+  font-size: clamp(12px, 1.5vh, 16px);
+  color: var(--ink-dim);
+}
