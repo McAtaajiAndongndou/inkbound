@@ -183,7 +183,7 @@ The game is submittable when **all of these are true**:
 | K1  | A painted floor is one mesh, one material, one draw call | MUST | —    | shaders | ✅ Built          |
 | K2  | No per-frame allocation in the render loop               | MUST | —    | core    | ✅ Tested         |
 | K3  | Levels dispose geometry, materials and uniform textures  | MUST | —    | levels  | ✅ Pattern exists |
-| K4  | `npm test` green                                         | MUST | —    | all     | ✅ 418 passing    |
+| K4  | `npm test` green                                         | MUST | —    | all     | ✅ 432 passing    |
 
 ---
 
