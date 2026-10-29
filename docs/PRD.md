@@ -230,9 +230,9 @@ The player ships **five clips** and the code wires **two states**. This is why t
 | AN4  | **Player airborne — jump, fall, land** | MUST   | S    | shaders + core | 🟡 Clips ready (#121): jump start, loop and land drive the player rig. The pack has no fall clip; the state machine that plays them is #82 |
 | AN5  | Player climb                           | SHOULD | S    | shaders        | ❌ Not built, and the animation library has no climb clip (#121), so #122 ships a documented fallback |
 | AN6  | Player ADS pose or transition          | SHOULD | S    | shaders        | ⚠️ Armed idle only                          |
-| AN7  | Enemy walk cycle                       | SHOULD | M    | shaders        | ⚠️ Faked bob — the GLBs have no leg bones   |
-| AN8  | Enemy melee attack                     | MUST   | S    | shaders        | ❌ The Charger is animated with rifle clips |
-| AN9  | Enemy death                            | MUST   | S    | shaders        | ❌ No clip exists in the files              |
+| AN7  | Enemy walk cycle                       | SHOULD | M    | shaders        | ✅ Built (#123) — distance-driven bob/lean gait |
+| AN8  | Enemy melee attack                     | MUST   | S    | shaders        | ✅ Built (#123) — recoil coil then commit lean |
+| AN9  | Enemy death                            | MUST   | S    | shaders        | ✅ Built (#123) — sink, one choice, every enemy |
 | AN10 | Enemy hit reaction                     | MUST   | —    | shaders        | ⚠️ Emissive tint only                       |
 | AN11 | Gun recoil                             | MUST   | —    | paint          | ✅ Built                                    |
 | AN12 | Gun movement bob                       | COULD  | S    | paint          | ❌ Not built                                |
