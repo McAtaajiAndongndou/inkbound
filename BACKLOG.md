@@ -29,6 +29,9 @@ Ideas, playtest findings and parked work. **Check triage status before building 
 - **Outskirts side island** (polish pass 1) — new content, not polish.
 - **Outskirts collapsing bridge** (polish pass 1) — new content, not polish; the Gap already owns the "commit to one motion" question.
 - **Outskirts swinging blades** in B and on the pillar approach (polish pass 1) — the vent is the trap that uses paint; two features per level is the cap.
+- **Primer: a fourth free-play toy (the gap)** — its own design doc says it comes after a playtest (polish pass 1).
+- **Primer: a controls list or extra signage** — the design teaches by room, not by text; the doc refuses them (polish pass 1).
+- **Outskirts onto `src/levels/mood.js`** — the Primer's shared mood helper repeats Outskirts' sky/fog/fill; fold Outskirts onto it once its polish branch is merged.
 
 ---
 

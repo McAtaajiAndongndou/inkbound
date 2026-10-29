@@ -119,7 +119,11 @@ A **3 m ledge**: 1.6 m above a jump, 1.3 m inside a bounce. A **red pad already 
 A **5 m wall**, beyond a red bounce, so only green climbs it (tested). Its strip is **not** pre-painted: the third lesson is the first one you paint yourself (Decision 3).
 
 ### R6 — The Trap · *is this place dangerous?*
-A spike pit across the corridor, telegraphed (a sagging floor, a creak), that **damages and never kills**. Blue slides over it if you want. The zone is placed; the pit itself is built in the trap pass (#101).
+A spike pit across the corridor that **damages and never kills**: a hit never takes your last point of health (`TRAP.pit.spare`). **Blue slides over it**: stand on blue and the spikes don't touch you; red and green don't help (one answer per lesson). Built in polish pass 1 (`src/levels/spike-pit.js`, on `TrapVolume`; tested in `tests/primer-spike-pit.test.js`).
+
+**The tell is the sag:** amber boards at both edges tilt down into the pit, a see-through dark recess sits over it (so your blue still shows), and the spikes poke through. The creak is audio, not built.
+
+![R6: the sag from the landing](shots/primer-polish-1/sag-r6.jpg)
 
 ### R7 — One of Theirs · *which colour is this?*
 
@@ -149,7 +153,7 @@ The pad beyond free play. *"You're ready. Outskirts — go."* The win needs R7's
 ## Dependencies outside the levels lane
 
 1. **#156, paintable surfaces readable.** The R2 wall and the R5 strip are the whole lesson, and in the game they look like the walls around them.
-2. **#101, trap volume and spike pit.** R6's pit.
+2. ~~**#101, trap volume and spike pit.**~~ Built (polish pass 1).
 3. **#111/#112, sergeant briefing and comms bar** (UI lane) for R0's still and the lines in R2, R7 and R9.
 4. **#155, tank per level.** The Primer should get a defined tank; the recommendation in #155 is Outskirts' 100.
 
@@ -173,6 +177,13 @@ The pad beyond free play. *"You're ready. Outskirts — go."* The win needs R7's
 
 **The stub level is gone.** With the Primer built, nothing used `stub-level.js`, and its own comment said to delete it when that happened. The registry's default level is still Outskirts: the Primer doesn't teach until its sergeant and trap exist, and switching the start is a campaign call.
 
+## Polish pass 1 (29 Oct)
+
+- **Mood:** borrowed from Outskirts and nudged warm (`PRIMER.mood` in `src/config.js`, applied by `src/levels/mood.js`). A sky dome whose horizon band matches the fog, fog 10 → 58 m (the next room hazy, the one after gone), and a fill light. The rebels' course is dusty daylight, not the Corp's bleach. ![R3 with the mood](shots/primer-polish-1/mood-r3.jpg)
+- **The spike pit** in R6: see R6 above.
+- **Training-course dressing**, all plain boxes, all data in the layout: crates against the walls of R1 and R7, paintable target boards (`climb: false` strips) on R1's and R7's far walls, and chalk lane markings. Chalk is cream, not a paint colour, and changes nothing underfoot. Tested: nothing is within 1 m of the main route or 2 m in front of a climb, every crate stands on something, every line is on a floor. ![R1 the range](shots/primer-polish-1/range-r1.jpg) ![R7](shots/primer-polish-1/dressing-r7.jpg)
+- **Known gap:** crates are the same grey as the walls (a PaintSurface's base colour isn't the levels lane's to change), so they read as blocks with a timber outline, not as wood. Raised for the paint/shaders lanes.
+
 ## Deliberately undecided
 
-The sergeant's exact lines and timings (UI lane), the trap's telegraph, mood (the Primer has none planned; it could borrow Outskirts'), props for the "rebel training course" fiction, and the tank size (#155).
+The sergeant's exact lines and timings (UI lane), the pit's creak (audio), and the tank size (#155).

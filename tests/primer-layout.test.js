@@ -182,3 +182,54 @@ test('no boxes overlap; every enemy, route point and pre-painted patch is on a f
     }
   }
 });
+
+// --- Dressing (polish pass 1): scenery, never an obstacle ----------------------
+const dressing = L.solids.filter((s) => s.kind === 'crate' || s.kind === 'board');
+
+test('dressing blocks no route: every crate and board is a metre clear of the main route', () => {
+  const route = L.routes.main;
+  const near = [];
+  for (const s of dressing) {
+    const [x0, x1, y0, y1, z0, z1] = s.box;
+    for (let i = 0; i < route.length - 1; i++) {
+      const [ax, ay, az] = route[i];
+      const [bx, by, bz] = route[i + 1];
+      for (let t = 0; t <= 1; t += 0.02) {
+        const x = ax + (bx - ax) * t;
+        const y = ay + (by - ay) * t;
+        const z = az + (bz - az) * t;
+        if (y + PLAYER.height < y0 || y > y1) continue;   // not at this height
+        const dx = Math.max(x0 - x, 0, x - x1);
+        const dz = Math.max(z0 - z, 0, z - z1);
+        if (Math.hypot(dx, dz) < 1) { near.push(`${s.id} @ route ${i}`); break; }
+      }
+    }
+  }
+  assert.deepEqual(near, []);
+});
+
+test('dressing blocks no strip: nothing stands within 2 m in front of a climb', () => {
+  const blocked = [];
+  for (const strip of L.strips.filter((s) => s.climb !== false)) {
+    const n = { '+z': [0, 1], '-z': [0, -1], '+x': [1, 0], '-x': [-1, 0] }[strip.face];
+    for (const s of dressing) {
+      const [x0, x1, y0, y1, z0, z1] = s.box;
+      if (y1 <= strip.y[0] - 0.01 || y0 >= strip.y[1]) continue;
+      const along = n[0] === 0 ? [x0, x1] : [z0, z1];
+      const out = n[0] === 0 ? (n[1] > 0 ? [z0 - strip.at, z1 - strip.at] : [strip.at - z1, strip.at - z0]) : (n[0] > 0 ? [x0 - strip.at, x1 - strip.at] : [strip.at - x1, strip.at - x0]);
+      const overlapsSpan = along[1] > strip.span[0] && along[0] < strip.span[1];
+      if (overlapsSpan && out[1] > 0 && out[0] < 2) blocked.push(`${s.id} in front of ${strip.id}`);
+    }
+  }
+  assert.deepEqual(blocked, []);
+});
+
+test('chalk markings lie on a floor, and every crate stands on something', () => {
+  for (const m of L.markings) {
+    const [x0, x1, z0, z1] = m.rect;
+    for (const [x, z] of [[x0, z0], [x1, z1]]) assert.ok(floorAt(x, m.y, z), `${m.id} is off the floor at (${x}, ${z})`);
+  }
+  const under = (s) => L.solids.some((o) => o !== s && Math.abs(o.box[3] - s.box[2]) < EPS
+    && o.box[0] <= s.box[0] + EPS && o.box[1] >= s.box[1] - EPS && o.box[4] <= s.box[4] + EPS && o.box[5] >= s.box[5] - EPS);
+  for (const s of dressing.filter((d) => d.kind === 'crate')) assert.ok(under(s), `${s.id} floats`);
+});
