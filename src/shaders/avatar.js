@@ -43,17 +43,61 @@ const AIR_CLIPS = {
   fall: ['Fall', 'Jump_Loop', 'Jump'],
   land: ['Land', 'Jump_Land'],
 };
-/**
- * Climb clips (#122), most specific first, first match wins.
- *
- * DOCUMENTED FALLBACK. Neither the player rig nor the #121 library ships a climb
- * clip (recorded on #121 and in docs/ASSETS.md). Rather than a T-pose, or the run
- * cycle the avatar used to play up a wall, a climbing player holds `Jump_Loop`:
- * the library's airborne loop, limbs off the ground. A real climb clip added to
- * the rig later wins automatically, because the real names are listed first.
- */
 
-const CLIMB_CLIPS = ['Climb', 'Climb_Up', 'Climbing', 'Jump_Loop'];
+/**
+ * Climb clips (#122). A real clip added to the rig later wins automatically
+ * because it is listed here. There is NONE today (recorded on #121), so the avatar
+ * uses the DOCUMENTED FALLBACK: `Idle_Neutral` as the base pose with a procedural
+ * hand-over-hand overlay on top (see `_applyClimbPose`). Not `Jump_Loop` any more:
+ * that is an airborne pose and read as falling up a wall.
+ */
+const CLIMB_CLIPS = ['Climb', 'Climb_Up', 'Climbing'];
+const CLIMB_BASE = 'Idle_Neutral';
+
+/**
+ * Per-clip playback tuning for the baked library clips. They are long, slow clips
+ * made for a game with root motion; here they must never lag behind the physics.
+ *   Jump_Start: skip the crouch (the body has already left the ground), play once.
+ *   Jump_Land : sped up and played once; moving cuts it short after landMinTime.
+ */
+const CLIP_TUNING = {
+  Jump_Start: { once: true, timeScale: 1.6, startAt: 0.12 },
+  Jump_Loop: { timeScale: 1 },
+  Jump_Land: { once: true, timeScale: 2.0 },
+};
+const LIB_NAMES = new Set(Object.values(LIBRARY_CLIPS));
+
+// Bones the rig pass touches. Looked up once, by the same punctuation-blind match
+// the hand slot uses (three.js strips the dot: `UpperArm.L` becomes `UpperArmL`).
+const RIG_BONES = [
+  'Abdomen', 'Neck',
+  'UpperArm.L', 'LowerArm.L', 'UpperArm.R', 'LowerArm.R',
+  'UpperLeg.L', 'LowerLeg.L', 'UpperLeg.R', 'LowerLeg.R',
+  'Foot.L', 'Foot.R',
+];
+
+// The baked library jump clips come out twisted on this rig (legs splayed, torso
+// pitched, no foot or hip translation), and they also take the arms off the rifle.
+// false = leave them unregistered: the avatar stays on the armed idle (rifle held)
+// and the legs are posed procedurally in _applyAirPose. true = the old behaviour.
+const USE_LIBRARY_AIR = false;
+const LAND_TIME = 0.26;   // s the procedural land crouch lasts
+
+const AIR_LEG_OUT = 8;     // deg a thigh or shin may splay outward in the air
+const LAND_MAX_LEAN = 40;  // deg the torso may pitch forward in a land crouch
+
+const AX = new THREE.Vector3(1, 0, 0);
+const AY = new THREE.Vector3(0, 1, 0);
+const AZ = new THREE.Vector3(0, 0, 1);
+const _q1 = new THREE.Quaternion();
+const _q2 = new THREE.Quaternion();
+const _q3 = new THREE.Quaternion();
+const _qm = new THREE.Quaternion();
+const _qp = new THREE.Quaternion();
+const _v = new THREE.Vector3();
+const _v2 = new THREE.Vector3();
+const _m = new THREE.Matrix4();
+
 
 function findBone(root, wanted){
   const clean = (s) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
@@ -100,7 +144,22 @@ export class Avatar {
     this._landing = false;
     this._landClipName = null;
 
+        // Climb state (#122). No climb clip exists, so the pose is procedural: a phase
+    // that advances with climb speed and a weight that fades the overlay in and out.
     this.climbing = false;
+    this._climbSpeed = 0;
+    this._climbPhase = 0;
+    this._climbW = 0;
+
+    // Rig pass. The baked library clips carry rotations only, but this soldier's
+    // boots are separate bones driven by TRANSLATION, so in a jump, land or climb
+    // pose the boots would stay where they stood while the legs fold. The rig pass
+    // glues them back onto the shins.
+    this._rig = null;
+    this._feetFollow = false;
+    this._baseY = 0;
+    this._landAge = 0;
+        this._air = { jump: 0, fall: 0, land: 0 };   // procedural air pose weights
 
     this.handSlot = null;
     this.handGrip = null;
@@ -164,7 +223,9 @@ export class Avatar {
     this._loadLibraryClips();
 
     this.model = model;
+    this._baseY = model.position.y;
     this.root.add(model);
+    this._setupRig(model);
     this._createHandSlot();
 
     // The land beat ends when its CLIP ends, not on a timer. Mixer events are
@@ -221,6 +282,7 @@ export class Avatar {
    * half-loaded character.
    */
   _loadLibraryClips() {
+    if (!USE_LIBRARY_AIR) return;
     fetch(LIBRARY_FILE)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -236,7 +298,7 @@ export class Avatar {
         // point played the idle fallback. Re-play the state the player is
         // actually in rather than leaving them idling through the air.
 
-        if (this.climbing) this._playOrIdle(this._climbClip(), ANIM.airBlend);
+        if (this.climbing) this._enterClimb();
         else if (this.airborne) this._playOrIdle(this._airClip(this._airKind), ANIM.airBlend);
       })
       .catch((err) => {
@@ -259,8 +321,13 @@ export class Avatar {
     return null;
   }
 
+    /**
+   * A real climb clip, or null when the overlay should be used. Only a rig with no
+   * `Idle_Neutral` to pose falls back to holding `Jump_Loop` (the old behaviour).
+   */
   _climbClip(){
     for (const name of CLIMB_CLIPS) if (this.actions[name]) return name;
+    if (!this.actions[CLIMB_BASE] && this.actions.Jump_Loop) return 'Jump_Loop';
     return null;
   }
 
@@ -278,6 +345,9 @@ export class Avatar {
    */
   setMoving(moving) {
     this.moving = moving;
+    // Moving cuts a land beat short once its low point has passed, so landing
+    // never makes the player wait for a clip while the physics lets them run.
+    if (this._landing && moving && this._landAge >= ANIM.landMinTime) this._endLand();
     if (this.airborne || this._landing || this.climbing) return;
     this.play(this._locomotionClip());
   }
@@ -296,6 +366,7 @@ export class Avatar {
    *                                 clip backwards, so up and down differ
    */
   setClimbing(climbing, verticalSpeed = 0) {
+    this._climbSpeed = verticalSpeed;
     if (climbing) {
       if (!this.climbing) {
         this.climbing = true;
@@ -303,7 +374,8 @@ export class Avatar {
         this._airKind = null;
         this._landing = false;
         this._landClipName = null;
-        this._playOrIdle(this._climbClip(), ANIM.airBlend);
+        this._climbPhase = 0;
+        this._enterClimb();
       }
       const name = this._climbClip();
       if (name) this.actions[name].timeScale = verticalSpeed < -ANIM.riseSpeed ? -1 : 1;
@@ -315,6 +387,11 @@ export class Avatar {
       const name = this._climbClip();
       if (name) this.actions[name].timeScale = 1;
     }
+  }
+
+  /** A real climb clip if the rig has one, else the idle base the overlay poses. */
+  _enterClimb() {
+    this._playOrIdle(this._climbClip() ?? CLIMB_BASE, ANIM.airBlend);
   }
 
   /**
@@ -363,12 +440,19 @@ export class Avatar {
       return;
     }
 
+    if (!name){
+      this._landing = false;
+      this._playOrIdle(null, ANIM.airBlend);
+      return;
+    }
+
     const action = this.actions[name];
     action.setLoop(THREE.LoopOnce, 1);
     action.clampWhenFinished = true;
     this._landing = true;
+    this._landAge = 0;
     this._landClipName = name;
-    this.play(name, ANIM.airBlend);
+    this.play(name, ANIM.airBlend);  // CLIP_TUNING also speeds the library clip up
   }
 
   _endLand() {
@@ -401,9 +485,18 @@ export class Avatar {
   play(name, fade = ANIM.blend) {
     const next = this.actions[name];
     if (!next || next === this.current) return;
-    next.reset().fadeIn(fade).play();
+    next.reset();
+    const tune = CLIP_TUNING[name];
+    if (tune) {
+      next.setLoop(tune.once ? THREE.LoopOnce : THREE.LoopRepeat, tune.once ? 1 : Infinity);
+      next.clampWhenFinished = !!tune.once;
+      next.timeScale = tune.timeScale ?? 1;
+      next.time = tune.startAt ?? 0;
+    }
+    next.fadeIn(fade).play();
     if (this.current) this.current.fadeOut(fade);
     this.current = next;
+    this._feetFollow = LIB_NAMES.has(name);
   }
 
   die() {
@@ -411,7 +504,267 @@ export class Avatar {
   }
 
   update(dt) {
-    if (this.mixer) this.mixer.update(dt);
+    if (!this.mixer) return;
+    // Undo last frame's overlay first. The mixer only rewrites bones the active
+    // clip has tracks for; for the rest, an overlay applied on top of the last
+    // frame's overlay would pile up and spin the body.
+    this._restoreBase();
+    this.mixer.update(dt);
+    if (this._landing){
+      this._landAge += dt;
+      if (!this._landClipName && this._landAge >= LAND_TIME) this._endLand();
+    }
+    this._snapshotBase();
+    this._rigPass(dt);
+  }
+
+  _snapshotBase() {
+    const rig = this._rig;
+    if (!rig) return;
+    for (const n of RIG_BONES) {
+      const bone = rig.bones[n];
+      if (bone) (rig.base[n] ??= { q: new THREE.Quaternion(), p: new THREE.Vector3() })
+        .q.copy(bone.quaternion), rig.base[n].p.copy(bone.position);
+    }
+  }
+
+  _restoreBase() {
+    const rig = this._rig;
+    if (!rig) return;
+    for (const n of RIG_BONES) {
+      const bone = rig.bones[n], b = rig.base[n];
+      if (bone && b) { bone.quaternion.copy(b.q); bone.position.copy(b.p); }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Rig pass: runs AFTER the mixer, so it can adjust what the clips just wrote.
+  // ---------------------------------------------------------------------------
+
+  /** Cache the bones and the rest-pose relationship between each shin and boot. */
+  _setupRig(model) {
+    const bones = {};
+    for (const n of RIG_BONES) bones[n] = findBone(model, n);
+    const hips = findBone(model, 'Hips');
+
+    this.root.updateMatrixWorld(true);
+    _m.copy(this.root.matrixWorld).invert();
+
+    const feet = [];
+    for (const side of ['L', 'R']) {
+      const foot = bones[`Foot.${side}`];
+      const shin = bones[`LowerLeg.${side}`];
+      if (!foot || !shin) continue;
+      const footPos = foot.getWorldPosition(new THREE.Vector3());
+      const posInShin = footPos.clone().applyMatrix4(shin.matrixWorld.clone().invert());
+      const rel = shin.getWorldQuaternion(new THREE.Quaternion()).invert()
+        .multiply(foot.getWorldQuaternion(new THREE.Quaternion()));
+      feet.push({ foot, shin, posInShin, rel, restY: footPos.applyMatrix4(_m).y });
+    }
+    this._rig = { bones, feet, hips, base: {} };
+  }
+
+  /**
+   * Rotate `bone` by `deg` around a MODEL-space axis (+X left, +Y up, +Z forward),
+   * on top of whatever pose the mixer left. Axis-independent on purpose: this rig's
+   * bones have arbitrary local axes, model space does not.
+   */
+  _rot(bone, axis, deg) {
+    if (!bone || !deg) return;
+    _q1.setFromAxisAngle(axis, THREE.MathUtils.degToRad(deg));
+    this.model.getWorldQuaternion(_qm);
+    bone.parent.getWorldQuaternion(_qp);
+    // world rotation Rw = M R M^-1, then into the parent's frame: P^-1 Rw P
+    _q2.copy(_qm).multiply(_q1).multiply(_q3.copy(_qm).invert());
+    _q3.copy(_qp).invert().multiply(_q2).multiply(_qp);
+    bone.quaternion.premultiply(_q3);
+  }
+
+  _rigPass(dt) {
+    const rig = this._rig;
+    if (!rig) return;
+
+    // fade the climb overlay in and out; the phase only advances while climbing
+    const procedural = this.climbing && !this._climbClip();
+    const step = dt / ANIM.climbBlend;
+    this._climbW = procedural
+      ? Math.min(1, this._climbW + step)
+      : Math.max(0, this._climbW - step);
+    if (procedural) {
+      const f = THREE.MathUtils.clamp(this._climbSpeed / PLAYER.climbSpeed, -1, 1);
+      this._climbPhase += (Math.PI * 2 / ANIM.climbCycle) * f * dt;
+    }
+
+    const posing = this._climbW > 0;
+    const air = this._stepAir(dt);
+    const feet = this._feetFollow || posing || air;
+    let sink = 0;
+
+    if (posing || feet){
+      this.model.updateMatrixWorld(true);
+      if (posing) this._applyClimbPose(this._climbW);
+      if (air) this._applyAirPose();
+      if (!posing && !air && this._feetFollow) this._tidyAirPose();
+      if (feet) sink = this._followFeet();
+    }
+
+    // plant the feet during a land beat: the clip squats but its hip drop was lost
+    // with the translation tracks, so the squat would hover. Lower the model instead.
+    const want = this._landing ? sink : 0;
+    const y = this._baseY - want;
+    this.model.position.y += (y - this.model.position.y) * (1 - Math.exp(-dt * 30));
+  }
+
+    /**
+   * Ease the procedural air weights toward the current state. Returns true while
+   * any of them is non-zero. Land is read straight off its own envelope: a quick
+   * drop into the crouch, then a slower recovery.
+   */
+  _stepAir(dt) {
+    const a = this._air;
+    const procedural = !this.climbing && !this._climbClip();
+    const proceduralAir = procedural && this.airborne && !this._airClip(this._airKind);
+    const target = {
+      jump: proceduralAir && this._airKind === 'jump' ? 1 : 0,
+      fall: proceduralAir && this._airKind === 'fall' ? 1 : 0,
+    };
+    const step = dt / ANIM.airBlend;
+    for (const k of ['jump', 'fall']) {
+      a[k] = target[k] > a[k] ? Math.min(1, a[k] + step) : Math.max(0, a[k] - step);
+    }
+
+    if (this._landing && !this._landClipName) {
+      const t = this._landAge;
+      a.land = t < 0.06 ? t / 0.06 : Math.max(0, 1 - (t - 0.06) / (LAND_TIME - 0.06));
+    } else {
+      a.land = 0;
+    }
+    return a.jump > 0 || a.fall > 0 || a.land > 0;
+  }
+
+  /**
+   * Legs and torso for jump, fall and land, in model-space degrees on top of the
+   * armed idle, so the arms stay holding the rifle. [thigh, shin] per side:
+   * negative thigh = knee forward, positive shin = knee folded.
+   */
+  _applyAirPose() {
+    const b = this._rig.bones;
+    const { jump, fall, land } = this._air;
+    const J = { L: [-48, 70], R: [-18, 45] };   // rising: a leap, left knee up
+    const F = { L: [-14, 22], R: [-6, 14] };    // falling: legs down, ready for the ground
+    const C = { L: [-54, 90], R: [-54, 90] };   // landing: crouch
+
+    for (const side of ['L', 'R']) {
+      this._rot(b[`UpperLeg.${side}`], AX, J[side][0] * jump + F[side][0] * fall + C[side][0] * land);
+      this._rot(b[`LowerLeg.${side}`], AX, J[side][1] * jump + F[side][1] * fall + C[side][1] * land);
+    }
+    this._rot(b.Abdomen, AX, 6 * jump + 3 * fall + 14 * land);
+    this._rot(b.Neck, AX, -(4 * jump + 2 * fall + 10 * land));
+  }
+
+  /**
+   * The baked library clips were retargeted by copying rotations between two rigs
+   * whose bones are rolled differently, so the legs come out splayed sideways and
+   * the land crouch pitches the torso far forward. Limit both in model space; clips
+   * that are already within the limits are untouched.
+   */
+  _tidyAirPose() {
+    const rig = this._rig;
+    const b = rig.bones;
+
+    for (const [side, out] of [['L', 1], ['R', -1]]) {
+      const thigh = b[`UpperLeg.${side}`];
+      const shin = b[`LowerLeg.${side}`];
+      const foot = rig.feet.find((f) => f.shin === shin);
+      if (!thigh || !shin || !foot) continue;
+
+      // thigh: hip -> knee, then shin: knee -> ankle
+      this._limitAbduction(thigh, this._dir(thigh, shin), out, AIR_LEG_OUT);
+      _v.copy(foot.posInShin);
+      shin.updateWorldMatrix(true, false);
+      _v.applyMatrix4(shin.matrixWorld);
+      shin.getWorldPosition(_v2);
+      this.model.worldToLocal(_v);
+      this.model.worldToLocal(_v2);
+      _v.sub(_v2);
+      this._limitAbduction(shin, _v, out, AIR_LEG_OUT);
+    }
+
+    if (this._landing && b.Abdomen && b.Neck) {
+      const hips = rig.hips;
+      if (hips) {
+        const d = this._dir(hips, b.Neck);
+        const lean = THREE.MathUtils.radToDeg(Math.atan2(d.z, d.y));   // + = forward
+        if (lean > LAND_MAX_LEAN) this._rot(b.Abdomen, AX, -(lean - LAND_MAX_LEAN));
+      }
+    }
+  }
+
+  /** Model-space direction from bone `a` to bone `b` (a fresh vector). */
+  _dir(a, b) {
+    const v = a.getWorldPosition(new THREE.Vector3());
+    const w = b.getWorldPosition(new THREE.Vector3());
+    this.model.worldToLocal(v);
+    this.model.worldToLocal(w);
+    return w.sub(v);
+  }
+
+  /** Swing `bone` about the model Z axis so `dir` leans outward by at most `maxDeg`. */
+  _limitAbduction(bone, dir, out, maxDeg) {
+    const angle = THREE.MathUtils.radToDeg(Math.atan2(dir.x * out, -dir.y));  // + = outward
+    if (angle > maxDeg) this._rot(bone, AZ, -out * (angle - maxDeg));
+  }
+
+  /** Hand-over-hand climb. Angles are degrees in model space, scaled by weight `w`. */
+  _applyClimbPose(w) {
+    const b = this._rig.bones;
+    const sL = Math.sin(this._climbPhase);    // left hand: +1 reaching high, -1 pulled down
+    const sR = -sL;                           // right hand is half a cycle behind
+
+    // spine: lean into the wall, twist so the reaching shoulder leads, look up
+    this._rot(b.Abdomen, AX, 12 * w);
+    this._rot(b.Abdomen, AY, -8 * sL * w);
+    this._rot(b.Neck, AX, -22 * w);
+
+    for (const [side, s, out] of [['L', sL, 1], ['R', sR, -1]]) {
+      // arm: up and forward, a little wide; elbow folds as the hand pulls down
+      this._rot(b[`UpperArm.${side}`], AX, -(138 + 30 * s) * w);
+      this._rot(b[`UpperArm.${side}`], AZ, -14 * out * w);
+      this._rot(b[`LowerArm.${side}`], AX, (35 - 25 * s) * w);
+
+      // leg: cross-crawl, so each leg moves with the OPPOSITE arm. Thigh comes
+      // forward and the knee folds on the lifted leg only.
+      const l = -s;
+      this._rot(b[`UpperLeg.${side}`], AX, -(22 + 24 * l) * w);
+      this._rot(b[`LowerLeg.${side}`], AX, (28 + 40 * Math.max(0, l)) * w);
+    }
+  }
+
+  /**
+   * Glue each boot to its shin. Returns how far the lowest boot sits above its
+   * standing height (>= 0), which the land beat uses to plant the feet.
+   */
+  _followFeet() {
+    _m.copy(this.root.matrixWorld).invert();
+    let lift = Infinity;
+    for (const f of this._rig.feet) {
+      const parent = f.foot.parent;
+      f.shin.updateWorldMatrix(true, false);
+      parent.updateWorldMatrix(true, false);
+
+      _v.copy(f.posInShin).applyMatrix4(f.shin.matrixWorld);
+      const y = _v.clone().applyMatrix4(_m).y;
+      parent.worldToLocal(_v);
+      f.foot.position.copy(_v);
+
+      f.shin.getWorldQuaternion(_q1).multiply(f.rel);
+      parent.getWorldQuaternion(_q2).invert().multiply(_q1);
+      f.foot.quaternion.copy(_q2);
+
+      // `y` already includes the current model drop, so add it back
+      lift = Math.min(lift, y - f.restY + (this._baseY - this.model.position.y));
+    }
+    return Number.isFinite(lift) ? THREE.MathUtils.clamp(lift, 0, 0.45) : 0;
   }
 
   dispose() {

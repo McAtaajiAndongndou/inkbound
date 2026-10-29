@@ -86,6 +86,9 @@ export const ANIM = {
   blend: 0.1,     // ground transitions: idle <-> run
   airBlend: 0.08, // into and out of jump / fall / land
   riseSpeed: 0.1, // m/s of upward velocity that counts as RISING, not falling
+  climbBlend: 0.12,
+  climbCycle: 0.9,
+  landMinTime: 0.18,
 };
 
 // Camera rig (#34). TPV is the default; FPV is the V toggle / ADS target.

@@ -152,3 +152,11 @@ test('a climb does not break the ground and air states it sits between', () => {
   frame(avatar, { climbing: false, onGround: false, vy: 8.5, moving: false });
   assert.equal(name(avatar), 'Jump_Start');
 });
+
+test('with Idle_Neutral on the rig, the climb is the procedural overlay, not an airborne clip', () => {
+  const avatar = makeAvatar([...SHIPPED, 'Idle_Neutral']);
+  frame(avatar, { climbing: true, onGround: false, vy: 4.5, moving: true });
+  assert.equal(name(avatar), 'Idle_Neutral');
+  assert.notEqual(name(avatar), 'Jump_Loop');
+  assert.equal(avatar._climbClip(), null);
+});
