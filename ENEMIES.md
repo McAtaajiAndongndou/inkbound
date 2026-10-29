@@ -105,10 +105,10 @@ These apply to every enemy unless a section says otherwise:
   https://poly.pizza/m/hThPXDCbwl (both CC0)
 - **Behaviour:** static, tracks the player, burst-fires down a corridor. You go
   around it, not through it.
-- **Deliberate matrix gap:** green pin is useless (it's already stationary), red
-  only matters if it's perched on an edge (fling it off). Teaches: *not every
-  colour works on everything* — the empty cell is the lesson.
-- **Counter:** red knock it off its perch, or blue freeze → crit.
+- **Deliberate matrix gap — no status procs at all.** Freeze, pin and knockback
+  do nothing to it; all three colours simply do damage. Teaches: *not every
+  problem is a paint problem* — the empty cell is the lesson.
+- **Counter:** break line of sight and flank it. Positioning, not paint.
 - **Animation:** idle / track / fire / hit / destroy.
 
 ---
@@ -117,8 +117,22 @@ These apply to every enemy unless a section says otherwise:
 
 **Drainer** — the territory eater.
 - **Model:** zombie 2 https://poly.pizza/m/VlXjG0N8Eg (**CC0**)
-- **Behaviour:** weak, fast, **dozens**. **Eats painted ground as it moves** —
-  your territory shrinks while you fight.
+- **Behaviour:** weak, fast, **dozens**. **Eats painted ground** — your territory
+  shrinks while you fight.
+- **The drain, as built (#80)** — `src/enemies/enemy.js` `_updateFeeding`, the
+  numbers in `ENEMY.drainer`:
+  - **Reach** `drainRadius` **1.6 m**. A cell outside it is a cell it is not
+    touching; the hole grows outward from the body, nearest cell first.
+  - **Rate** `drainRate` **16 painted cells per second**. At 4 cells/m
+    (`PAINT_GRID.level1Cells`) that is **1 m² of painted ground per second**,
+    which is roughly one paint splat (`PAINT_GUN.radius` 1.4 → ~6 m²) every six
+    seconds. **This is the difficulty dial for the whole final level — retune it
+    last, once the waves exist, and change this line with it.**
+  - **Interrupt** `huntRadius` **8 m**: the player this close and it stands up to
+    hunt, and the drain stops. `resumeRadius` **14 m**: it only lies back down to
+    feed past that. The 6 m gap is deliberate hysteresis — one threshold would
+    flip the posture every other frame on the boundary.
+  - A dead Drainer stops eating where it stood; it does not finish the patch.
 - **Two postures (uses both animation sets):**
   - **Feeding** — crawling, nibbling painted ground, low threat.
   - **Hunting** — rises to stand and shambles after you.
@@ -137,8 +151,12 @@ These apply to every enemy unless a section says otherwise:
 
 **Boss — "Big arm"** — the combo showcase.
 - **Model:** zombie 3, "Big arm" https://poly.pizza/m/KaVJET0WHx (CC-BY)
-- **Behaviour:** high HP pool, **repaints the arena grey** (wipes your territory),
-  spawns waves. Dies to **one scripted colour combo** (sequence TBD).
+- **Role:** the **wave-three arena boss**, not the finale. High HP pool,
+  **repaints the arena grey** (takes your territory), spawns waves, and dies to
+  one scripted colour combo (sequence TBD).
+- **Then the level still has to end:** after Big Arm falls, the **Siphon** is the
+  final exam — a structure dismantled with blue, green and red in sequence. No
+  health bar, no rig and no new animation set.
 - **Note:** the model is literally a big-armed creature — its silhouette reads
   "boss" from across the arena, which is exactly what you want.
 - **Special attacks:** TBD (own design session).

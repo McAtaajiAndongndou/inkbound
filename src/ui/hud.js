@@ -1,15 +1,14 @@
-import { PAINT } from '../config.js';
+import { PAINT,DRY_OUT } from '../config.js';
 const HINTS = {
-  Dead: 'Normal ground',
-  Neutral: 'Normal ground',
+  Grey: 'Dead ground: slow, no refill',
   Ice: 'Slide: low friction',
   Bounce: 'Bounce: launches you',
   Grip: 'Grip: climb walls',
 };
 
-// End screens (#81). Keyed by the level ids in ui/menu.js LEVELS, so a marker
-// is told WHICH level they finished. An unknown id falls back to the generic
-// wording rather than a blank title.
+// End screens (#81). Keyed by the level ids in the ONE list (levels/index.js),
+// so a marker is told WHICH level they finished. An unknown id falls back to the
+// generic wording rather than a blank title.
 const END_LEVELS = {
   primer: { name: 'The Primer', win: 'PRIMER COMPLETE' },
   outskirts: { name: 'Outskirts', win: 'OUTSKIRTS CLEARED' },
@@ -43,6 +42,7 @@ export class Hud {
     root.innerHTML = `
       <div id="crosshair"></div>
       <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+      <div id="dry-warning" class="hidden">DRY OUT</div>
       <div id="hud-bottom">
         <div id="health-wrap" class="hidden">
           <div id="health-bar"><div id="health-fill"></div></div>
@@ -54,13 +54,12 @@ export class Hud {
             <div id="dry-fire">EMPTY</div>
           </div>
           <div id="ammo-text">100</div>
-          <div id="refill-warning"><b>F</b> refill</div>
         </div>
         <div id="colours">
           <button class="swatch" data-i="0" style="--c:#3aa7ff"><span>1</span>Ice</button>
           <button class="swatch" data-i="1" style="--c:#ff4d5a"><span>2</span>Bounce</button>
           <button class="swatch" data-i="2" style="--c:#4ee08a"><span>3</span>Grip</button>
-          <button class="swatch" data-i="3" style="--c:#5a5a66"><span>4</span>Neutral</button>
+          <button class="swatch" data-i="3" style="--c:#585e54"><span>4</span>Grey</button>
         </div>
       </div>
       <div id="hud-top">
@@ -84,9 +83,10 @@ export class Hud {
 
     this.ammoFill = root.querySelector('#ammo-fill');
     this.ammoText = root.querySelector('#ammo-text');
+    this.ammoBar = root.querySelector('#ammo-bar');
+    this.dryWarning = root.querySelector('#dry-warning');
     this.standing = root.querySelector('#standing b');
     this.coverage = root.querySelector('#coverage');
-    this.refillWarning = root.querySelector('#refill-warning');
     this.dryFire = root.querySelector('#dry-fire');
     this.swatches = [...root.querySelectorAll('.swatch')];
     this.hint = root.querySelector('#standing-hint');
@@ -123,7 +123,7 @@ export class Hud {
   /**
    * @param {'win' | 'lose'} kind
    * @param {object} [opts]
-   * @param {string} [opts.level]            a LEVELS id from ui/menu.js
+   * @param {string} [opts.level]            a LEVELS id from levels/index.js
    * @param {'dead' | 'dry'} [opts.reason]   why the player lost (default dead)
    * @param {{ time: number, dryTime: number }} [opts.stats]
    *   the run, in seconds, for the win scorecard (main.js accumulates it)
@@ -165,17 +165,24 @@ export class Hud {
   }
 
   update(dt, { gun, player, surfaces }) {
-    if (gun.colour === "grey"){
-      this.ammoFill.style.width = "100%";
-      this.ammoFill.style.background = `#${PAINT.grey.hex.toString(16).padStart(6, "0")}`;
-      this.ammoText.textContent = "∞";
-      this.refillWarning.classList.remove("critical");
-    } else {
-      const pct = gun.ammo[gun.colour] / gun.maxAmmo;
-      this.ammoFill.style.width = `${pct * 100}%`;
-      this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;
-      this.ammoText.textContent = Math.floor(gun.ammo[gun.colour]);
-      this.refillWarning.classList.toggle('critical', pct <= 0.25);
+    const pct = gun.ammo / gun.maxAmmo;
+
+    this.ammoFill.style.width = `${pct * 100}%`;
+    this.ammoFill.style.background = `#${PAINT[gun.colour].hex.toString(16).padStart(6, '0')}`;
+    this.ammoText.textContent = Math.floor(gun.ammo);
+
+    
+    // ---- dry out warning (#75) --------------------------------------------
+    // Two cues: the ammo bar pulses below DRY_OUT.warningBelow, and a
+    // fullscreen banner appears while the player is actually dry, counting
+    // down the grace.
+    const critical = pct < DRY_OUT.warningBelow && gun.ammo > 0;
+    this.ammoBar.classList.toggle('critical', critical);
+
+    this.dryWarning.classList.toggle('hidden', !player.dry);
+    if (player.dry) {
+      const remaining = Math.max(0, DRY_OUT.graceTime - player.dryTimer);
+      this.dryWarning.textContent = `DRY OUT — ${remaining.toFixed(1)}s`;
     }
   
     this.standing.textContent = PAINT[player.currentColour].name;

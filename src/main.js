@@ -5,7 +5,7 @@ import { Player } from "./core/player.js";
 import { Avatar } from "./shaders/avatar.js";
 import { CameraRig } from "./core/camera-rig.js";
 import { PaintGun } from "./paint/paint-gun.js";
-import { Level01 } from "./levels/level-01-mission.js";
+import { createLevel, levelEntry, LEVELS, DEFAULT_LEVEL_ID } from "./levels/index.js";
 import { Hud } from "./ui/hud.js";
 import { PaintGunModel } from "./paint/paint-gun-model.js";
 
@@ -13,7 +13,7 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER } from "./config.js";
+import { PLAYER, PAINT_GUN, ANIM, DRY_OUT, SUBMERGE } from "./config.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -43,10 +43,41 @@ let player = null;
 let gun = null;
 let gunModel = null;
 
+// WHICH LEVEL. `?level=ascent` is the dev/QA selector until the pause-menu list
+// lands (issue 006, ui). The ids live in `levels/index.js` — this file must never
+// hold a second list, or adding a level works here and is missing in the menu.
+const requestedLevel = new URLSearchParams(window.location.search).get("level");
+let currentLevelId = requestedLevel ? levelEntry(requestedLevel).id : DEFAULT_LEVEL_ID;
+
 const muzzleVec = new THREE.Vector3();
 const handVec = new THREE.Vector3();
 let avatar = null;
 const lastPos = new THREE.Vector3();
+
+// #124 viewmodel bob. It lives in this file rather than in
+// `paint/paint-gun-model.js` because #124's file list is avatar.js / main.js /
+// config.js — and the gun's own `update()` has just laid the model out at its
+// rest position, so adding the sway AFTER it is all the hook this needs.
+//   viewSpeed  the player's horizontal speed, refreshed by `simulate`
+//   viewPhase  the sway's phase, so the gun stays in step with the walking
+let viewSpeed = 0;
+let viewPhase = 0;
+
+/**
+ * Sway the first-person gun while the player walks (#124). No-op in third person
+ * and while standing, so the gun never drifts between frames on its own.
+ */
+function applyViewBob(dt) {
+  const viewmodel = gunModel?.firstPersonGun;
+  if (!viewmodel || !viewmodel.visible) return;
+
+  // Ramp with speed rather than switch on at a threshold, so a slow walk sways
+  // gently instead of the gun starting to swing the instant the player moves.
+  const stride = Math.min(1, viewSpeed / 3);
+  if (stride > 0.02) viewPhase += dt * ANIM.viewBobSpeed;
+  viewmodel.position.x += Math.sin(viewPhase) * ANIM.viewBob * stride;
+}
+
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
 
@@ -77,7 +108,36 @@ const game = {
     hud.showEnd("win", { stats: { time: run.time, dryTime: run.dryTime } });
     audio.play("win");
   },
+
+  // --- level switching (issue 006 is the menu that calls this) --------------
+  // The menu needs three things and no more: the list to render, which one is
+  // current, and the ability to load another. Keeping the list HERE rather than
+  // in the menu is what stops the two drifting apart.
+  levels: LEVELS,
+  currentLevelId: () => currentLevelId,
+  loadLevel: (id) => {
+    currentLevelId = levelEntry(id).id;
+    loadLevel().catch(reportLoadError);
+  },
 };
+
+// Level select (#78). The id -> level mapping is `levels/index.js`, the ONE
+// list (INTEGRATION.md) — this file holds no second copy of it. An unknown id
+// falls back to the default inside the registry; it never throws here.
+/**
+ * Build and load a level WITHOUT touching the one being played, so a load that
+ * throws leaves the current level running and the menu usable (#78).
+ */
+async function buildLevel(id) {
+  const next = createLevel(id, game);
+  try {
+    await next.load();
+  } catch (err) {
+    next.dispose();
+    throw err;
+  }
+  return next;
+}
 
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
 scene.add(rig.camera);
@@ -113,7 +173,10 @@ function setPlaceholderVisible(p, visible) {
   if (p.mesh.material) p.mesh.material.visible = visible;
 }
 
-function loadLevel() {
+/** Swap in level `id` (default: reload the current one). Rejects if it fails. */
+async function loadLevel(id = currentLevelId) {
+  const next = await buildLevel(id);
+
   if(gun){
     gun.dispose();
   }
@@ -134,12 +197,23 @@ function loadLevel() {
   run.dryTime = 0;
   run.over = false;
 
-  level = new Level01(game);
-  level.load();
+  level = next;
+  // Record the id that ACTUALLY loaded: the registry falls back to the default
+  // on an unknown id, and the menu must mark the level the player is really in.
+  currentLevelId = levelEntry(id).id;
+  menu.setCurrentLevel(currentLevelId);
   scene.add(level.root);
 
   player = new Player(level.surfaces, level.spawn);
   scene.add(player.mesh);
+
+  // ENEMY RANGED ATTACKS DO DAMAGE. `Enemy` fires `onAttack` when a windup
+  // completes, but nothing ever assigned it — every ranged enemy in the game was
+  // a light show, so standing in the open cost nothing (playtest, 28 Oct). The
+  // damage number lives on each config (`attackDamage`) beside `contactDamage`.
+  for (const enemy of level.enemies) {
+    enemy.onAttack = (e) => player.takeDamage(e.config.attackDamage ?? 0);
+  }
 
   // Hidden NOW, before the avatar exists, and revealed only if the model never
   // arrives. See `setPlaceholderVisible` (#39 #1). Order matters: hiding it
@@ -168,7 +242,9 @@ function loadLevel() {
   player.onDeath = () => {
     run.over = true;
     avatar.die();
-    hud.showEnd("lose");
+    // #75 — dry out and death share this one lose path; `reason` picks the
+    // wording. `player.dry` is set by simulate() each frame.
+    hud.showEnd("lose", { level: currentLevelId, reason: player.dry ? "dry" : "dead" });
     audio.play("lose");
   };
 
@@ -184,17 +260,24 @@ function loadLevel() {
   gunModel = new PaintGunModel(rig.camera, player, avatar);
 }
 
-preloadEnemyModel().then(() => {
-  loadLevel();
+const reportLoadError = (err) => console.error("[main] level failed to load", err);
+
+preloadEnemyModel().then(async () => {
+  await loadLevel();
   document.getElementById("loading").remove();
   animate();
 });
 
 // Title + pause menu. Open whenever the pointer is unlocked (load, Escape).
+// The level list comes from the registry through `game` (INTEGRATION.md: the
+// ONE list — the menu must not carry its own copy).
 const menu = new Menu(document.body, {
   audio,
   canvas: renderer.domElement,
-  onRestart: loadLevel,
+  onRestart: () => loadLevel().catch(reportLoadError),
+  onSelectLevel: (id) => loadLevel(id),
+  levels: game.levels,
+  currentLevel: currentLevelId,
 });
 
 const clock = new THREE.Clock();
@@ -202,18 +285,42 @@ const clock = new THREE.Clock();
 /** One step of gameplay. Skipped entirely while the menu is open. */
 function simulate(dt, elapsed, actions, mouse) {
   if (actions.restart){
-    loadLevel();
+    loadLevel().catch(reportLoadError);
     return;
   }
   if (actions.toggleView) rig.toggle();
   if (actions.colour !== null) gun.selectColour(actions.colour);
-  if (actions.refill) gun.refillAmmo();
 
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
   if (!run.over && !player.dead) {
     run.time += dt;
     if (player.currentColour === "grey") run.dryTime += dt;
+  }
+
+   if (!player.dead && player.onGround) {
+    const onPlayerPaint = level.surfaces.some((surface) => surface.isPlayerPaintAtWorld(player.position));
+
+    if (onPlayerPaint) {
+      // #108 — submerged refills 3× faster. That is the "commit" half of the
+      // trade: you cannot fire, but you come back up with a full tank.
+      const refillMult = player.submerged ? SUBMERGE.refillMultiplier : 1;
+      gun.ammo = Math.min(gun.maxAmmo, gun.ammo + PAINT_GUN.refillRate * refillMult * dt);
+    }
+    // ---- dry out (#75) ---------------------------------------------------
+    // Dry = empty tank AND no paint underfoot. The loss only fires after
+    // DRY_OUT.graceTime seconds of continuous dry state, so the player has a
+    // beat to notice the ammo bar pulsing and step back onto paint.
+    player.dry = gun.ammo <= 0 && !onPlayerPaint;
+    if (player.dry) {
+      player.dryTimer += dt;
+      if (player.dryTimer >= DRY_OUT.graceTime) player.kill();
+    } else {
+      player.dryTimer = 0;
+    }
+  } else {
+    player.dry = false;
+    player.dryTimer = 0;
   }
  
 
@@ -222,16 +329,31 @@ function simulate(dt, elapsed, actions, mouse) {
   const dz = p.z - lastPos.z;
   const speed = dt > 0 ? Math.hypot(dx, dz) / dt : 0;
   lastPos.copy(p);
-  if (!player.dead) avatar.setMoving(speed > 0.5);
+  viewSpeed = speed;              // #124, for the viewmodel bob
+  if (!player.dead) {
+    // #82 + #122: the physics already knows; the avatar is only told. Climbing goes first because it outranks the air states, and setMoving goes last because it defers to both.
+    avatar.setClimbing(player.climbing, player.velocity.y);
+    avatar.setAirborne(player.onGround, player.velocity.y);
+    // #124 — the SAME flag the ADS camera reads in `animate`, so the body and the
+    // camera raise the gun together instead of one lagging the other.
+    avatar.setAiming(input.aiming);
+    avatar.setMoving(speed > 0.5);
+  }
   avatar.update(dt);
 
   level.update(dt, player);
+  // #124 — `checkEnemyContact` reports a hit by moving health rather than by
+  // returning one, and the player's own hurt cooldown already de-dupes, so the
+  // difference is exactly one flinch per hit.
+  const healthBefore = player.health;
   player.checkEnemyContact(level.enemies);
+  if (player.health < healthBefore) avatar.hit();
 
   gun.update(dt);
-  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {
+  if (input.firing && input.locked && !player.dead && !player.submerged && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {
     gunModel?.kick();
     audio.play("fire");
+    avatar.fire();                // #124 — the shot accent, after the shot lands
   }
 
   for (const s of level.surfaces) s.update(elapsed);
@@ -260,6 +382,8 @@ function animate() {
 
   if (gunModel){
     gunModel.update(rig.firstPerson,dt);
+    // #124 — after the gun's own update, which is what lays it out at rest.
+    applyViewBob(dt);
   }
 
   hud.update(dt, {

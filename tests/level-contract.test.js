@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { Level01 } from '../src/levels/level-01-mission.js';
+import { Enemy } from '../src/enemies/enemy.js';
 import { Player } from '../src/core/player.js';
 import { ENEMY, HEALTH, PLAYER, SURFACE } from '../src/config.js';
 
@@ -79,7 +80,249 @@ test('every paintable surface is reachable through root AND surfaces', async () 
 
 test('spawn is placed on island A where the player starts', async () => {
   const { level } = await buildLevel();
-  assert.deepEqual([level.spawn.x, level.spawn.y, level.spawn.z], [0, 2, 13]);
+  assert.deepEqual([level.spawn.x, level.spawn.y, level.spawn.z], [0, 2, 21]);
+});
+
+/**
+ * Island A is the VANTAGE, not a fight (playtest, 24 Oct; docs/levels/01-outskirts.md).
+ * It carries no enemies and no hazard, so the first fight is the first thing past
+ * Gap 1 rather than something to shoot from spawn. This is deliberately a
+ * "nothing is there" test: the failure mode is clutter creeping back in.
+ */
+test('island A has no enemies and no hazards — it is the vantage', async () => {
+  const { level } = await buildLevel();
+
+  const onIslandA = level.enemies.filter((e) => e.position.z > 8);
+  assert.equal(onIslandA.length, 0,
+    'an enemy on the entry island is target practice: it has no geometry to fight in');
+
+  assert.equal(level.traps?.length ?? 0, 0,
+    'a hazard on a 22 m-wide island can always be walked around');
+});
+
+/**
+ * #012: B must be a ROOM, not a rectangle. One solid block that splits the floor
+ * and CANNOT be climbed — height is the enemy's, not the player's. A climbable
+ * deck with nothing on it was the best square in the room (playtest, 28 Oct).
+ */
+test("island B's deck is a solid block you cannot climb (#012)", async () => {
+  const { level } = await buildLevel();
+  const DECK_Y = 4.6;
+
+  const deck = level.surfaces.find(
+    (s) => s.isFloor && Math.abs(s.mesh.position.y - DECK_Y) < 1e-6,
+  );
+  assert.ok(deck, 'island B is missing its deck');
+  const z = deck.mesh.position.z;
+  assert.ok(z > -7 && z < 4.5, `the deck at z=${z} is not on island B`);
+
+  // Above the red-bounce apex, so there is no cheap way on top of it.
+  const apex = (PLAYER.minBounce * PLAYER.minBounce) / (2 * -PLAYER.gravity);
+  assert.ok(DECK_Y > apex,
+    `a ${DECK_Y} m deck is reachable by a ${apex.toFixed(2)} m red bounce`);
+
+  // Solid: four closed sides, none paintable, so no green climb either.
+  // Scoped to island B by z — C's block is also 4.6 m tall.
+  const faces = level.surfaces.filter((s) => !s.isFloor
+    && Math.abs(s.mesh.position.y - DECK_Y / 2) < 1e-6
+    && s.mesh.position.z > -7 && s.mesh.position.z < 4.5);
+  assert.equal(faces.length, 4, 'the deck must be closed on four sides');
+  assert.ok(faces.every((f) => f.unpaintable),
+    'a climbable deck is a perch again');
+
+  // Floor either side of it, so it splits the room instead of walling it off.
+  const box = new THREE.Box3().setFromObject(deck.mesh);
+  assert.ok(box.min.x - -11 >= 2, 'no lane left of the deck');
+  assert.ok(11 - box.max.x >= 2, 'no lane right of the deck');
+});
+
+/**
+ * Walls are solid to the AI too. Until the wall probe existed, every cover block
+ * in the game was player-only: Chargers walked straight through island C's block
+ * and the room's shape meant nothing to them (playtest, 28 Oct).
+ */
+test('a wall is solid to an enemy — cover is not player-only (#014)', async () => {
+  const { level } = await buildLevel();
+  const charger = level.gateC.watch.find((e) => e.type === 'charger');
+  charger.wake();
+
+  // C's block: 4 x 2 at y 3.0, solid. Stand the charger behind it and make it
+  // chase a target on the far side — it must stop at the face, not pass through.
+  const block = level.surfaces.find(
+    (s) => s.isFloor && Math.abs(s.mesh.position.y - 3.0) < 1e-6,
+  );
+  assert.ok(block, 'island C is missing its block');
+  const backFace = block.mesh.position.z - block.height / 2;
+  const bx = block.mesh.position.x;
+
+  charger.position.set(bx, 0, backFace - 1);
+  for (let i = 0; i < 180; i++) {
+    charger.update(1 / 60, new THREE.Vector3(bx, 0, backFace + 3));
+  }
+
+  assert.ok(charger.position.z < backFace,
+    `the charger walked through C's block: z=${charger.position.z.toFixed(2)}, face at ${backFace}`);
+});
+
+/**
+ * Enemies walk from load, so without a trigger every arena's fight is already
+ * standing at its lip when the player arrives. The dormant trigger is per arena:
+ * they hold their spawn until the player is inside it.
+ */
+test('enemies hold their spawn until the player enters their arena (#012)', async () => {
+  const { level } = await buildLevel();
+  const b = level.gateB.watch;
+  const spawn = b.map((e) => e.position.clone());
+
+  const atA = { position: new THREE.Vector3(0, 0, 21) };
+  for (let i = 0; i < 120; i++) level.update(1 / 60, atA);
+
+  b.forEach((e, i) => {
+    assert.equal(e.sleeping, true, 'B must still be asleep while the player is on A');
+    assert.ok(e.position.distanceTo(spawn[i]) < 1e-9,
+      'a sleeping enemy must not walk to the lip before the jump');
+  });
+
+  // Land in B: the arena wakes, and the fight starts where it was placed.
+  level.update(1 / 60, { position: new THREE.Vector3(0, 0, 3) });
+  assert.ok(b.every((e) => e.sleeping === false), 'landing in B must wake its arena');
+});
+
+/**
+ * A wall must stop a gun as well as a body. Until line-of-sight existed, a
+ * Sprayer shot through every block in the level, so no position was cover from
+ * fire — which is why cover could not create a choice (playtest, 28 Oct).
+ */
+test("a wall blocks an enemy's line of fire (#014)", async () => {
+  const { level } = await buildLevel();
+  const sprayer = level.gateC.watch.find((e) => e.type === 'sprayer');
+
+  const block = level.surfaces.find(
+    (s) => s.isFloor && Math.abs(s.mesh.position.y - 3.0) < 1e-6,
+  );
+  const back = block.mesh.position.z - block.height / 2 - 1;
+  const front = block.mesh.position.z + block.height / 2 + 1;
+  const bx = block.mesh.position.x;
+
+  sprayer.position.set(bx, 0, back);
+
+  assert.equal(
+    sprayer._canSee(new THREE.Vector3(bx, 0, front)),
+    false,
+    "the block must block the Sprayer's shot",
+  );
+  assert.equal(
+    sprayer._canSee(new THREE.Vector3(bx - 10, 0, back + 2)),
+    true,
+    'with no wall between, the shot must be clear',
+  );
+});
+
+/**
+ * Decor keep-out. The block is 3 m of hard cover in a forest; without a keep-out
+ * rect trees grew through it and hid the lane around it (playtest, 29 Oct). This
+ * is the check I should have run before claiming the block was clear.
+ */
+test("nothing grows through C's block — decor keep-out is empty (#014)", async () => {
+  const { level } = await buildLevel();
+  level.root.updateMatrixWorld(true);
+
+  const block = level.surfaces.find(
+    (s) => s.isFloor && Math.abs(s.mesh.position.y - 3.0) < 1e-6,
+  );
+  const bx = block.mesh.position.x;
+  const bz = block.mesh.position.z;
+  const hw = block.width / 2;
+  const hd = block.height / 2;
+
+  const v = new THREE.Vector3();
+  let offenders = 0;
+  level.root.traverse((o) => {
+    if (!o.isMesh || o.userData?.paintSurface) return;
+    const g = o.geometry?.type ?? '';
+    if (!['CylinderGeometry', 'ConeGeometry', 'IcosahedronGeometry', 'BufferGeometry'].includes(g)) return;
+    o.getWorldPosition(v);
+    if (Math.abs(v.x - bx) <= hw + 1 && Math.abs(v.z - bz) <= hd + 1) offenders++;
+  });
+
+  assert.equal(offenders, 0, 'props are standing inside the block’s keep-out rect');
+});
+
+/**
+ * Red knockback must not push an enemy THROUGH a wall. It still ignores the
+ * ground probe on purpose (that is the environmental kill); walls are different.
+ */
+test('red knockback stops at a wall instead of pushing through it (#014)', async () => {
+  const { level } = await buildLevel();
+  const charger = level.gateC.watch.find((e) => e.type === 'charger');
+  charger.wake();
+
+  const block = level.surfaces.find(
+    (s) => s.isFloor && Math.abs(s.mesh.position.y - 3.0) < 1e-6,
+  );
+  const bx = block.mesh.position.x;
+  const bz = block.mesh.position.z;
+
+  // Stand it on the floor beside C's block and hit it so the knockback drives it
+  // straight at the block face.
+  charger.position.set(bx, 0, bz + 3);
+  charger.takeColourHit(2, 1, new THREE.Vector3(bx, 0, bz + 6));
+  for (let i = 0; i < 60; i++) charger.update(1 / 60, new THREE.Vector3(bx, 0, bz + 6));
+
+  const p = charger.position;
+  const inside = Math.abs(p.x - bx) <= block.width / 2
+    && Math.abs(p.z - bz) <= block.height / 2;
+  assert.equal(inside, false,
+    `the charger was pushed into the block at (${p.x.toFixed(2)}, ${p.z.toFixed(2)})`);
+});
+
+/**
+ * An enemy carried off a ledge (knockback, blue slip) must FALL to the floor, not
+ * hover at deck height. On screen the hover read as "drops through the deck".
+ */
+test('an enemy pushed off the deck falls to the floor instead of hovering (#012)', async () => {
+  const { level } = await buildLevel();
+  const sprayer = level.gateB.watch.find((e) => e.type === 'sprayer');
+  sprayer.wake();
+
+  const deck = level.surfaces.find(
+    (s) => s.isFloor && Math.abs(s.mesh.position.y - 4.6) < 1e-6,
+  );
+  // A full metre past the deck's front edge — clearly off the body's footprint.
+  sprayer.position.set(deck.mesh.position.x, 4.6, deck.mesh.position.z + deck.height / 2 + 1.0);
+
+  for (let i = 0; i < 60; i++) sprayer.update(1 / 60, new THREE.Vector3(0, 0, 3));
+
+  assert.ok(sprayer.position.y < 0.5,
+    `the sprayer should be on the floor, y=${sprayer.position.y.toFixed(2)}`);
+});
+
+test('a dormant enemy is inert until woken, and any hit wakes it', () => {
+  const enemy = new Enemy({
+    position: new THREE.Vector3(0, 0, 0),
+    config: ENEMY.charger,
+    parent: new THREE.Group(),
+    floors: [],
+    sleeping: true,
+  });
+
+  assert.equal(enemy.sleeping, true);
+  enemy.update(1 / 60, new THREE.Vector3(0, 0, 2));
+  assert.equal(enemy.telegraphing, false, 'a dormant enemy must not wind up an attack');
+
+  enemy.wake();
+  assert.equal(enemy.sleeping, false);
+
+  // A paint hit on a dormant enemy also wakes it — no free kills.
+  const other = new Enemy({
+    position: new THREE.Vector3(0, 0, 0),
+    config: ENEMY.charger,
+    parent: new THREE.Group(),
+    floors: [],
+    sleeping: true,
+  });
+  other.takeColourHit(1, 1);
+  assert.equal(other.sleeping, false);
 });
 
 /**
@@ -145,10 +388,13 @@ test('isFloor splits surfaces the way the player controller will (floors vs wall
   const floors = level.surfaces.filter((s) => s.isFloor);
   const walls = level.surfaces.filter((s) => !s.isFloor);
 
-  // islands A/B/C + the ascent''s ground floor, lower deck, side platform and\n  // extraction ledge + the two forest shelves (#39 #6, #10)
-  assert.equal(floors.length, 9);
+  // islands A/B/C + the ascent's ground floor, lower deck, side platform and
+  // extraction ledge + the two forest shelves + B's deck top + C's block top
+  // (#39 #6, #10, #012, #014)
+  assert.equal(floors.length, 11);
   // 2 gates + 6 pillar sides + the rock band + the rock base + the rock wall base
-  assert.equal(walls.length, 11);
+  // + B's deck (3 + 1 closed) + C's block (3 + 1)
+  assert.equal(walls.length, 19);
   assert.equal(floors.every((s) => s.isFloor === true), true);
   assert.equal(walls.every((s) => s.isFloor === false), true);
 });
@@ -258,14 +504,13 @@ test('every green climb has a floor overhanging it by enough to land on (#39 #4,
   const axis = new THREE.Vector3();
 
   // Every climbable face: paintable, vertical. The gates and the rock are
-  // unpaintable, which is the whole of `unpaintable`. There are seven now — three
-  // sides on each pillar and the band at the top of the back wall — because the
-  // PILLARS are the point of this layout (Renda: "shoot the paint on their sides
-  // from multiple angles").
+  // unpaintable, which is the whole of `unpaintable`. There are four: three on
+  // the LEFT pillar and the band at the top of the back wall. B's deck, C's block
+  // and the RIGHT pillar are unpaintable: cover that can be climbed is a route.
   const climbs = level.surfaces.filter((s) => !s.isFloor && !s.unpaintable);
   assert.equal(climbs.length, 4,
-    `expected four green climbs — three sides on the LEFT pillar, and the band at the
-    top of the back wall (the RIGHT pillar is deliberately unpaintable) — got ${climbs.length}`);
+    `expected four green climbs — three on the LEFT pillar and the band at the top of
+    the back wall — got ${climbs.length}`);
 
   for (const face of climbs) {
     assert.ok(face.height > apex,
@@ -518,10 +763,13 @@ test('update() with a non-Vector3 leaves the enemy finite rather than NaN', asyn
 
 test('update() with a real position moves the enemy toward the player', async () => {
   const { level } = await buildLevel();
-  const enemy = level.enemies[0];
+  // An AWAKE Charger — island B's. Island A's is dormant by design (#011).
+  const enemy = level.gateB.watch.find((e) => e.type === 'charger');
+  enemy.wake();     // dormant until the player enters island B
   const before = enemy.position.clone();
 
-  enemy.update(1 / 60, new THREE.Vector3(0, 0, -10));
+  // In front of B's back wall (z = -7): behind it the Charger cannot see you (#109).
+  enemy.update(1 / 60, new THREE.Vector3(-3, 0, -6));
 
   assert.notDeepEqual(enemy.position.toArray(), before.toArray(),
     'a Vector3 argument must actually produce movement');
@@ -582,7 +830,8 @@ test('paint rules reach the enemy: blue means less traction, more speed, less br
 
 test('on grey a Charger keeps re-aiming at a sidestepping player', async () => {
   const { level } = await buildLevel();
-  const [charger] = level.enemies;
+  const charger = level.gateB.watch.find((e) => e.type === 'charger');
+  charger.wake();   // B's enemies are dormant until the player enters the arena
   const islandB = level.surfaces.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
 
@@ -595,11 +844,15 @@ test('on grey a Charger keeps re-aiming at a sidestepping player', async () => {
   charger._attackCooldown = Infinity;
 
   // Get it moving and committed on grey, then sidestep to +x.
-  charger.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 3);
-  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z));
+  //
+  // Started 6 m out, not 3 m (#76): a Charger that ARRIVES now spends 1.2 s
+  // winded, and this test is about steering, not about the opening. At 6 m the
+  // first second of travel still leaves it short of `stopDistance`.
+  charger.position.set(0, islandB.mesh.position.y, islandB.mesh.position.z + 4);
+  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(0, islandB.mesh.position.y, islandB.mesh.position.z - 2));
 
   const before = charger._vel.clone().setY(0).normalize();
-  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(4, islandB.mesh.position.y, islandB.mesh.position.z));
+  for (let i = 0; i < 30; i++) charger.update(1 / 60, new THREE.Vector3(4, islandB.mesh.position.y, islandB.mesh.position.z - 2));
   const after = charger._vel.clone().setY(0).normalize();
 
   assert.ok(before.distanceTo(after) > 0.1,
@@ -626,7 +879,9 @@ test('on grey a Charger keeps re-aiming at a sidestepping player', async () => {
  */
 test('the Charger charges — nothing plants it before it gets to you', async () => {
   const { level } = await buildLevel();
-  const [charger] = level.enemies;                    // island B, the teaching beat
+  // Island B's Charger, not island A's: A's is dormant by design (#011).
+  const charger = level.gateB.watch.find((e) => e.type === 'charger');
+  charger.wake();   // B's enemies are dormant until the player enters the arena
 
   const islandB = level.surfaces.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
@@ -650,7 +905,8 @@ test('the Charger charges — nothing plants it before it gets to you', async ()
 
 test('on blue a Charger commits to its heading and slides past a sidestep', async () => {
   const { level } = await buildLevel();
-  const [charger] = level.enemies;
+  const charger = level.gateB.watch.find((e) => e.type === 'charger');
+  charger.wake();   // B's enemies are dormant until the player enters the arena
   const islandB = level.surfaces.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
   const midZ = islandB.mesh.position.z;
@@ -696,7 +952,9 @@ test('on blue a Charger commits to its heading and slides past a sidestep', asyn
 
 test('the enemy reads the paint grid through the same API the player does', async () => {
   const { level } = await buildLevel();
-  const [charger] = level.enemies;
+  // Island B's Charger specifically: `level.enemies[0]` is island A's now (#011).
+  const charger = level.gateB.watch.find((e) => e.type === 'charger');
+  charger.wake();   // B's enemies are dormant until the player enters the arena
   const islandB = charger._probe.floors.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
 

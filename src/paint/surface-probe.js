@@ -47,6 +47,13 @@ export class SurfaceProbe {
     let best = null;
     let bestDist = PLAYER.groundProbeRange;
 
+    // TOLERANCE ON EVERY BOUNDARY, not just the edges. The world-space plane
+    // maths below lands an exact limit at 6.000000000000001 often enough to
+    // matter: a floor exactly at `groundProbeRange` away, or a point exactly on
+    // a lip, would be rejected while a raycaster hits it. A player standing on
+    // the lip must get the floor, not fall through.
+    const EPS = 1e-6;
+
     // indexed loop: `for...of` over an array allocates an iterator object on
     // every call until V8 optimises it away, and this runs per enemy per frame.
     for (let i = 0; i < this.floors.length; i++) {
@@ -64,11 +71,12 @@ export class SurfaceProbe {
       if (this._dirLocal.z >= 0) continue;
 
       const dist = -this._local.z / this._dirLocal.z;
-      if (dist < 0 || dist > bestDist) continue;
+      if (dist < 0 || dist > bestDist + EPS) continue;
 
       const hx = this._local.x + this._dirLocal.x * dist;
       const hy = this._local.y + this._dirLocal.y * dist;
-      if (Math.abs(hx) > floor.width * 0.5 || Math.abs(hy) > floor.height * 0.5) continue;
+      if (Math.abs(hx) > floor.width * 0.5 + EPS
+        || Math.abs(hy) > floor.height * 0.5 + EPS) continue;
 
       best = floor;
       bestDist = dist;

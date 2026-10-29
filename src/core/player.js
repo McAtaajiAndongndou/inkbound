@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER, HEALTH, CAMERA } from '../config.js';
+import { PLAYER, HEALTH, CAMERA, SUBMERGE } from '../config.js';
 
 const ID_TO_NAME = ['grey', 'blue', 'red', 'green'];
 
@@ -50,7 +50,14 @@ export class Player {
     this.dead = false;
     this.hurtTimer = 0;         // > 0 means recently hit, cannot be hit again yet
     this.onDeath = null;        // optional callback, fired once when health hits 0
-
+    // dry out (#75). Set by main.js — only main knows the gun and the surfaces.
+    // Player holds the flag so the HUD and any other system can read it.
+    this.dry = false;
+    this.dryTimer = 0;
+    // submerge (#108). Set every frame from `input.isDown(SUBMERGE.key)` AND
+    // "on your own paint". Off either, it is `false` that frame — no timer,
+    // no stuck state.
+    this.submerged = false;
     // visible avatar for third-person
     const geometry = new THREE.CapsuleGeometry(
       PLAYER.radius, PLAYER.height - PLAYER.radius * 2, 4, 12,
@@ -92,6 +99,18 @@ export class Player {
     }
     return true;
   }
+  
+  /**
+   * Kill the player outside the health system — used by dry out (#75).
+   * Same end path as a death, so the existing lose screen handles it.
+   */
+  kill() {
+    if (this.dead) return;
+    this.health = 0;
+    this.dead = true;
+    this.velocity.set(0, 0, 0);
+    this.onDeath?.();
+  }
 
   /**
    * Contact damage by proximity: any enemy whose centre is within
@@ -118,6 +137,7 @@ export class Player {
     if (this.dead) return;
     for (const enemy of enemies) {
       if (enemy.alive === false) continue;      // a corpse is not a hazard
+      if (enemy.sleeping === true) continue;    // nor is something still dormant
       if (!enemy.position || !enemy.config) continue;
       const dx = enemy.position.x - this.position.x;
       const dz = enemy.position.z - this.position.z;
@@ -128,13 +148,13 @@ export class Player {
     }
   }
 
-  look(dx,dy,aiming = false){
-    if (this.dead){
+  look(dx, dy, aiming = false) {
+    if (this.dead) {
       return;
     }
     let sensitivity = PLAYER.lookSensitivity;
 
-    if (aiming){
+    if (aiming) {
       sensitivity *= PLAYER.adsSensitivityMultiplier;
     }
 
@@ -163,6 +183,13 @@ export class Player {
     let best = null;
     let bestDist = PLAYER.groundProbeRange;
 
+    // Tolerance on the range and the edges. The local-space maths lands an exact
+    // limit at 6.000000000000001 often enough to matter: a floor exactly
+    // `groundProbeRange` away, or a sample exactly on a lip, was rejected while a
+    // raycaster hits it — and a player standing on a lip must get the floor, not
+    // fall through. Matches `SurfaceProbe.down`, which the enemies already use.
+    const EPS = 1e-6;
+
     for (const floor of this.floors) {
       // ray origin and direction (world 0,-1,0) in the floor's local space.
       // One matrix inverse per floor: the direction is just minus the
@@ -177,11 +204,12 @@ export class Player {
       if (this._dirLocal.z >= 0) continue;
 
       const dist = -this._local.z / this._dirLocal.z;   // world units along the ray
-      if (dist < 0 || dist > bestDist) continue;
+      if (dist < 0 || dist > bestDist + EPS) continue;
 
       const hx = this._local.x + this._dirLocal.x * dist;
       const hy = this._local.y + this._dirLocal.y * dist;
-      if (Math.abs(hx) > floor.width * 0.5 || Math.abs(hy) > floor.height * 0.5) continue;
+      if (Math.abs(hx) > floor.width * 0.5 + EPS
+        || Math.abs(hy) > floor.height * 0.5 + EPS) continue;
 
       best = floor;
       bestDist = dist;
@@ -286,7 +314,15 @@ export class Player {
     this.currentColour = ground
       ? ID_TO_NAME[ground.surface.paintIdAtWorld(ground.point)]
       : 'grey';
-
+    
+    // ---- submerge (#108) — a deliberate input on your own paint -----------
+    // Both conditions must hold, and both are re-checked every frame:
+    //   1. The player is holding the submerge key.
+    //   2. The ground under them is painted (not grey).
+    // The "own paint" test is `currentColour !== 'grey'` — the same check the
+    // speed cap and HUD already trust. Step off your paint and the state
+    // drops the same frame; no timer, no stuck state.
+    this.submerged = input.isDown(SUBMERGE.key) && this.currentColour !== 'grey';
     // ---- climbing: touching a GREEN wall and pushing into it -------------
     const wall = this.touchingWall;
     const pushingIntoWall = wall && this._wish.dot(wall.normal) < -PLAYER.climbPushThreshold;
@@ -298,17 +334,22 @@ export class Player {
       this.velocity.y += PLAYER.gravity * dt;
     }
 
-    // ---- horizontal acceleration + friction FROM THE PAINT ---------------
+        // ---- horizontal acceleration + friction FROM THE PAINT ---------------
+    // #108 — submerge multiplies the ACCELERATION, not just the cap. Raising
+    // the cap alone does nothing at walking speed: acceleration is what limits
+    // you, and the equilibrium velocity (accel / friction) is below maxSpeed
+    // at base. So submerge has to speed up the push, not just the ceiling.
+    const submergeSpeed = this.submerged ? SUBMERGE.speedMultiplier : 1;
     const accel = this.onGround
-      ? PLAYER.accel * (rules ? rules.traction : 1)
-      : PLAYER.airAccel;
+      ? PLAYER.accel * submergeSpeed * (rules ? rules.traction : 1)
+      : PLAYER.airAccel * submergeSpeed;
     this.velocity.x += this._wish.x * accel * dt;
     this.velocity.z += this._wish.z * accel * dt;
 
     // a trampoline must not slow you down: red flings the speed you arrived with
     if (this.onGround && rules && rules.restitution === 0) {
       // low friction (blue) is what makes ice — see SURFACE in config.js
-      const damping = Math.max(0, 1 - rules.friction * dt);
+      const damping = Math.exp(-rules.friction * dt);
       this.velocity.x *= damping;
       this.velocity.z *= damping;
     }
@@ -323,14 +364,27 @@ export class Player {
     if (settled) this.speedCap = granted;
     else if (granted > this.speedCap) this.speedCap = granted;
 
+    // ---- #74: grey's LIVE penalty ---------------------------------------
+    // speedScale is sticky (#52). If we put grey's penalty on speedScale it
+    // would be wiped the moment the player touched blue once, and grey would
+    // silently stop mattering. So `standSlow` is a separate, LIVE multiplier
+    // applied only while standing on the surface. It is min'd with the sticky
+    // cap, so stepping off grey restores speed immediately.
+    const standSlow = (this.onGround && rules && rules.standSlow < 1) ? rules.standSlow : 1;
+    const speedCap = this.speedCap * standSlow;
+
+    // ---- absolute movement cap ------------------------------------------
+    // Submerge raises the ceiling; ADS reduces it. Both compose. `submergeSpeed`
+    // was declared above, in the acceleration block — one declaration, used
+    // twice, no re-declare.
+    const maxSpeed = speedCap * submergeSpeed * (input.aiming ? PLAYER.adsSpeedMultiplier : 1);
+
     // not Math.hypot — V8 allocates on every hypot call
     const vx = this.velocity.x;
     const vz = this.velocity.z;
     const planar = Math.sqrt(vx * vx + vz * vz);
 
-    const maxSpeed = this.speedCap * (input.aiming ? PLAYER.adsSpeedMultiplier : 1);
-
-    if(planar > maxSpeed){
+    if (planar > maxSpeed) {
       this.velocity.x *= maxSpeed / planar;
       this.velocity.z *= maxSpeed / planar;
     }
@@ -393,6 +447,8 @@ export class Player {
     this.speedCap = PLAYER.maxSpeed;   // respawning earns nothing (#52)
     this._coyoteTimer = 0;
     this._jumpBufferTimer = 0;
+    this.dry = false;
+    this.dryTimer = 0;
   }
 
   dispose() {

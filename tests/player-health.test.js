@@ -138,3 +138,12 @@ test('every enemy type has a contactDamage number in config', () => {
     assert.equal(typeof cfg.contactDamage, 'number', `ENEMY.${name}.contactDamage`);
   }
 });
+
+test('every SHOOTING enemy has an attackDamage number', () => {
+  // main.js wires onAttack -> player.takeDamage(attackDamage). An enemy that
+  // shoots without this number is a light show, which is what the Sprayer was.
+  for (const [name, cfg] of Object.entries(ENEMY)) {
+    if (!cfg.canShoot) continue;
+    assert.ok(cfg.attackDamage > 0, `ENEMY.${name} shoots but has no attackDamage`);
+  }
+});

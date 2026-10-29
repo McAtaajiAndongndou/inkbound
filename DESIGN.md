@@ -10,15 +10,23 @@ The world is grey and lifeless. You carry a paint gun, and **the colour you pain
 | **Red** | Bounce — high restitution | Knocked back hard, can be flung off ledges |
 | **Green** | Grip — climbable | Stuck in place, can't move |
 
-Enemies spray **grey**, which strips colour off surfaces. Combat is a fight over territory, not just health bars.
+Enemies spray **grey**, which converts your surface back into theirs. Grey is Corrupt Corp's colour rather than the absence of colour, so combat is a literal fight over territory — not just health bars (`ADR-0002`).
+
+### Story
+
+Corrupt Corp learned to siphon colour and joy out of the world and sell it back as immortality. Every year they took more, and the world went greyer. The trial subjects who failed — the zombies — were left to roam as their foot soldiers.
+
+You are a new rebel carrying a prototype paint gun. Colour starves their machines. A sergeant briefs you, runs you through a training course to prove you are ready, and sends you out: the forest outskirts, up the mountain, and finally into the base where the siphon still runs.
+
+Told through the environment and the sergeant's lines — one briefing still, then one line per level. No cutscenes, no exposition walls.
 
 ### The Call of Duty layer
 
 Every shooter feature runs *through* the paint mechanic, never around it. If it turned into "shooter where bullets are colourful" we'd lose the Innovation marks entirely.
 
-- **Loadout** — pick 2 of the 3 colours before each level. Changes how you fight *and* which routes are open.
-- **Ammo and reload** — the paint tank is a magazine. Counter, reload, dry click.
-- **Paintstreaks** — coverage fills a meter, unlocking a colour mortar, a splat grenade, and 10 seconds of unlimited paint.
+- **All three colours** — every colour is always available in normal play. The 2-of-3 loadout is the unlockable hard mode, not the default (`ADR-0003`).
+- **One shared tank** — a single reserve across all colours, refilled by standing in your own paint. No refill button and no trickle: empty the tank with no ground of your own and you **dry out** (`ADR-0001`).
+- **Paintstreaks** — coverage and kills fill a meter, spent on a splat that claims a zone and stuns everything inside it.
 - **ADS** — aiming switches third-person to first-person. Also our multiple-camera-views requirement.
 - **Minimap** — orthographic corner camera showing painted territory.
 
@@ -28,29 +36,31 @@ Every shooter feature runs *through* the paint mechanic, never around it. If it 
 
 The brief is explicit: three levels means three *distinct experiences*. Reskinning the same challenge or turning the numbers up doesn't count and caps our marks. Each level changes the **relationship between the player and their paint**.
 
-### Level 1 — Mission · learning
-Linear, corridor-based, objective markers, extraction point.
+### Level 1 — Outskirts · learning
+Open island-hopping through a drowned forest, with the pillars as its setpiece. Space is the point: the player can always retreat, repaint and come back.
 
-- **Paint:** effectively unlimited, refill stations everywhere
-- **Enemies:** Sprayer (ranged, strips colour) and Charger (melee rush, no gun)
+- **Paint:** generous. Every island has enough paintable ground that a dry player is never more than one splat from recovery.
+- **Enemies:** Charger (melee rush, no gun) and Sprayer (ranged, converts your paint back to grey)
 - The Charger exists so you *discover* paint-as-weapon — freeze the floor and he slides straight past. No tutorial popup needed.
-- **Enemy defence:** none, any colour hurts
+- **Enemy defence:** none. Every colour hurts; the correct colour is the one you choose.
+- **Traps:** three, and all three have a colour answer — so the player learns that traps are problems to solve, not timings to memorise.
 
-### Level 2 — Ascent · rationing
-Climbing a vertical structure. The tank barely refills.
+### Level 2 — The Ascent · no space
+Climbing a mountain in three tiers. The tension is that there is nowhere to retreat to.
 
-- **Paint:** severely limited. Green to climb, or green to pin that enemy? You can't do both.
+- **Paint:** tight. Green to climb, or green to pin that enemy? You can't do both.
 - **Enemies:** Wall-crawler (climbs your green paint, so what got you up here lets them reach you) and Turret (fixed, covers a route, you go around not through)
-- **New failure state:** run dry mid-climb, fall all the way back down
-- **Enemy defence:** armour shells — a grey shell that must be cracked with one specific colour first. Interacts with the loadout: leave red at home and the red-shelled enemy is a routing problem, not a shooting problem.
+- **New failure state:** drying out. Falls cost time, not the run — a missed climb lands you on the terrace below. Emptying the tank with no territory of your own ends the attempt.
+- **Enemy defence:** none. Every enemy is answered by its own opening rather than by a shell. The turret is the deliberate exception: no colour proc helps at all, so positioning is the only answer (`ENEMIES.md`).
+- **Traps:** one per traversal beat — they are the level's texture, not its decoration.
 - Deliberately low enemy count. The tension is scarcity — flooding it with enemies collapses it back into Level 1.
 
-### Level 3 — Siege · drowning
-Closed arena, wave survival, no exit until the boss dies.
+### Level 3 — Last Colour · drowning
+Three chambers — a hangar, a corridor, and the siphon core. Wave survival in two of them, and no exit until the arena is taken back.
 
-- **Enemies:** Drainer — weak, dumb, dozens of them, and they **eat painted ground**. The territory you're standing on shrinks while you fight.
-- **Boss:** repaints the arena grey, spawns waves, needs a colour combo to kill
-- **Enemy defence:** combos — colours must land in sequence
+- **Enemies:** Drainer — weak, dumb, dozens of them, and they **convert painted ground back to grey**. The territory you're standing on shrinks while you fight. Backed up by Charger zombies, turrets, and the Stalker, which is fast only on your paint.
+- **Boss:** Big Arm — repaints the arena grey, spawns waves, dies to a colour combo. Then the **Siphon** is the final exam: blue, green, red in sequence, no health bar.
+- **Enemy defence:** combos on the boss only. Ordinary enemies are answered by their openings.
 
 ### The answer everyone needs to know
 
@@ -108,8 +118,8 @@ Build the Sprayer properly first. Everything else is that same enemy with switch
 | Viewing | 10 | Third-person default, ADS to first-person, orthographic minimap, animated avatar |
 | Control & Playability | 10 | Keyboard + mouse, clear win/lose, climbing makes it genuinely vertical, Rapier central not decorative |
 | 3D Effects | 15 | Grey-to-colour transitions, skybox, multiple lights, shadows, bump and height maps on the grey world |
-| Shaders | 10 | Splat shader into a render target, toon + outline pass, glowing armour shell. Uniforms driven by coverage and game state so it's alive, not static |
-| Gameplay & Experience | 25 | Dead world restored by colour, three distinct pressures, sound tied to painting, replay through loadouts |
+| Shaders | 10 | Splat shader into a render target, toon + outline pass, glowing status effects (frost shell, pin stakes). Uniforms driven by coverage and game state so it's alive, not static |
+| Gameplay & Experience | 25 | Dead world restored by colour, three distinct pressures, sound tied to painting, replay through the 2-of-3 hard mode and scored runs |
 | Polish | 10 | Restart without refresh, pause/options, loading screen, hitmarkers, killfeed |
 | Innovation | 10 | Colour changes *physics* not appearance. Enemies eat terrain. Combo weaknesses instead of health bars. |
 | Game Trailer | 10 | Assigned week one. Splatter on grey films extremely well. |

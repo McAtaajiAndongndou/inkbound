@@ -85,9 +85,10 @@ The headline rules:
 
 | Level | Pressure | Player relationship to paint | Cast |
 |---|---|---|---|
-| **L1 — Mission** | Learning | Effectively unlimited; refill everywhere | Soldier Charger + Sprayer |
-| **L2 — Ascent** | Rationing | Scarce — green to climb *or* green to pin, not both | Wall-crawler + Turret |
-| **L3 — Siege** | Drowning | Enemies eat the ground you stand on | Drainers + Charger zombies + boss |
+| **Tutorial — The Primer** | None | Generous; the first splat is relief from grey | One Charger, one trap |
+| **L1 — Outskirts** | Learning | Generous — a dry player is one splat from recovery | Soldier Charger + Sprayer |
+| **L2 — The Ascent** | No space | Tight — green to climb *or* green to pin, not both | Wall-crawler + Turret |
+| **L3 — Last Colour** | Drowning | Contested — enemies convert your ground back to grey | Drainers + Charger zombies + Big Arm + Siphon |
 
 **L1 layout work (now):** widen island B so the fight is winnable, raise Platform 3
 pressure (telegraphs, not just more HP), and add a **checkpoint/arena gate** —
@@ -148,16 +149,18 @@ it repaints the arena grey around you. The thesis statement: the thing that stol
 the world is made of the world.
 
 **Level arc.** The colour comes back as you push deeper:
-- **L1 — Mission.** Forest edge into a grey military base. Teaches that colour
-  changes physics.
-- **L2 — Ascent.** Upward through the Corp's infrastructure. Paint is scarce, so
-  every colour must do two jobs.
-- **L3 — Siege.** The horde and the source. Enemies eat your colour; the boss
-  takes the room back; the world you painted is your safety net.
+- **Tutorial — The Primer.** A rebel training course, with nothing at stake.
+  Teaches that colour changes physics.
+- **L1 — Outskirts.** Forest edge, open islands, room to retreat. Teaches that
+  colour changes the world.
+- **L2 — The Ascent.** Upward through the Corp's infrastructure. Paint is scarce
+  and there is nowhere to retreat to.
+- **L3 — Last Colour.** The base, the horde and the source. Enemies convert your
+  colour back to grey; the world you painted is your safety net.
 
 **Delivery rule:** environment first — drained grey against restored colour tells
-the story without a word. The menu one-liner is the only text. No cutscenes, no
-exposition walls.
+the story without a word. The sergeant carries the only spoken lines: a briefing
+still in the tutorial, then one line per level. No cutscenes, no exposition walls.
 
 ---
 

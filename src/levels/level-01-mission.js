@@ -1,21 +1,21 @@
 // OWNER: E (Levels)
-// L1 — "THE BRIEFING". Linear corridor mission, objective markers, extraction point.
+// L1 — "OUTSKIRTS". Forest island-hopping, the pillars setpiece, generous paint.
 // WHAT THIS LEVEL DOES THAT THE OTHERS DO NOT: it is the only level with
 // generous paint. The player is LEARNING that colour changes physics.
 // Enemies: Sprayer, Charger. No armour. Low count.
 import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
-import { PAINT, ENEMY, PAINT_GRID } from '../config.js';
-import { Enemy } from '../enemies/enemy.js';
+import { PAINT, PAINT_GRID } from '../config.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
+import * as kit from './level-kit.js';
 
 /**
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
  * Full-width corridor (x −11…11) so no gate can be bypassed sideways.
  *
- * Route (z runs +18 → −36): start island → jump Gap 1 → island B (Charger,
- * blue run-up) → [gate B: clear island B] → blue + RED PAD super jump over
+ * Route (z runs +26 → −45): vantage island → jump Gap 1 → island B (deck,
+ * cover, two lanes; clear it) → [gate B] → blue + RED PAD super jump over
  * Gap 2 → island C (arena: Charger + Sprayer rush you) → [gate C: clear the
  * arena AND the tower] → jump onto the stair tower's first deck (two Shooters
  * waiting behind the block) → green-climb deck 2 → green-climb deck 3 →
@@ -30,13 +30,65 @@ const L1 = {
   // props over more ground rather than adding props.
   corridorHalf: 11,           // full width 22
   cells: PAINT_GRID.level1Cells,
-  spawn: { x: 0, y: 2, z: 13 },
+  spawn: { x: 0, y: 2, z: 21 },
 
   islands: {
-    A: { zMin: 8,   zMax: 18  },  // start — spawn + fall respawn land here
-    B: { zMin: -7,  zMax: 4.5 },  // middle — deep: Charger fight + blue run-up
-    C: { zMin: -24, zMax: -16 },  // arena — then the stair tower behind its door
+    // A is the only island that grew BACKWARD (18 -> 26, issue 011). The route's
+    // far edge stays at z 8, so Gap 1 and every jump number measured against it
+    // are untouched; the extra eight metres are behind the old spawn, which is
+    // the only direction this island had left to expand without re-tuning the
+    // fight that comes after it.
+    A: { zMin: 8,   zMax: 26  },  // start — the vantage: spawn, nothing else
+    B: { zMin: -7,  zMax: 4.5 },  // the first fight — deck, cover, two lanes
+    C: { zMin: -30, zMax: -16, half: 15 },  // arena — 30 m wide, 14 m deep
   },
+
+  // --- island B: the first fight room (#012) --------------------------------
+  //
+  // THE BLOCKOUT. Nothing here is tuned; the point is to answer one question in
+  // play: can this room hold a fight with two ground lanes AND a height route?
+  // If it cannot, no enemy or trap placed in it will fix that.
+  //
+  // WHAT IT IS FOR. B is where the level first asks "can I fight two things while
+  // the ground is contested?". A flat 22 x 11.5 m room answers nothing: there is
+  // nowhere to break a sightline, nowhere to retreat to, and one route through.
+  //
+  // THE DECK IS A BLOCK, NOT A PERCH. Playtest (28 Oct): a climbable deck with
+  // nothing on it became the best square in the room and the fight ended on top of
+  // it. Now it is unpaintable and 4.6 m — above the red-bounce apex (minBounce 15
+  // against gravity -26 = 4.33 m) — so the only way past it is around it. The
+  // Sprayer stands on it: elevation is the enemy's, not the player's.
+  //
+  // AND NO COVER BLOCK. The deck already splits the room; a second obstacle in
+  // 11.5 m over-divides it. One obstacle per room.
+  // --- keep-out zones for the decor scatter ----------------------------------
+  //
+  // The block on C is 3 m tall and the scatter is a forest: without this, trees
+  // grew through it and hid the lane around it (playtest, 29 Oct). Any rect here
+  // is empty of every decor kind, hand-placed or scattered. Keep them the size of
+  // the thing plus ~1.5 m of breathing room.
+  decorAvoid: [
+    { xMin: 5, xMax: 13, zMin: -23, zMax: -17 },
+  ],
+
+  bDeck: { xMin: 5, xMax: 9, zMin: -6, zMax: -2, y: 4.6, overhang: 0 },
+
+  // --- island C: one block, two jobs (#014) ----------------------------------
+  //
+  // C is now 22 x 14 m (grown from 8 m on playtest: a block in an 8 m room was a
+  // perch, not cover — the top was the best square and the fight ended there).
+  // The block sits OFF-CENTRE so there is a lane either side and a pocket behind
+  // it: the room is a loop to play, not a wall to hide behind.
+  //
+  // NOT JUMPABLE BY FOOT, NOT CLIMBABLE, AND PART OF THE ROOM. It was 2.5 m and
+  // paintable (one green splat or one red pad onto the top), then 4.6 m (no route
+  // up, but it read as a tower in a 14 m room). Playtest, 28 Oct: too high. It is
+  // now 3 m and unpaintable — a wall chunk you route around, not a landmark.
+  //
+  // A red pad beside it still clears the 1.39 m jump (bounce apex 4.33 m), but
+  // that costs a splat and puts you on a 4 x 2 ledge inside the Sprayer's 12 m
+  // range, so it is a trade, not an escape.
+  cCover: { xMin: 7, xMax: 11, zMin: -21, zMax: -19, y: 3.0, overhang: 0 },
 
   // --- the ascent (#39 #6, third revision — Renda's pillars) -----------------
   //
@@ -89,7 +141,7 @@ const L1 = {
     // The hall behind the door. The pillars stand in it, and the gap between them
     // is over the FLOOR, not over a pit: a missed bounce drops you to the ground
     // and costs you the climb again, rather than ending the run.
-    vestibule: { zMin: -40, zMax: -24 },
+    vestibule: { zMin: -40, zMax: -30 },
 
     // 6 x 6 bases against the back wall, with a 1 m CORNICE on the climbable sides.
     // Flush at the back, where the wall is.
@@ -145,6 +197,12 @@ const L1 = {
     C: { yTop: 7 },    // island C's back edge, at the foot of the tower
   },
 
+  // A is intentionally EMPTY: no enemy, no hazard, no deck. Its job is the view —
+  // B's deck and Sprayer are visible across Gap 1, so the player arrives at the
+  // first fight with a plan. See `docs/levels/01-outskirts.md`, "Island A — the
+  // vantage", for the playtest that removed the deck, the Charger and the pit.
+  //
+
   // NO BEACONS (#39). There used to be four free-floating unlit boxes here —
   // blue, red and two green — marking where the player was meant to paint what.
   // Two of them hung in mid-air over a gap with nothing under them, and Renda
@@ -172,9 +230,27 @@ const L1 = {
   // Spawns are a starting hint, not a hold: there is no aggro radius, so enemies
   // walk at the player from load and freeze where the next step would fall off.
   spawns: [
-    { x: 4,   y: 0,   z: -1,   type: 'charger' },
-    { x: -4,  y: 0,   z: -21,  type: 'charger' },
-    { x: 0,   y: 0,   z: -19,  type: 'sprayer' },
+    // island A — NOTHING. The entry is a vantage, not a fight (playtest, 24 Oct).
+    // The first enemy is the first thing past Gap 1.
+    // island B — two on the floor, one on the deck. 7-8 m from the landing so the
+    // player has ~1.5 s to read the room, and the charge has to come around the
+    // deck instead of arriving at the lip. DORMANT until the player lands in B:
+    // enemies walk from load, so without this they pile up at B's edge and the
+    // player jumps the Gap into a wall of Chargers.
+    { x: -3,  y: 0,   z: -3,   type: 'charger', sleeping: true, wakeOn: 'B' },
+    { x: 2,   y: 0,   z: -4,   type: 'charger', sleeping: true, wakeOn: 'B' },
+    { x: 7,   y: 4.6, z: -4,   type: 'sprayer', sleeping: true, wakeOn: 'B' },
+    // island C — three in the arena, deeper now that the room is 14 m: the
+    // player lands with 10 m of floor and a block between them and contact.
+    // Dormant until the player lands in C, for the same reason as B.
+    // Three Sprayers, not one: the block only shadows the pocket behind it, so
+    // the open lanes are a crossfire. Standing in the open is now punished
+    // (10 damage per 2.5 s per gun, `ENEMY.sprayer.attackDamage`).
+    { x: -8,  y: 0,   z: -28,  type: 'sprayer', sleeping: true, wakeOn: 'C' },
+    { x: -5,  y: 0,   z: -28,  type: 'sprayer', sleeping: true, wakeOn: 'C' },
+    { x: -2,  y: 0,   z: -28,  type: 'sprayer', sleeping: true, wakeOn: 'C' },
+    { x: -5,  y: 0,   z: -26,  type: 'charger', sleeping: true, wakeOn: 'C' },
+    { x: 5,   y: 0,   z: -26,  type: 'charger', sleeping: true, wakeOn: 'C' },
     { x: 5,   y: 7.0, z: -37,  type: 'sprayer' },
     { x: 7.5, y: 7.0, z: -36,  type: 'sprayer' },
   ],
@@ -209,7 +285,7 @@ const L1 = {
     // standing at the end of the mission — and the waste trenches are derived
     // from this, so they follow it automatically.
     zMin: -47,
-    zMax: 20,
+    zMax: 28,
   },
 
   // The TREES. Hand-placed, because the rules are not geometric:
@@ -250,10 +326,11 @@ const L1 = {
     { x:  8.5, y: 0, z: -3.5, scale: 0.95 },
     { x:  9.0, y: 0, z: -6.0, scale: 1.25 },
 
-    // island C — the arena. Left of the tower's footprint (x >= 2.5 is structure).
-    { x: -8.5, y: 0, z: -17.5, scale: 1.0 },
-    { x: -9.5, y: 0, z: -21.0, scale: 1.3 },
-    { x: -8.0, y: 0, z: -23.5, scale: 0.9 },
+    // island C — the arena. Widened with the room (C is 30 m wide now), so the
+    // treeline sits at x -14 and the block at x -11..-7 has clear air around it.
+    { x: -14.0, y: 0, z: -17.5, scale: 1.0 },
+    { x: -13.5, y: 0, z: -21.0, scale: 1.1 },
+    { x: -14.0, y: 0, z: -23.5, scale: 0.9 },
   ],
 };
 
@@ -525,15 +602,29 @@ function createMistTexture(size = 128) {
 }
 
 export class Level01 extends LevelBase {
+  // Viewer shots, one per beat in docs/levels/01-outskirts.md (see level-shots.js).
+  // Static, so the package main.js reads gains no field. Eye-height shots keep
+  // the fog; the high ones drop it, because the fog is tuned for the player.
+  static SHOTS = [
+    { name: 'gap1', label: 'Gap 1 — from A', position: [0, 3.7, 11], target: [0, 1, 0], fog: true },
+    { name: 'island-b', label: 'Island B — the deck', position: [-6, 9, 9], target: [3, 1, -2], fog: false },
+    { name: 'gap2', label: 'Gap 2 — from B', position: [0, 3.7, -5], target: [0, 1, -18], fog: true },
+    { name: 'island-c', label: 'Island C — the arena', position: [-12, 14, -10], target: [3, 0, -23], fog: false },
+    // From above C's gate: any lower and the camera is behind that wall.
+    { name: 'pillars', label: 'Pillars + last climb', position: [-9, 14, -27], target: [0, 5, -38], fog: false },
+  ];
+
   async load() {
-    for (const { zMin, zMax } of Object.values(L1.islands)) {
-      this._floor(zMin, zMax, 0);
+    for (const { zMin, zMax, half } of Object.values(L1.islands)) {
+      this._floor(zMin, zMax, 0, (half ?? L1.corridorHalf) * 2);
     }
     // The ground floor behind the door. NOT marked `tower`, so the forest comes back
     // here, framing the pillars the way it frames every other island (#39: "reintroduce
     // the forest past the gate of island c, just on the sides like the other islands").
     this._floor(L1.ascent.vestibule.zMin, L1.ascent.vestibule.zMax, 0);
 
+    this._islandBShape();
+    this._islandCShape();
     this._ascent();
     this._shoulders();
     this._extraction();
@@ -544,18 +635,18 @@ export class Level01 extends LevelBase {
 
     this.spawn.set(L1.spawn.x, L1.spawn.y, L1.spawn.z);
 
-    this.spawnPoints = L1.spawns.map((p) => new THREE.Vector3(p.x, p.y, p.z));
-    this._spawnEnemies();
-
-    // Gates go up after the enemies exist so each one can take its own watch
-    // list. A gate waits only on the enemies that SPAWN inside its own arena:
-    // island C's must not hold island B's gate shut, or the other way round.
+    // Gates go up BEFORE the enemies, so the gate panels are in the wall list the
+    // enemies collide against. Otherwise an enemy could follow the player through
+    // a closed door — walls are solid to the AI now, and a door is a wall.
     //
-    // Island C's watches the ARENA FLOOR only — the two that rush you. The two
+    // A gate waits only on the enemies that SPAWN inside its own arena: island C's
+    // must not hold island B's gate shut, or the other way round.
+    //
+    // Island C's watches the ARENA FLOOR only — the three in the arena. The two
     // shooters up the right-hand pillar are NOT part of it (Renda: "the gate should
-    // open after killing the two enemies on island c"). They did not need to be: a
-    // gate is there to stop you RUNNING PAST a fight, and you cannot run past
-    // something standing on the only landing you can bounce to.
+    // open after killing the two enemies on island c"). A gate is there to stop you
+    // RUNNING PAST a fight, and you cannot run past something standing on the only
+    // landing you can bounce to.
     this.gateB = this._gate({
       contains: (p) => this._inIsland('B', p),
       z: L1.islands.B.zMin, yBase: 0, yTop: L1.gates.B.yTop,
@@ -563,8 +654,14 @@ export class Level01 extends LevelBase {
     this.gateC = this._gate({
       contains: (p) => this._inIsland('C', p),
       z: L1.islands.C.zMin, yBase: 0, yTop: L1.gates.C.yTop,
+      // C is 30 m wide, so its door has to be too — a gate narrower than the arena
+      // is a gate you can walk around (the same rule as the corridor gates).
+      width: (L1.islands.C.half ?? L1.corridorHalf) * 2,
     });
     this.gates = [this.gateB, this.gateC];
+
+    this.spawnPoints = L1.spawns.map((p) => new THREE.Vector3(p.x, p.y, p.z));
+    this._spawnEnemies();
 
     for (let i = 0; i < this.gates.length; i++) {
       const gate = this.gates[i];
@@ -821,20 +918,9 @@ export class Level01 extends LevelBase {
    * the floor they stand on.
    */
   _lightDirection() {
-    const dir = new THREE.Vector3(
-      MOOD.sunDir[0], MOOD.sunDir[1], MOOD.sunDir[2],
-    ).normalize();
-    this.sunDir = dir;   // kept: future code (telegraphs, reactions) wants it
-
-    for (let i = 0; i < this.surfaces.length; i++) {
-      const uniform = this.surfaces[i].material.uniforms.uLightDir;
-      if (uniform) uniform.value.copy(dir);
-    }
-
-    // the decor, which is custom-shaded too and was the miss described above
-    for (const material of this.decorMaterials) {
-      material.uniforms.uLightDir.value.copy(dir);
-    }
+    // kept: future code (telegraphs, reactions) wants it. The decor is in the
+    // list because it is custom-shaded too, and was the miss described above.
+    this.sunDir = kit.aimCustomShading(this.surfaces, this.decorMaterials, MOOD.sunDir);
   }
 
   /**
@@ -866,6 +952,7 @@ export class Level01 extends LevelBase {
 
       const props = new Decor(this.root, {
         kind, config, palette: this.palette, hand: L1[kind] ?? [],
+        avoid: L1.decorAvoid ?? [],
       });
       props.build(floors);
 
@@ -917,6 +1004,15 @@ export class Level01 extends LevelBase {
   }
 
   update(dt, player) {
+    // Dormant enemies wake when the player ENTERS their arena, not on a distance
+    // radius (#54 has none). Until then they hold their spawn — see `_spawnEnemies`.
+    for (let i = 0; i < this.sleepers.length; i++) {
+      const s = this.sleepers[i];
+      if (s.enemy.sleeping && this._inIsland(s.wakeOn, player.position)) {
+        s.enemy.wake();
+      }
+    }
+
     // Pass the position, not the player: Enemy.update does arithmetic on what
     // it receives, and a Player object has no x/y/z.
     // indexed loop: `for...of` allocates an iterator object per call until V8
@@ -994,26 +1090,18 @@ export class Level01 extends LevelBase {
    * array, which looks exactly like "the enemies are just not there yet".
    */
   _spawnEnemies() {
-    try {
-      // Only walkable surfaces — the probe treats every entry as a floor to
-      // stand on, and a wall in that list would be a floor you stand on top of.
-      const floors = this.surfaces.filter((s) => s.isFloor);
-
-      for (const { x, y, z, type } of L1.spawns) {
-        const config = ENEMY[type] ?? ENEMY.sprayer;
-        this.enemies.push(
-          new Enemy({
-            position: new THREE.Vector3(x, y, z),
-            config,
-            parent: this.root,
-            floors,
-          }),
-        );
-      }
-    } catch (err) {
-      console.error('[Level01] enemy spawn failed, running without enemies:', err);
-      this.enemies = [];
-    }
+    // Cover is only cover if the AI collides with it, and the kit hands every
+    // wall to the AI. Gates are walls too; an opened gate is dropped to y -100,
+    // which puts it outside the wall test's vertical bounds, so it stops
+    // blocking enemies as well.
+    //
+    // Sleepers are dormant until the player ENTERS their arena. Enemies walk
+    // from load, so without this every arena's fight is already standing at its
+    // lip when the player arrives — the Chargers pile up on B's edge and you
+    // jump the Gap into them.
+    const { enemies, sleepers } = kit.spawnEnemies(this, L1.spawns, 'Level01');
+    this.enemies = enemies;
+    this.sleepers = sleepers;
   }
 
   dispose() {
@@ -1028,14 +1116,7 @@ export class Level01 extends LevelBase {
 
   /** A flat, walkable paint surface on the XZ plane. `height` is world Z depth. */
   _floor(zMin, zMax, y = 0, width = L1.corridorHalf * 2) {
-    const s = new PaintSurface({ width, height: zMax - zMin, cells: L1.cells });
-    s.mesh.rotation.x = -Math.PI / 2;
-    s.mesh.position.set(0, y, (zMin + zMax) / 2);
-    s.mesh.receiveShadow = true;
-    s.isFloor = true;
-    this.root.add(s.mesh);
-    this.surfaces.push(s);
-    return s;
+    return kit.platform(this, { y, zMin, zMax, xMin: -width / 2, xMax: width / 2, cells: L1.cells });
   }
 
   /**
@@ -1109,25 +1190,8 @@ export class Level01 extends LevelBase {
    * Measured minimum: 0.3 m. Ours is 1 m, which is also small enough to read as a
    * moulding rather than as a floor laid on the box (Renda's original complaint).
    */
-  _pillar({ xMin, xMax, zMin, zMax, y, overhang, unpaintable = false }) {
-    // --- the three sides ------------------------------------------------------
-    // Front (normal +z), then the two sides (normals -x and +x). The side panels
-    // are the same primitive rotated a quarter turn; `_resolveWalls` reads the
-    // normal off the mesh quaternion, so a rotated panel pushes out correctly.
-    for (const spec of [{ z: zMax, xMin, xMax }]) {
-      this._face({ yBase: 0, yTop: y, z: spec.z, xMin: spec.xMin, xMax: spec.xMax, unpaintable });
-    }
-
-    for (const [x, normalX] of [[xMin, -1], [xMax, 1]]) {
-      this._face({ yBase: 0, yTop: y, x, zMin, zMax, unpaintable, normalX });
-    }
-
-    // --- the top, overhanging every side it can be climbed from --------------
-    this._platform({
-      y, zMin, zMax: zMax + overhang,
-      xMin: xMin - overhang, xMax: xMax + overhang,
-      mark: 'tower',
-    });
+  _pillar(spec) {
+    return kit.pillar(this, { ...spec, cells: L1.cells });
   }
 
   /**
@@ -1146,8 +1210,35 @@ export class Level01 extends LevelBase {
    * It reads as the Corp's material because it is the one surface in the level the
    * player can never change.
    */
-  _rock({ xMin, xMax, yBase, yTop, z }) {
-    return this._face({ yBase, yTop, z, xMin, xMax, unpaintable: true });
+  _rock(spec) {
+    return kit.rock(this, { ...spec, cells: L1.cells });
+  }
+
+  /**
+   * Island B's shape (#012). The blockout: a deck on the right, cover on the
+   * left, and two ground lanes between them. See `L1.bDeck` for what it is for
+   * and why the deck is on that side.
+   *
+   * Both blocks are `_pillar` + one closed face. `_pillar` builds three outward
+   * faces and a top; the fourth side is left open because every existing pillar
+   * leans on the back wall. These stand free, so the open side would be a room
+   * you can walk into — and its roof is a single-sided plane, i.e. invisible from
+   * underneath. One extra face closes it.
+   *
+   * The cover is UNPAINTABLE on purpose. It is not a route and not a puzzle; it
+   * is the thing that splits the floor into lanes. Making it paintable would
+   * turn every barricade into a green climb and change the room's question.
+   */
+  _islandBShape() {
+    kit.block(this, { ...L1.bDeck, unpaintable: true, cells: L1.cells });
+  }
+
+  /**
+   * Island C's one block (#014). UNPAINTABLE and taller than a red bounce: it is
+   * cover and a route-shape, not a perch. See `L1.cCover`.
+   */
+  _islandCShape() {
+    kit.block(this, { ...L1.cCover, unpaintable: true, cells: L1.cells });
   }
 
   /**
@@ -1185,16 +1276,8 @@ export class Level01 extends LevelBase {
    * assumes a floor's centre line is at x = 0 (see `_decorFloors`), so getting a
    * prop onto the wrong one is a silent mid-air placement.
    */
-  _platform({ y, zMin, zMax, xMin, xMax, mark }) {
-    const s = new PaintSurface({ width: xMax - xMin, height: zMax - zMin, cells: L1.cells });
-    s.mesh.rotation.x = -Math.PI / 2;
-    s.mesh.position.set((xMin + xMax) / 2, y, (zMin + zMax) / 2);
-    s.mesh.receiveShadow = true;
-    s.isFloor = true;
-    s[mark] = true;
-    this.root.add(s.mesh);
-    this.surfaces.push(s);
-    return s;
+  _platform(spec) {
+    return kit.platform(this, { ...spec, cells: L1.cells });
   }
 
   /**
@@ -1208,21 +1291,8 @@ export class Level01 extends LevelBase {
    * faces. `_resolveWalls` reads the normal off the mesh quaternion, so a rotated
    * panel pushes the player out correctly — no special case anywhere.
    */
-  _face({ yBase, yTop, z = 0, x = 0, xMin, xMax, zMin, zMax, unpaintable = false, normalX = 0 }) {
-    const width = normalX ? zMax - zMin : xMax - xMin;
-    const s = new PaintSurface({ width, height: yTop - yBase, cells: L1.cells, unpaintable });
-
-    if (normalX) {
-      s.mesh.rotation.y = normalX * Math.PI / 2;
-      s.mesh.position.set(x, (yBase + yTop) / 2, (zMin + zMax) / 2);
-    } else {
-      s.mesh.position.set((xMin + xMax) / 2, (yBase + yTop) / 2, z);
-    }
-
-    s.isFloor = false;
-    this.root.add(s.mesh);
-    this.surfaces.push(s);
-    return s;
+  _face(spec) {
+    return kit.face(this, { ...spec, cells: L1.cells });
   }
 
   /**
@@ -1261,9 +1331,9 @@ export class Level01 extends LevelBase {
    *      that collides. `visible = false` on its mesh costs nothing: collision
    *      reads the transform and never the visibility.
    */
-  _gate({ contains, z, yBase, yTop }) {
+  _gate({ contains, z, yBase, yTop, width = L1.corridorHalf * 2 }) {
     const s = new PaintSurface({
-      width: L1.corridorHalf * 2, height: yTop - yBase, cells: L1.cells, unpaintable: true,
+      width, height: yTop - yBase, cells: L1.cells, unpaintable: true,
     });
     s.mesh.position.set(0, (yBase + yTop) / 2, z);
     s.mesh.visible = false;      // the curtain below is what the player sees
@@ -1281,12 +1351,12 @@ export class Level01 extends LevelBase {
         new THREE.BoxGeometry(pillarW, yTop - yBase + 1.2, 1.8),
         concrete,
       );
-      pillar.position.set(side * (L1.corridorHalf - pillarW / 2), (yBase + yTop) / 2, z);
+      pillar.position.set(side * (width / 2 - pillarW / 2), (yBase + yTop) / 2, z);
       frame.add(pillar);
     }
 
     const lintel = new THREE.Mesh(
-      new THREE.BoxGeometry(L1.corridorHalf * 2, 1.2, 1.8),
+      new THREE.BoxGeometry(width, 1.2, 1.8),
       concrete,
     );
     lintel.position.set(0, yTop + 0.6, z);
@@ -1301,7 +1371,7 @@ export class Level01 extends LevelBase {
     const map = createMistTexture(64);
     map.repeat.set(4, 2);
     const curtain = new THREE.Mesh(
-      new THREE.PlaneGeometry(L1.corridorHalf * 2 - pillarW * 2, yTop - yBase),
+      new THREE.PlaneGeometry(width - pillarW * 2, yTop - yBase),
       new THREE.MeshBasicMaterial({
         map,
         color: TOWER.field,
@@ -1344,8 +1414,9 @@ export class Level01 extends LevelBase {
 
   /** Is a world point on island `key` (A, B, C)? Slack at the edges so "on the lip" counts. */
   _inIsland(key, p) {
-    const { zMin, zMax } = L1.islands[key];
-    return p.z >= zMin - 0.5 && p.z <= zMax + 0.5 && Math.abs(p.x) <= L1.corridorHalf + 0.5;
+    const { zMin, zMax, half } = L1.islands[key];
+    const h = half ?? L1.corridorHalf;
+    return p.z >= zMin - 0.5 && p.z <= zMax + 0.5 && Math.abs(p.x) <= h + 0.5;
   }
 
   /**
@@ -1371,19 +1442,10 @@ export class Level01 extends LevelBase {
   _extraction() {
     const { zMin, zMax } = L1.extraction;
     const y = L1.ledge.y;
-    const min = new THREE.Vector3(-L1.corridorHalf, y - 1, zMin);
-    const max = new THREE.Vector3(L1.corridorHalf, y + 2, zMax);
-    this.extraction = new THREE.Box3(min, max);
-
-    const marker = new THREE.Mesh(
-      new THREE.BoxGeometry(max.x - min.x, max.y - min.y, max.z - min.z),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, depthWrite: false }),
+    this.extraction = kit.extractionZone(
+      this,
+      new THREE.Vector3(-L1.corridorHalf, y - 1, zMin),
+      new THREE.Vector3(L1.corridorHalf, y + 2, zMax),
     );
-    marker.position.set(
-      (min.x + max.x) / 2,
-      (min.y + max.y) / 2,
-      (min.z + max.z) / 2,
-    );
-    this.root.add(marker);
   }
 }
