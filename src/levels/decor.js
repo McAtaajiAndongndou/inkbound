@@ -990,11 +990,49 @@ export class Decor {
 
       const name = ID_TO_NAME[prop.floor.paintIdAtWorld(this._base.set(prop.x, prop.y, prop.z))];
       if (name === prop.paintName) continue;
+      // A prop the Ledge reveal brought back keeps its colour: it was coloured by
+      // paint NEAR it, so the paint directly under it is often still grey.
+      if (prop.revealed && name === 'grey') continue;
 
       this._apply(prop, name);
       changed += 1;
     }
 
+    return changed;
+  }
+
+  /**
+   * The reveal: every prop in the level, not just the ones near the player, takes
+   * the colour of the player's paint within `radius` of it.
+   *
+   * `_react` is the moment-to-moment feedback and reads only the paint directly
+   * under a prop near the player. This is the payoff, run once when a level
+   * decides to (Outskirts: landing on the Ledge), so the view back across the
+   * level shows the trail the player painted. The prop's own spot is read first,
+   * then `ring` points on the circle; the first player colour found wins.
+   *
+   * Returns how many props changed.
+   */
+  reveal(radius, ring) {
+    let changed = 0;
+    for (let i = 0; i < this.props.length; i++) {
+      const prop = this.props[i];
+      if (!prop.floor) continue;
+
+      let name = 'grey';
+      for (let k = -1; k < ring && name === 'grey'; k++) {
+        const a = (k / ring) * Math.PI * 2;
+        const r = k < 0 ? 0 : radius;
+        this._base.set(prop.x + Math.cos(a) * r, prop.y, prop.z + Math.sin(a) * r);
+        name = ID_TO_NAME[prop.floor.paintIdAtWorld(this._base)];
+      }
+      if (name === 'grey') continue;
+
+      prop.revealed = true;
+      if (name === prop.paintName) continue;
+      this._apply(prop, name);
+      changed += 1;
+    }
     return changed;
   }
 

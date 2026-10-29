@@ -2,108 +2,76 @@
 
 **Identity:** the loop with *space* — and the level that teaches **verticality**.
 
-Revised 2026-10-24. The first draft of this level was a straight line with five enemies and one vertical room at the end. It was a hallway with arenas, no retreat and no route choice. This version fixes that.
+Revised 2026-10-24; rewritten 2026-10-29 (polish pass 1) to match the build. The earlier draft planned a catwalk return loop, a side island, a collapsing bridge and two swinging blades. None of them was built, and they are now parked (see "Cut in polish pass 1"). This document describes the level that ships.
+
+Pass question (polish pass 1): *does the player feel colour change the fight?*
 
 ---
 
 ## What was wrong with the corridor
 
-| Problem | Consequence |
+| Problem | What fixed it |
 |---|---|
-| Straight A → B → C → pillars | No retreat, so no repainting under pressure |
-| Five enemies | One or two at a time; never from an angle |
-| Jump and bounce only until the end | Traversal identical to the tutorial |
-| No traps | No reason to look at the ground |
-| Verticality saved for the last room | The level's best idea arrives last |
+| Five enemies, one or two at a time | Ten, in two arenas, with height and a crossfire |
+| Jump and bounce only until the end | The Gap (blue + red), the pillars (green, red, green) |
+| No traps | The vent in C: a hazard that paint answers |
+| No reason to look at the ground | The vent, and the waste either side of C |
+| Verticality saved for the last room | Still last. This is the level's honest weakness, see "Known gaps" |
 
 ---
 
 ## Shape: what the level is made of
 
-The level's job is **space** — room to retreat, room to repaint, and height as a
-paint decision. That only works if the level is a *loop* rather than a line, and if
-every fight happens in a room with lanes worth holding.
+### The spine
 
-### The spine and the loop
+A → Gap 1 → B → the Gap → C → the Pillars → the Ledge.
 
-Main route: A → Gap 1 → B → the Gap → C → the Pillars → Ledge.
-
-Return route: a catwalk from C back to B — unpainted, empty, slow, safe. It exists
-so the player can retreat and repaint, which is the game's core verb and the thing a
-corridor forbids. Without it, an empty tank in C is a death sentence decided by
-geometry.
+It is a **linear mission**, not a loop. The encounter gates make it one: each arena's exit stays shut until the arena is clear, so a return route would lead back into a room you have already won. C's floor is big enough to retreat and repaint inside the fight, which was the job the catwalk was meant to do.
 
 ### One question per room
 
-Every room asks exactly one thing and allows more than one answer. If a room has
-three mechanics it has none: the player leaves with an impression of noise instead of
-a lesson.
+Every room asks exactly one thing and allows more than one answer.
 
 | Room | The one question | Answers |
 |---|---|---|
 | A | what am I walking into? | look, then commit |
-| B | can I fight two things while the ground is contested? | paint, take height, use the bridge |
+| B | can I fight two things while the ground is contested? | paint blue under the Chargers, go round the deck |
 | the Gap | can I commit to one motion? | jump, blue, blue + red |
-| C | will I use the hazard, or just avoid it? | time the blade, paint the vent, shove a Charger |
-| the Pillars | safe route or clever route? | time the blade, or paint around it |
-| the Ledge | — | release |
+| C | will I use the hazard, or just avoid it? | paint the vent, go the long way, shove a Charger |
+| the Pillars | can I chain three colours under fire? | green up, red across, green up |
+| the Ledge | — | release, and the colour you brought back |
 
 ### Lanes before elements
 
-A trap can only be interesting if it denies something. So before any hazard goes in,
-each fight room gets **cover and a high/low split**: a raised deck on B, the pillars
-and the waste edge on C. The blade in B needs a centre lane to deny; the vent in C
-needs a floor lane the player wants to keep. Traps come last because they answer a
-lane — they do not substitute for one.
+A trap can only be interesting if it denies something. So each fight room got **cover and a lane split** first: the deck on B, the block on C. The vent then went into a lane the player wants to use (the short way to C's pocket). Traps come last because they answer a lane — they do not substitute for one.
 
-### Verticality is opt-in difficulty
+### Dormant per arena, not per distance
 
-Enemies on upper decks only aggro when the player climbs to them. The ground route
-stays gentle, so Outskirts remains the softest level and the tutorial's successor.
-The high route is faster, more dangerous and gives better sightlines. That is the
-replay hook, and it means more enemies do not make the level hostile.
+Enemies tick from load and walk toward the player, so without a trigger every arena's fight is already standing at its lip when the player arrives. Each arena spawn carries `wakeOn: 'B' | 'C'` and wakes when the player is inside that island's bounds. There is no aggro radius. The fight starts where it was placed.
 
-The mechanical form of this is a **dormant enemy**: visible, inert, woken by a level
-trigger (see `INTEGRATION.md`). Hidden-then-spawned is a reveal, not a choice.
+### The trap language: paint → weapon
 
-**Dormant per arena, not per distance.** Enemies tick from load and walk toward the
-player, so without a trigger every arena's fight is already standing at its lip when
-the player arrives — B's Chargers pile onto B's edge and you jump the Gap into them.
-Each spawn carries `wakeOn: 'B' | 'C'` and wakes when the player is inside that
-island's bounds. The fight starts where it was placed.
-
-### The trap language: rhythm → paint → weapon
-
-Outskirts teaches three different questions, in order. A static spike pit teaches
-none of them: it is the same verb as a gap ("jump it"), it can be walked around, and
-it has no tell. The spike pit therefore lives in the Primer's corridor, where it
-cannot be avoided — and Outskirts gets hazards with a job.
-
-| Room | Trap | Verb | Why it is here |
+| Room | Hazard | Verb | Why it is here |
 |---|---|---|---|
-| B | **swinging blade** on a fixed rhythm, across the middle of the fight | *watch the room* | The first trap must be dodgeable and in combat, so it creates movement instead of a detour |
-| C | **paint-solvable vent** — erupts on grey, dead on your paint | *paint is safety* | The game's own idea used as a hazard; the answer costs tank, so it is not free |
-| C | **the waste edge** | *the room is a weapon* | Knock a Charger in; red knockback is already your kit |
+| C | **the vent** — erupts on grey, dead on your paint | *paint is safety* | The game's own idea used as a hazard; the answer costs tank, so it is not free |
+| C | **the waste** either side of the arena | *the room is a weapon* | Knock a Charger in; red knockback is already your kit (blocked, see "Known gaps") |
 
-The escalation is the campaign's: L1 teaches that a room has a rhythm, then that
-paint answers it, then that the room can kill for you. L2 spends paint to move; L3
-lets the enemy take the room back.
+The spike pit lives in the Primer, where it cannot be walked around. The escalation is the campaign's: L1 teaches that paint answers a hazard and that the room can kill for you; L2 spends paint to move; L3 lets the enemy take the room back.
 
 ---
 
 ## Route
 
 ```
-Island A   the vantage: spawn, no enemy, no hazard          [floor]
-   │ gap 1 — the commitment
-Island B   2 chargers + deck sprayer, blade, collapsing bridge  [floor + deck]
-   │ the Gap — blue slope, red pad
-Island C   2 chargers, 2 sprayers, vent, waste edge         [floor + deck]
-   │ catwalk (return loop, C → B)
+Island A     the vantage: spawn, no enemy, no hazard           [floor]
+   │ Gap 1 — the commitment
+Island B     2 Chargers + deck Sprayer, the deck block         [floor + block]
+   │ [gate B]  the Gap — blue run-up, red pad
+Island C     2 Chargers, 3 Sprayers, the block, the vent       [floor + block]
+   │ [gate C]  the doorway
+The Pillars  green climb → red bounce → 2 Sprayers → green climb  [vertical exam]
    │
-The Pillars  green climb → red bounce → fight → climb        [vertical exam]
-   │
-Ledge        release, view, deco reveal
+The Ledge    release, the view back, the decor reveal
 ```
 
 ---
@@ -114,24 +82,9 @@ Ledge        release, view, deco reveal
 
 **Question:** *what am I walking into?*
 
-**No enemies. No hazards. No deck.** A flat, wide approach with a clear sightline to
-Island B: its raised deck, the Sprayer standing on it, and the two Chargers on the
-floor below. The player's job here is to **look and plan**, not to fight.
+**No enemies. No hazards. No deck.** A flat, wide approach with a clear sightline to Island B: its deck, the Sprayer standing on it, and the two Chargers on the floor below. The player's job here is to **look and plan**, not to fight.
 
-That is why the level opens here. Outskirts' first fight is the first time the player
-is outnumbered *and* outflanked by height; arriving with a mental picture of the room
-is what makes that fight fair instead of a mugging. The gap is the commitment —
-everything before it is yours, everything after it is the fight.
-
-**Why no enemy here (playtest, 24 Oct 2026).** A dormant Charger was placed on this
-island and it was pointless: on a flat 22 m rectangle with no cover there is nothing
-to ambush with, so the player simply shot it from range. The problem was never the
-enemy — the room has no geometry to make a fight. Removing it makes the room's real
-job legible.
-
-**Why no pit here.** A pit on an island this wide can always be walked around, so it
-costs nothing and teaches nothing; it read as a gap to jump, which the level already
-has. The spike pit belongs in the Primer's corridor, where it cannot be avoided.
+**Why no enemy (playtest, 24 Oct 2026).** A dormant Charger here was pointless: on a flat rectangle with no cover there is nothing to ambush with, so the player shot it from range.
 
 **Paint budget:** none needed. **Exit:** Gap 1.
 
@@ -143,9 +96,7 @@ has. The spike pit belongs in the Primer's corridor, where it cannot be avoided.
 
 Two **Chargers** on the floor, one **Sprayer** on a deck. No single colour answers all three, so the player chooses an order.
 
-Exit: the Gap, via a **collapsing bridge**. Blue crosses it in one slide; running it works and feels reckless.
-
-**Blockout (28 Oct 2026):** the room has **one solid deck block** at x 5…9, z −6…−2, y **4.6** — unpaintable, above the red-bounce apex (4.33), so it cannot be climbed, bounced onto, or camped. It splits the room and the Sprayer stands on it; **elevation belongs to the enemy**. There is no separate cover block: one obstacle per room, or 11.5 m is over-divided. Roster **2 Chargers (z −3, −4) + 1 deck Sprayer**, 7–8 m from the landing so the charge has runway and the player has ~1.5 s to read the room.
+**Blockout (28 Oct 2026):** one solid deck block at x 5…9, z −6…−2, y **4.6** — unpaintable, above the red-bounce apex (4.33), so it cannot be climbed, bounced onto or camped. It splits the room and the Sprayer stands on it: **elevation belongs to the enemy**. One obstacle per room, or 11.5 m is over-divided. The Chargers start 7–8 m from the landing so the charge has runway and the player has ~1.5 s to read the room.
 
 **Paint budget:** large floor, deliberately — this is where the player learns that running out is survivable if the ground is theirs.
 
@@ -153,9 +104,7 @@ Exit: the Gap, via a **collapsing bridge**. Blue crosses it in one slide; runnin
 
 ### The Gap — momentum
 
-Unchanged from the original design, and it should stay unchanged. **Slide down blue, launch off red, land.** One continuous motion, and the beat that stops the game being a shooter with paint in it.
-
-A missed jump lands on Island B. Never the void.
+**Slide down blue, launch off red, land.** One continuous motion, and the beat that stops the game being a shooter with paint in it. Do not change it.
 
 ---
 
@@ -163,96 +112,84 @@ A missed jump lands on Island B. Never the void.
 
 **Question:** *will I use the hazard, or just avoid it?*
 
-Two **Chargers** and two **Sprayers**, one of them elevated. A **swinging blade** between two cover blocks, on a fixed rhythm. And the island's back edge overhangs the **waste**.
+**Built (28–29 Oct 2026):** C is **30 m wide and 14 m deep**. One **4 × 2 m block at y 3.0**, at x 7…11, z −21…−19, unpaintable: a wall chunk to route around, not a perch. Roster **3 Sprayers (x −8/−5/−2, z −28) + 2 Chargers (z −26)**. The block leaves a pocket behind it that the guns cannot see; the rest of the floor is a crossfire.
 
-That last detail is the point. Red knockback can put a Charger into the chasm, so the room rewards the player who understands their kit. It needs a distinct sound and hit confirmation — players will chase this once they find it.
+**The vent (polish pass 1).** A 3 × 3 m grate at x 11.5…14.5, z −21…−18, filling the **front-right lane** between the block and the waste. That lane is the short way from the landing to the pocket, so reaching the safe spot costs paint:
 
-The blade denies the middle of the room on a rhythm, so the safe route costs time and the fast route costs position.
+- **Grey:** it runs a rhythm — rest 2 s, a 0.8 s amber pulse (the tell), then a 1 s column that hurts whoever stands in it (20 damage, once per eruption).
+- **Painted** (half the grate or more in any of your colours): it goes dark and stays dead. The grate is an open frame, so you see your own paint through the bars.
+- **Contested:** grey over your paint re-arms it.
+- **It hurts enemies too**, so a Charger shoved into the column takes the hit.
 
-**Blockout (28 Oct 2026):** C is **30 m wide and 14 m deep** (grown from 22 × 8 m), Gate C moved to z −30 and widened to match, vestibule shrunk. One **4 × 2 m block at y 3.0**, at x 7…11, z −21…−19 — on the **right**, away from the treeline at x −14, which was sitting in the block's lane. Unpaintable: a wall chunk to route around, not a landmark or a perch. Roster **3 Sprayers (x −8/−5/−2, z −28) + 2 Chargers (z −26)** on the left. Verified in-engine: **20 of 450 floor cells are blind to all three guns**, a wedge in the front-right; everything else is covered by all three (10 damage per 2.5 s each). Flush to the wall would remove the pocket — the pocket's width is exactly how far the block reaches past the guns' sightline.
+The other answer is the open left lane, in the Sprayers' crossfire. That is the choice the room asks for. Numbers: `TRAP.vent` in `src/config.js`. Code: `src/levels/paint-vent.js` on `trap-volume.js`.
+
+**The waste.** C is wider than the corridor, so its two side edges and its front edge stand over the toxic waste. Red knockback is meant to put a Charger in it. **It cannot yet:** knockback has no gravity, so a flung enemy holds its height over the waste instead of falling (`_applyKnockback` in `src/enemies/enemy.js`). That is the enemies lane's to fix; see "Known gaps".
 
 **Paint budget:** the tightest room in the level, and the only one where a careless player can run dry.
 
 ---
 
-### The return loop
-
-A catwalk from C back to B. No enemies. No paint. Longer than the way you came.
-
-It is not a shortcut — it is a **way out**. Its whole job is to make retreat possible, so a dry player has somewhere to go that is not a restart.
-
----
-
-### The optional side island
-
-One hard red bounce from Island C's edge. No enemies, no reward beyond a view of the forest you have painted and a shortcut back to B.
-
-It exists so the level has something to find. Its cost is one bounce distance and one platform.
-
----
-
 ### The Pillars — final exam
 
-Green up a pillar's side, paint its roof red, bounce to the second pillar, climb again. Two Sprayers wait on the deck, so the bounce lands the player into a fight.
+Green up the left pillar's side, paint its roof red, bounce to the right pillar, climb the back wall green. Two Sprayers wait on the right pillar, so the bounce lands the player into a fight. Only the left pillar is paintable; the right is reached by the bounce and nothing else.
 
-Add one **swinging blade on the approach, with a green route around it.** That single room teaches the whole trap language: you can *time* a trap or you can *paint* your way past it.
-
-**Question:** *will you take the safe route or the clever one?*
+**Question:** *can I chain three colours under fire?*
 
 ---
 
 ### The Ledge — release
 
-No enemies. No hazard. A view back across the forest, and the decor reveal paying off — the trees near your paint have come back to colour.
+No enemies. No hazard. A view back across the level, and **the decor reveal**: landing on the Ledge re-reads every prop in the level, and each one within 2.5 m of the player's paint comes back to that colour. During play, a prop only reacts to paint directly under it while the player is near. The reveal is the payoff: the view back shows the trail you painted.
+
+Numbers: `OUTSKIRTS.reveal` in `src/config.js`. Viewer shot: `ledge`.
 
 ---
 
-## Enemies: 5 → 9
+## Enemies: 10
 
-| Island | Enemies |
+| Where | Enemies |
 |---|---|
 | A | **none** — the vantage |
 | B | 2 Chargers, 1 deck Sprayer |
-| C | 2 Chargers, 3 Sprayers in the arena (+2 on the pillar behind the gate) |
-| Pillars | 2 Sprayers |
-
-The extra enemies are mostly **above** the player. That is deliberate: it adds combat
-without making the floor route harder. Island A carries none, so the first fight is
-the first thing after the commitment (Gap 1), not something to shoot from spawn.
+| C | 2 Chargers, 3 Sprayers |
+| Pillars | 2 Sprayers, on the right pillar |
 
 ---
 
-## Traps
+## Mood: drained, not dark
 
-| Trap | Where | Answer |
-|---|---|---|
-| Swinging blade | Island B, across the middle of the fight | Time it, or hold a lane |
-| Paint-solvable vent | Island C, on a floor lane | Paint it and it goes dormant |
-| Swinging blade + green route | Pillar approach | The trap-language lesson |
-| The waste edge | Island C | Not a trap — a **weapon** |
-| Collapsing bridge | Island B exit | Blue to cross in one slide |
+Polish pass 1 lifted the sky from navy to a washed overcast and paled the haze (`OUTSKIRTS.mood` in `src/config.js`). The grey has to read as colour taken away, so the player's paint is the most saturated thing on screen. A dark sky read as night instead.
 
-The spike pit is **not on this list**: it belongs to the Primer's corridor, where it
-cannot be walked around. See "The trap language" above.
+**Open:** the toxic waste (`WASTE.colour`, lime) is still the most saturated colour in an unpainted frame, and it is close to green paint. A sicklier, less saturated yellow-green would protect green's readability. Not changed in this pass; Renda's call.
 
 ---
 
-## Constraints that come with this
+## Cut in polish pass 1
 
-- **Paint budget.** More enemies and traps both spend paint, and there is no trickle. Every island needs enough paintable ground that a dry player is one splat from recovery.
-- **Readability.** Nine enemies means the player must be able to tell them apart at 20 m. See issue #126.
-- **Tests.** `tests/level-01-decor.test.js` asserts every tree stands on a floor. Moving an island breaks it; adding a deck does not.
+Each is in `BACKLOG.md`'s Parked list with the reason.
+
+- Catwalk return loop
+- Optional side island
+- Collapsing bridge at B's exit
+- Swinging blades in B and on the pillar approach
+
+---
+
+## Known gaps (other lanes)
+
+- **The waste kill** — knockback needs gravity so a flung enemy falls (enemies lane), and the kill needs hit confirmation and a sound (Moses, UI).
+- **Jump feel and camera** — Ozuko, core.
+
+---
+
+## Viewer shots
+
+`gap1`, `island-b`, `gap2`, `island-c`, `pillars`, `vent`, `ledge`. Polish pass 1 shots are in `docs/levels/shots/outskirts-polish-1/`.
 
 ---
 
 ## What to test first
 
-**0. The blockout, with no enemies and no traps.** Walk the route for two minutes.
-Question: *does the shape make me want to move, retreat and repaint?* If the answer is
-no, no trap or enemy will save the level — that is the mistake this revision exists
-to correct. Details come after the shape is proven.
-
-1. **Island C** — does any player discover knockback-into-the-waste without being told?
-2. **The return loop** — does anyone use it? If nobody ever retreats, the loop is decoration and the level is still a corridor with extra steps.
-3. **Island B's blade** — does it create movement, or is it a detour? If the player can stand still and shoot through the cycle, the blade is not denying a lane.
-4. **Island C's vent** — does anyone choose to paint it, or does everyone just walk the safe lane? If nobody spends paint on it, the paint answer is too expensive.
+1. **The vent** — did you paint it, or walk around it? If nobody spends paint on it, the paint answer is too expensive.
+2. **The waste** — once knockback falls: did anyone knock a Charger in without being told?
+3. **The Ledge** — did anyone turn round and look?

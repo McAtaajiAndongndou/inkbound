@@ -116,3 +116,11 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Blue and red examples are pre-painted at load; green is not**, so the third lesson is the first you paint yourself. Paint at load is a layout feature (`prepaint`), applied by `LayoutLevel`.
 - **Nothing in the Primer kills** (#79): every wall beats its floor plus a bounce, and the blue pit is enclosed with stairs out (both tested).
 - **The default start level stays Outskirts** until the Primer's sergeant (#111/#112) and trap (#101) land.
+
+## 2026-10-29 — Outskirts, polish pass 1
+
+- **Outskirts is a linear mission, not a loop.** The encounter gates already made it one; the planned catwalk return loop, side island, collapsing bridge and both swinging blades are cut to `BACKLOG.md` Parked. `docs/levels/01-outskirts.md` now describes the build.
+- **The vent is Outskirts' one trap** (`src/levels/paint-vent.js`, on `TrapVolume`): erupts on grey with an amber tell, dead while half its grate is player paint, re-armed by grey, and hurts enemies as well as the player. Numbers in `TRAP.vent`.
+- **The decor reveal runs once, on the Ledge** (`Decor.reveal`): every prop within `OUTSKIRTS.reveal.radius` of player paint takes that colour, and a revealed prop is not turned back to grey by the moment-to-moment reaction.
+- **Mood: drained, not dark.** Outskirts' sky, haze and fill moved to `OUTSKIRTS.mood` in config and were lifted from navy to a washed overcast.
+- **Finding for the enemies lane:** red knockback has no gravity, so a Charger knocked off C's edge hovers over the waste instead of falling. The waste kill does not work until it does.
