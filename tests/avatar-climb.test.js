@@ -37,6 +37,7 @@ function makeAvatar(clipNames) {
   for (const name of clipNames) avatar.actions[name] = fakeAction(name);
   avatar.current = null;
   avatar.armed = true;
+  avatar.aiming = true;
   avatar.moving = false;
   avatar.airborne = false;
   avatar._airKind = null;

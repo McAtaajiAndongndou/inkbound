@@ -7,7 +7,7 @@ function makeAvatar() {
   const act = (name) => ({ name, reset() { return this; }, fadeIn() { return this; },
     fadeOut() { return this; }, play() { return this; }, setLoop() { return this; } });
   a.actions = { Idle_Gun_Pointing: act('Idle_Gun_Pointing'), Run_Shoot: act('Run_Shoot') };
-  Object.assign(a, { current: null, armed: true, moving: false, airborne: false, _airKind: null,
+  Object.assign(a, { current: null, armed: true, aiming: true, moving: false, airborne: false, _airKind: null,
     _landing: false, _landClipName: null, climbing: false, _air: { jump: 0, fall: 0, land: 0, push: 0 } });
   return a;
 }

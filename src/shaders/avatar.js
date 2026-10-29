@@ -558,7 +558,17 @@ export class Avatar {
 
   /** A real climb clip if the rig has one, else the idle base the overlay poses. */
   _enterClimb() {
-    this._playOrIdle(this._climbClip() ?? CLIMB_BASE, ANIM.airBlend);
+    const clip = this._climbClip();
+
+    if (clip) {
+      this._playOrIdle(clip, ANIM.airBlend);
+    } else if (this.actions[CLIMB_BASE]) {
+      this._playOrIdle(CLIMB_BASE, ANIM.airBlend);
+    } else if (this.actions[CLIPS.armed.aim]) {
+      this._playOrIdle(CLIPS.armed.aim, ANIM.airBlend);
+    } else {
+      this._playOrIdle(null, ANIM.airBlend);
+    }
   }
 
   /**
@@ -673,7 +683,15 @@ export class Avatar {
    * the clips, because that file is fetched and can be missing or slow.
    */
   _playOrIdle(name, fade) {
-    this.play(name && this.actions[name] ? name : this._idleClip(), fade);
+    if (name && this.actions[name]) {
+      this.play(name, fade);
+    } else if (this.actions[this._idleClip()]) {
+      this.play(this._idleClip(), fade);
+    } else if (this.actions[CLIPS.armed.aim]) {
+      this.play(CLIPS.armed.aim, fade);
+    } else if (this.actions[CLIPS.unarmed.idle]) {
+      this.play(CLIPS.unarmed.idle, fade);
+    }
   }
 
   play(name, fade = ANIM.blend) {
