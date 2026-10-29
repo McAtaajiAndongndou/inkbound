@@ -602,6 +602,18 @@ function createMistTexture(size = 128) {
 }
 
 export class Level01 extends LevelBase {
+  // Viewer shots, one per beat in docs/levels/01-outskirts.md (see level-shots.js).
+  // Static, so the package main.js reads gains no field. Eye-height shots keep
+  // the fog; the high ones drop it, because the fog is tuned for the player.
+  static SHOTS = [
+    { name: 'gap1', label: 'Gap 1 — from A', position: [0, 3.7, 11], target: [0, 1, 0], fog: true },
+    { name: 'island-b', label: 'Island B — the deck', position: [-6, 9, 9], target: [3, 1, -2], fog: false },
+    { name: 'gap2', label: 'Gap 2 — from B', position: [0, 3.7, -5], target: [0, 1, -18], fog: true },
+    { name: 'island-c', label: 'Island C — the arena', position: [-12, 14, -10], target: [3, 0, -23], fog: false },
+    // From above C's gate: any lower and the camera is behind that wall.
+    { name: 'pillars', label: 'Pillars + last climb', position: [-9, 14, -27], target: [0, 5, -38], fog: false },
+  ];
+
   async load() {
     for (const { zMin, zMax, half } of Object.values(L1.islands)) {
       this._floor(zMin, zMax, 0, (half ?? L1.corridorHalf) * 2);
