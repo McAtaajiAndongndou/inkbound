@@ -86,6 +86,9 @@ export const ANIM = {
   blend: 0.1,     // ground transitions: idle <-> run
   airBlend: 0.08, // into and out of jump / fall / land
   riseSpeed: 0.1, // m/s of upward velocity that counts as RISING, not falling
+  climbBlend: 0.12,
+  climbCycle: 0.9,
+  landMinTime: 0.18,
 
   // #124 — the combat poses. Three fades, each for a different job:
   //   aimBlend  raising and lowering the gun. Slower than a step so the body does
