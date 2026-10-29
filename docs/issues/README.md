@@ -92,7 +92,7 @@ Three cross-lane gaps found while blocking out the Ascent (`docs/levels/02-the-a
 |---|---|---|---|---|---|---|
 | 060 | #155 | Tank per level | core | MUST | S | #73 |
 | 061 | #156 | Paintable surfaces read before you shoot | shaders | MUST | S–M | — |
-| 062 | #157 | Mantle | core | SHOULD | M | — (coordinates with #122) |
+| 062 | #157 | Mantle | core | COULD | M | — (coordinates with #122) |
 
 **#155 is the one that matters most:** until it lands, every level gets Outskirts' 100-ink tank, so the Ascent's rationing — its whole identity — is not in the game. One line in `main.js`.
 

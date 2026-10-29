@@ -1,5 +1,5 @@
 **Lane:** core (Ozuko), with Moses reviewing; Lethabo on any clip
-**Priority:** SHOULD
+**Priority:** COULD — quality of life, not required (Renda, 29 Oct). The 0.3 m lips work; this only makes them unnecessary
 **PRD:** none yet — proposes a new movement row: *climbs end by pulling the player onto the top*
 **Cost:** M
 **Depends on:** nothing. Coordinates with #122 (player climb animation), which owns the pose
