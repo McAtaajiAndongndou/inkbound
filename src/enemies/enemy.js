@@ -33,6 +33,8 @@ const FOOT_OFFSETS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const TELEGRAPH_SWELL = 0.35;       // body grows by this fraction by the end of the windup
 const DEFAULT_WINDUP = 0.6;         // seconds; overridden by config.windup
 const DEFAULT_ATTACK_COOLDOWN = 2;  // seconds; overridden by config.attackCooldown
+// #118 — spacing between the shots inside one burst, when config omits it.
+const DEFAULT_BURST_GAP = 0.12;
 
 // --- charge recovery (#76) ---------------------------------------------------
 // Every attack owes the player three beats: tell -> threat -> opening. The
@@ -149,6 +151,13 @@ function sightBlockers(explicit, parent) {
 // as GAIT, same reason — these numbers are the whole of the animation.
 const FEEDING_LEAN = 0.62;   // radians (~35 deg) folded forward over the ground
 const FEEDING_DROP = 0.18;   // metres the body sinks, so the fold does not lift the face
+
+// The Sprayer's reload posture (#118). The reload has to be a TELL the player
+// can learn — the opening is worthless if nobody can see it — and no new colour
+// may carry it (danger amber is the telegraph's, and paint colours are the
+// player's). So the body does it: while reloading it eases BACK off its aim,
+// opposite the forward lean of walking, readable at 12 m as "gun down".
+const RELOAD_LEAN = 0.14;    // radians BACKWARD while reloading
 
 export const MODEL_URLS = {
   charger: "./assets/soldier-charger.glb",
@@ -446,6 +455,11 @@ export class Enemy {
     this._windupTimer = 0;                 // > 0 while telegraphing an attack
     this._windupTotal = 0;
     this._attackCooldown = 0;
+    // #118 — the burst and the reload behind it. `_burstLeft` counts shots still
+    // owed by the current burst; `_reloadTimer` is the opening itself.
+    this._burstLeft = 0;
+    this._burstTimer = 0;
+    this._reloadTimer = 0;
     this._telegraphColour = new THREE.Color(DANGER.amber);
     this.onAttack = null;                  // fired when a windup completes: (enemy) => void
 
@@ -836,11 +850,14 @@ export class Enemy {
     const feeding = this._feeding;
     const charging = this._chargeTime > 0 || this._chargeDistance > 0;
     const lean = this._windupTimer > 0 ? 0
-      : this._chargeWindup > 0 ? -GAIT.chargeRecoil
-        : feeding ? FEEDING_LEAN
-          : charging
-            ? Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed) + GAIT.chargeLean
-            : Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed);
+      // #118 — the Sprayer's reload is a posture too: shoulders back off the
+      // aim, so the opening is visible instead of merely taught.
+      : this._reloadTimer > 0 ? -RELOAD_LEAN
+        : this._chargeWindup > 0 ? -GAIT.chargeRecoil
+          : feeding ? FEEDING_LEAN
+            : charging
+              ? Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed) + GAIT.chargeLean
+              : Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed);
 
     this._model.position.y = this._feetOffset + bob - (feeding ? FEEDING_DROP : 0);
     this._model.rotation.x = lean;
@@ -1253,6 +1270,17 @@ export class Enemy {
     // from a red hit can still carry it while pinned, so apply that first.
     if (this._pinnedTimer > 0) {
       this._pinnedTimer -= dt;
+      this._applyKnockback(dt);
+      return;
+    }
+
+    // RELOAD (#118) — the opening, and it is the same deal as the Charger's
+    // recovery (#76): the enemy plants. An opening it walks through is not one
+    // you can step onto grey and repaint, which is exactly what the issue asks
+    // for. It comes after the pin block so pinning still runs its own clock,
+    // and knockback still carries it — red is not cancelled by a reload.
+    if (this._reloadTimer > 0) {
+      this._vel.set(0, 0, 0);
       this._applyKnockback(dt);
       return;
     }
@@ -1943,6 +1971,10 @@ export class Enemy {
     // A dead enemy never lands its attack: cancel the windup. The colour is
     // left alone so the killing hit still reads as coloured.
     this._windupTimer = 0;
+    // #118 — and a corpse does not finish its burst or its reload: nothing
+    // ticks either for a dead enemy once this method has run.
+    this._burstLeft = 0;
+    this._reloadTimer = 0;
     // And it is off the wall (#115): `_tick` stops running the moment it dies,
     // so a climber left holding a face would hang there until the corpse is
     // disposed. Clearing the state is what makes a shot on the wall kill it
@@ -2020,6 +2052,15 @@ export class Enemy {
   /** True while the enemy is in the post-charge opening and cannot re-alert (#76). */
   get recovering() {
     return this._recoverTimer > 0;
+  }
+
+  /**
+   * True while the enemy is reloading (#118) — the opening after a burst.
+   * Mirrors `recovering` on purpose: both are "this enemy is punishable now",
+   * and both are visible as a planted/leaned-back posture.
+   */
+  get reloading() {
+    return this._reloadTimer > 0;
   }
 
   /** "dormant" | "alert" | "search" — see `_updateAwareness`. */
@@ -2169,6 +2210,10 @@ export class Enemy {
    */
   startTelegraph() {
     if (!this.alive || this._frozenTimer > 0 || this._windupTimer > 0 || this._attackCooldown > 0 || this._recoverTimer > 0) return false;
+    // #118 — a burst still owed or a reload in progress means this enemy cannot
+    // START anything new. The burst's remaining shots are not windups; they are
+    // already committed, and the reload is time it does not have.
+    if (this._burstLeft > 0 || this._reloadTimer > 0) return false;
     this._windupTotal = this.config.windup ?? DEFAULT_WINDUP;
     this._windupTimer = this._windupTotal;
     this._vel.set(0, 0, 0);          // plant: the tell has to read
@@ -2179,12 +2224,32 @@ export class Enemy {
   _updateAttack(dt, playerPos) {
     if (this._attackCooldown > 0) this._attackCooldown -= dt;
 
+    // The reload (#118) is not a state awareness can cancel: it is the enemy's
+    // gun being empty, and it counts down whether or not it can still see you.
+    // Ticked here — ahead of every early return below — is what stops a player
+    // resetting the opening by stepping behind a wall.
+    if (this._reloadTimer > 0) this._reloadTimer -= dt;
+
     // THE OPENING (#115): a crawler holding a face cannot shoot. That is the
     // trade for being able to follow you up a wall — and the reason the answer
     // to it halfway up is a shot rather than a dodge. It also means a climb can
     // never be turned into a firing position, which would make the wall a
     // turret with legs.
     if (this._climbing) return;
+
+    // A BURST still owed fires on its own clock (#118). Committed, exactly as a
+    // windup is: losing sight mid-burst does not refund the shots already
+    // promised, and the reload starts only when the last one lands.
+    if (this._burstLeft > 0) {
+      this._burstTimer -= dt;
+      if (this._burstTimer <= 0) {
+        this._burstLeft -= 1;
+        this._burstTimer = this.config.burstGap ?? DEFAULT_BURST_GAP;
+        this._fireShot(playerPos);
+        if (this._burstLeft === 0) this._beginReload();
+      }
+      return;
+    }
 
     if (this._windupTimer <= 0) {
       // Enemies with an attackRange start their own windup once the player is
@@ -2205,17 +2270,24 @@ export class Enemy {
     this._windupTimer -= dt;
     if (this._windupTimer <= 0) {
       this._endTelegraph();
-      this._attackCooldown = this.config.attackCooldown ?? DEFAULT_ATTACK_COOLDOWN;
-      // The shot has landed. Converting the ground is the enemy's own business,
-      // so it happens before `onAttack` — a listener that damages the player, or
-      // that is not wired up at all (which is the state today), cannot switch
-      // the territory half of the attack off (#107).
-      this._greyImpact(playerPos);
-      // A lunge is the attack (#120). It starts HERE, on the same beat a shot
-      // would land, and like `_greyImpact` it is the enemy's own business — a
-      // level that never wires `onAttack` must still get the movement.
-      if (this.config.lunges) this._commitLunge(playerPos);
-      this.onAttack?.(this);
+      // #118 — for an enemy that declares `reload`, the reload REPLACES this
+      // cooldown as the gap. Both would stack into a second, silent wait, and
+      // the point is one readable opening, not two invisible ones.
+      this._attackCooldown = this.config.reload
+        ? 0
+        : (this.config.attackCooldown ?? DEFAULT_ATTACK_COOLDOWN);
+
+      this._fireShot(playerPos);
+
+      const burst = Math.max(1, Math.round(this.config.burst ?? 1));
+      if (burst > 1) {
+        // Shots still owed. The first is the one just fired — the windup is the
+        // burst's whole telegraph, so a second tell per shot would be noise.
+        this._burstLeft = burst - 1;
+        this._burstTimer = this.config.burstGap ?? DEFAULT_BURST_GAP;
+      } else {
+        this._beginReload();
+      }
       return;
     }
 
@@ -2229,6 +2301,31 @@ export class Enemy {
     this._tintBlend.copy(this._baseColour).lerp(this._telegraphColour, amount);
     this._setColour(this._tintBlend);
     this.mesh.scale.setScalar(1 + TELEGRAPH_SWELL * p);
+  }
+
+  /**
+   * One shot of an attack (#118). Extracted from the windup-complete branch so
+   * the first shot of a burst and the ones after it cannot drift apart: the
+   * grey conversion, the lunge and the `onAttack` hook ARE the shot, and a
+   * second copy of these three lines is where they eventually would.
+   *
+   * The shot has landed. Converting the ground is the enemy's own business, so
+   * it happens before `onAttack` — a listener that damages the player, or that
+   * is not wired up at all (which is the state today), cannot switch the
+   * territory half of the attack off (#107). A lunge is the attack (#120): it
+   * starts HERE, on the same beat, and a level that never wires `onAttack`
+   * must still get the movement.
+   */
+  _fireShot(playerPos) {
+    this._greyImpact(playerPos);
+    if (this.config.lunges) this._commitLunge(playerPos);
+    this.onAttack?.(this);
+  }
+
+  /** Start the post-burst opening (#118). No-op for enemies without a reload. */
+  _beginReload() {
+    if (!this.config.reload) return;
+    this._reloadTimer = this.config.reload;
   }
 
   /**
