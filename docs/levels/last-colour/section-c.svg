@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="200" viewBox="0 0 760 200" font-family="system-ui, Segoe UI, sans-serif" font-size="11">
+<rect width="760" height="200" fill="#ffffff"/>
+<defs><marker id="fall" viewBox="0 0 10 10" refX="5" refY="8" markerWidth="6" markerHeight="6" orient="auto"><path d="M1 2 L5 9 L9 2" fill="none" stroke="#c0392b" stroke-width="1.5"/></marker></defs><text x="70" y="18" fill="#1d232a" font-size="12" font-weight="600">SECTION C — west–east through z 20: the corridor, its alcove, the flanking walkway</text>
+<text x="70" y="32" fill="#5b6570" font-size="11">Side view, true scale (1 m = 6 px both ways). West ← → East.</text>
+<line x1="70" y1="124" x2="740" y2="124" stroke="#eef1f4"/>
+<text x="62" y="128" fill="#5b6570" font-size="11" text-anchor="end">0 m</text>
+<line x1="70" y1="64" x2="740" y2="64" stroke="#eef1f4"/>
+<text x="62" y="68" fill="#5b6570" font-size="11" text-anchor="end">10 m</text>
+<text x="62" y="152" fill="#c0392b" font-size="11" text-anchor="end">void</text>
+<rect x="130" y="124" width="72" height="12" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="130" y="124" width="72" height="3" fill="#e3b48f" stroke="none" stroke-width="0.6"/>
+<rect x="118" y="64" width="12" height="60" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="202" y="64" width="12" height="60" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="82" y="64" width="12" height="60" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="94" y="64" width="24" height="60" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="178" y="100" width="24" height="24" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="178" y="100" width="24" height="3" fill="#e3b48f" stroke="none" stroke-width="0.6"/>
+<rect x="275.6" y="113.80000000000001" width="4.8" height="10.2" rx="2.4" fill="#3b5bdb"/>
+<line x1="284" y1="115.66346153846155" x2="294" y2="115.66346153846155" stroke="#5b6570" stroke-width="1.5"/>
+<line x1="289" y1="124" x2="289" y2="115.66346153846155" stroke="#5b6570" stroke-width="0.8"/>
+<text x="296" y="119.7" stroke="#ffffff" stroke-width="3" fill="none" font-size="11">jump 1.39 m</text><text x="296" y="119.7" fill="#5b6570" font-size="11">jump 1.39 m</text>
+<line x1="284" y1="98.03846153846155" x2="294" y2="98.03846153846155" stroke="#c0392b" stroke-width="1.5"/>
+<line x1="289" y1="124" x2="289" y2="98.03846153846155" stroke="#c0392b" stroke-width="0.8"/>
+<text x="296" y="102" stroke="#ffffff" stroke-width="3" fill="none" font-size="11">red bounce 4.33 m</text><text x="296" y="102" fill="#c0392b" font-size="11">red bounce 4.33 m</text>
+<text x="272" y="138" stroke="#ffffff" stroke-width="3" fill="none" font-size="11" text-anchor="middle">reach gauge</text><text x="272" y="138" fill="#5b6570" font-size="11" text-anchor="middle">reach gauge</text>
+</svg>

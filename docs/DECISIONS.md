@@ -99,3 +99,11 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Catch floors belong to no room.** A fall puts you out of the fight, so an enemy knocked onto a catch floor counts as gone (this fixed a soft-lock where the ledge never cleared).
 - **Open decisions, all at the recommended default (Renda):** a vista balcony on catwalk rest pillar 1 (out of turret reach) as R3's breather; scaffold posts on the chain pads; wave 2 waits dormant and visible on the trailhead; leg 1's north edge stays a real drop; time a playthrough before adding content.
 - **No mantle.** Every climb keeps a 0.3 m lip (the measured minimum) instead of 1 m.
+
+## 2026-10-29 — Last Colour, design v2
+
+- **Last Colour is one north–south axis**: lift landing, hangar, corridor, the Core, with the Siphon closing the view and a beacon at 27 m visible over the hangar wall from the landing (`docs/levels/03-last-colour.md`). 30 enemies built; Big Arm's bay is built, Big Arm is not (#99).
+- **High ground is the only safe paint.** No enemy in this level climbs, so every raised platform is a pocket nothing can eat; every arena floor point is within a 5 s walk of a climb to one (tested). Wave three's balcony turrets take that safety away.
+- **Every level that is data is a `LayoutLevel`** (`src/levels/layout-level.js`): the Ascent and Last Colour share wake rules, gates and the win. Rules may now wait: `cleared:R3.2+8` latches when met and fires after the delay; a gate pulses while its rule counts down.
+- **Decisions, all at the recommended default (Renda):** two breaths (wave three waits 8 s, Big Arm's gate warns for 12 s); the Core does not lock behind you; wave three stands visible behind wave two; Big Arm's bay is built before Big Arm; the win is a placeholder (the Siphon's intake, Core clear) until #100.
+- **The design tools are shared** (`docs/levels/massing/`): `massing.html?layout=<id>` and `render-diagrams.mjs <id>` work for any layout in `src/levels/layouts/index.js`.

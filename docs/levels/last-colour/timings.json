@@ -1,0 +1,104 @@
+{
+  "assumptions": {
+    "walkSpeed": 4.2,
+    "climbSpeed": 4.5,
+    "note": "Walk speed is grey ground (maxSpeed x grey standSlow). Fight times are design estimates."
+  },
+  "routeMetres": 115,
+  "rooms": [
+    {
+      "id": "R0",
+      "name": "Lift Landing",
+      "intensity": 1,
+      "planned": false,
+      "travel": 1.7,
+      "dwell": 5,
+      "fight": 0,
+      "total": 6.7
+    },
+    {
+      "id": "R1",
+      "name": "The Hangar",
+      "intensity": 7,
+      "planned": false,
+      "travel": 9,
+      "dwell": 0,
+      "fight": 75,
+      "total": 84
+    },
+    {
+      "id": "R2",
+      "name": "The Corridor",
+      "intensity": 6,
+      "planned": false,
+      "travel": 12,
+      "dwell": 0,
+      "fight": 45,
+      "total": 57
+    },
+    {
+      "id": "R3",
+      "name": "The Core",
+      "intensity": 9,
+      "planned": false,
+      "travel": 4.6,
+      "dwell": 8,
+      "fight": 180,
+      "total": 192.6
+    },
+    {
+      "id": "R4",
+      "name": "Big Arm",
+      "intensity": 10,
+      "planned": true,
+      "travel": 0,
+      "dwell": 12,
+      "fight": 90,
+      "total": 102
+    },
+    {
+      "id": "R5",
+      "name": "The Siphon",
+      "intensity": 8,
+      "planned": true,
+      "travel": 0,
+      "dwell": 0,
+      "fight": 60,
+      "total": 60
+    }
+  ],
+  "totalSeconds": 502.3,
+  "withoutPlannedSeconds": 340.3,
+  "sightlines": [
+    {
+      "id": "R0",
+      "seesGoal": true,
+      "metres": 117
+    },
+    {
+      "id": "R1",
+      "seesGoal": true,
+      "metres": 110
+    },
+    {
+      "id": "R2",
+      "seesGoal": true,
+      "metres": 71
+    },
+    {
+      "id": "R3",
+      "seesGoal": true,
+      "metres": 24
+    },
+    {
+      "id": "R4",
+      "seesGoal": true,
+      "metres": 26
+    },
+    {
+      "id": "R5",
+      "seesGoal": true,
+      "metres": 12
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1252" height="272" viewBox="0 0 1252 272" font-family="system-ui, Segoe UI, sans-serif" font-size="11">
+<rect width="1252" height="272" fill="#ffffff"/>
+<defs><marker id="fall" viewBox="0 0 10 10" refX="5" refY="8" markerWidth="6" markerHeight="6" orient="auto"><path d="M1 2 L5 9 L9 2" fill="none" stroke="#c0392b" stroke-width="1.5"/></marker></defs><text x="70" y="18" fill="#1d232a" font-size="12" font-weight="600">SECTION A — north–south through x 0: lift, hangar, corridor, the Core, the Siphon, the Big Arm bay</text>
+<text x="70" y="32" fill="#5b6570" font-size="11">Side view, true scale (1 m = 6 px both ways). South ← → North.</text>
+<line x1="70" y1="196" x2="1232" y2="196" stroke="#eef1f4"/>
+<text x="62" y="200" fill="#5b6570" font-size="11" text-anchor="end">0 m</text>
+<line x1="70" y1="136" x2="1232" y2="136" stroke="#eef1f4"/>
+<text x="62" y="140" fill="#5b6570" font-size="11" text-anchor="end">10 m</text>
+<line x1="70" y1="76" x2="1232" y2="76" stroke="#eef1f4"/>
+<text x="62" y="80" fill="#5b6570" font-size="11" text-anchor="end">20 m</text>
+<text x="62" y="224" fill="#c0392b" font-size="11" text-anchor="end">void</text>
+<rect x="94" y="178" width="72" height="18" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="94" y="178" width="72" height="3" fill="#d8c9a3" stroke="none" stroke-width="0.6"/>
+<rect x="82" y="124" width="12" height="72" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="166" y="196" width="228" height="12" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="166" y="196" width="228" height="3" fill="#a9cbbf" stroke="none" stroke-width="0.6"/>
+<rect x="394" y="196" width="300" height="12" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="394" y="196" width="300" height="3" fill="#e3b48f" stroke="none" stroke-width="0.6"/>
+<rect x="694" y="196" width="312" height="12" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="694" y="196" width="312" height="3" fill="#bdb7dd" stroke="none" stroke-width="0.6"/>
+<rect x="820" y="64" width="60" height="132" fill="#5a4f6b" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="1006" y="196" width="72" height="12" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="1006" y="196" width="72" height="3" fill="#bdb7dd" stroke="none" stroke-width="0.6"/>
+<rect x="1078" y="112" width="12" height="84" fill="#9aa0a6" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="844" y="40" width="12" height="24" fill="#3d4650" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="392.8" y="136" width="2.4" height="60" fill="#d9473c" stroke="none" stroke-width="0.6" fill-opacity="0.45"/>
+<rect x="1004.8" y="112" width="2.4" height="84" fill="#d9473c" stroke="none" stroke-width="0.6" fill-opacity="0.45"/>
+<rect x="490" y="136" width="12" height="60" fill="#f08c00" stroke="#f08c00" stroke-width="0.6" fill-opacity="0.3"/>
+<rect x="628" y="178" width="6" height="18" fill="#f08c00" stroke="#f08c00" stroke-width="0.6" fill-opacity="0.3"/>
+<line x1="168.09999999999997" y1="196" x2="168.09999999999997" y2="178" stroke="#16866e" stroke-width="4"/>
+<text x="162.1" y="187" stroke="#ffffff" stroke-width="3" fill="none" font-size="11" text-anchor="end" font-weight="600">3 m green</text><text x="162.1" y="187" fill="#0f5e4d" font-size="11" text-anchor="end" font-weight="600">3 m green</text>
+<circle cx="682" cy="172.60000000000002" r="5" fill="#d99a1e" stroke="#d99a1e" stroke-width="2"/>
+<circle cx="454" cy="190.60000000000002" r="5" fill="#c0392b" stroke="#c0392b" stroke-width="2"/>
+<circle cx="1042" cy="190.60000000000002" r="5" fill="#862e9c" stroke="#862e9c" stroke-width="2"/>
+<rect x="115.6" y="167.8" width="4.8" height="10.2" rx="2.4" fill="#3b5bdb"/>
+<text x="118" y="162.8" stroke="#ffffff" stroke-width="3" fill="none" font-size="11" text-anchor="middle" font-weight="700">R0</text><text x="118" y="162.8" fill="#3b5bdb" font-size="11" text-anchor="middle" font-weight="700">R0</text>
+<rect x="160.00000000000003" y="167.8" width="4.8" height="10.2" rx="2.4" fill="#3b5bdb"/>
+<text x="162.4" y="162.8" stroke="#ffffff" stroke-width="3" fill="none" font-size="11" text-anchor="middle" font-weight="700">R1</text><text x="162.4" y="162.8" fill="#3b5bdb" font-size="11" text-anchor="middle" font-weight="700">R1</text>
+<rect x="397.6" y="185.8" width="4.8" height="10.2" rx="2.4" fill="#3b5bdb"/>
+<text x="400" y="180.8" stroke="#ffffff" stroke-width="3" fill="none" font-size="11" text-anchor="middle" font-weight="700">R2</text><text x="400" y="180.8" fill="#3b5bdb" font-size="11" text-anchor="middle" font-weight="700">R2</text>
+<rect x="688.6" y="185.8" width="4.8" height="10.2" rx="2.4" fill="#3b5bdb"/>
+<text x="691" y="180.8" stroke="#ffffff" stroke-width="3" fill="none" font-size="11" text-anchor="middle" font-weight="700">R3</text><text x="691" y="180.8" fill="#3b5bdb" font-size="11" text-anchor="middle" font-weight="700">R3</text>
+<rect x="775.6" y="185.8" width="4.8" height="10.2" rx="2.4" fill="#3b5bdb"/>
+<text x="778" y="180.8" stroke="#ffffff" stroke-width="3" fill="none" font-size="11" text-anchor="middle" font-weight="700">R5</text><text x="778" y="180.8" fill="#3b5bdb" font-size="11" text-anchor="middle" font-weight="700">R5</text>
+<line x1="118" y1="176.2" x2="160" y2="176.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="160" y1="176.2" x2="190" y2="194.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="190" y1="194.2" x2="388" y2="194.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="388" y1="194.2" x2="454" y2="194.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="454" y1="194.2" x2="634" y2="194.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="634" y1="194.2" x2="691" y2="194.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="691" y1="194.2" x2="778" y2="194.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="778" y1="194.2" x2="808" y2="194.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="406" y1="194.2" x2="430" y2="194.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="430" y1="194.2" x2="430" y2="170.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="430" y1="170.2" x2="664" y2="170.2" stroke="#1d232a" stroke-width="1.2"/>
+<line x1="664" y1="170.2" x2="682" y2="194.2" stroke="#1d232a" stroke-width="1.2"/>
+<rect x="1139.6" y="185.8" width="4.8" height="10.2" rx="2.4" fill="#3b5bdb"/>
+<line x1="1148" y1="187.66346153846155" x2="1158" y2="187.66346153846155" stroke="#5b6570" stroke-width="1.5"/>
+<line x1="1153" y1="196" x2="1153" y2="187.66346153846155" stroke="#5b6570" stroke-width="0.8"/>
+<text x="1160" y="191.7" stroke="#ffffff" stroke-width="3" fill="none" font-size="11">jump 1.39 m</text><text x="1160" y="191.7" fill="#5b6570" font-size="11">jump 1.39 m</text>
+<line x1="1148" y1="170.03846153846155" x2="1158" y2="170.03846153846155" stroke="#c0392b" stroke-width="1.5"/>
+<line x1="1153" y1="196" x2="1153" y2="170.03846153846155" stroke="#c0392b" stroke-width="0.8"/>
+<text x="1160" y="174" stroke="#ffffff" stroke-width="3" fill="none" font-size="11">red bounce 4.33 m</text><text x="1160" y="174" fill="#c0392b" font-size="11">red bounce 4.33 m</text>
+<text x="1136" y="210" stroke="#ffffff" stroke-width="3" fill="none" font-size="11" text-anchor="middle">reach gauge</text><text x="1136" y="210" fill="#5b6570" font-size="11" text-anchor="middle">reach gauge</text>
+</svg>
