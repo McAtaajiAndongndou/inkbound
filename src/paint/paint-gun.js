@@ -18,6 +18,9 @@ const BURST_PARTICLE_LIFETIME = 0.45;
 const PROJECTILE_POOL = 16;
 const BURST_POOL = BURST_PARTICLE_COUNT * 8;
 
+const ENEMY_CENTRE_HEIGHT = 0.8;
+const SPLASH_LIFT = 0.05;
+
 /**
  * Fires paint. Raycasts from the camera, then sends a visible projectile to
  * the hit point; the splat / enemy hit happens when it lands.
@@ -56,6 +59,13 @@ export class PaintGun {
     this._shotNdc = new THREE.Vector2();
     this._start = new THREE.Vector3();
 
+    this._surfacesMeshes = surfaces.map((s) => s.mesh);
+    this._splashRaycaster = new THREE.Raycaster();
+    this._splashFrom = new THREE.Vector3();
+    this._splashTo = new THREE.Vector3();
+    this._splashDir = new THREE.Vector3();
+    this._splashHits = [];
+
     // --- projectile pool: shared geometry, one material per colour ---------
     this._geometry = new THREE.SphereGeometry(0.07, 8, 8);
     this._materials = {};
@@ -78,6 +88,7 @@ export class PaintGun {
         enemy: null,
         surface: null,
         miss: false,
+        aiming: false,
       });
     }
     this._nextProjectile = 0;
@@ -199,6 +210,7 @@ export class PaintGun {
 
     const p = this._takeProjectile();
     p.miss = false;
+    p.aiming = aiming;
     p.enemy = enemy;
     p.surface = surface;
     p.colourId = this.current + 1;
@@ -256,7 +268,7 @@ export class PaintGun {
     let kind = null;
     if (p.enemy) {
       // false if an earlier shot killed it while this one was in flight
-      if (p.enemy.takeColourHit(p.colourId, undefined, p.target)) {
+      if (p.enemy.takeColourHit(p.colourId, PAINT_GUN.damage, p.target)) {
         kind = p.enemy.alive ? "hit" : "kill";
       }
     } else if (p.surface.splat(p.target, p.colour, PAINT_GUN.radius)) {
@@ -266,6 +278,12 @@ export class PaintGun {
       this.lastSplat.age = 0;
       kind = "splat";
     }
+    if (!p.aiming){
+      const splash = this._splash(p);
+      if (splash === 2) kind = "kill";
+      else if (splash === 1 && kind != "kill" && kind != "hit") kind = "hit";
+    }
+
     p.enemy = null;
     p.surface = null;
 
@@ -273,6 +291,47 @@ export class PaintGun {
       this.lastShot = kind;
       this.onImpact?.(kind);
     }
+  }
+
+  _splash(p){
+    const radiusSq = PAINT_GUN.splashRadius * PAINT_GUN.splashRadius;
+    const damage = Math.max(1, Math.round(PAINT_GUN.damage * PAINT_GUN.splashFraction));
+    let result = 0;
+
+    this._splashFrom.copy(p.target).addScaledVector(p.normal, SPLASH_LIFT);
+
+    for (let i = 0; i < this.enemies.length; i++){
+      const enemy = this.enemies[i];
+      if (enemy === p.enemy || !enemy.alive || !enemy.position) continue;
+
+      this._splashTo.set(
+        enemy.position.x,
+        enemy.position.y + ENEMY_CENTRE_HEIGHT,
+        enemy.position.z,
+      );
+      
+      if (this._splashTo.distanceToSquared(p.target) > radiusSq) continue;
+      if (this._blocked(this._splashFrom, this._splashTo)) continue;
+
+      if (enemy.takeDamage(damage)){
+        result = Math.max(result, enemy.alive ? 1 : 2);
+      }
+    }
+    return result;
+  }
+
+  _blocked(from, to){
+    this._splashDir.subVectors(to, from);
+    const dist = this._splashDir.length();
+    if (dist < 1e-4) return false;
+    this._splashDir.divideScalar(dist);
+
+    this._splashRaycaster.set(from, this._splashDir);
+    this._splashRaycaster.far = dist;
+    this._splashHits.length = 0;
+    this._splashRaycaster.intersectObjects(this._surfacesMeshes, true, this._splashHits);
+
+    return this._splashHits.length > 0;
   }
 
   _spawnImpactBurst(point, colour, normal) {
