@@ -17,7 +17,6 @@ const BASE_COLOUR = GREY_TOON;
 
 // How long a colour hit stays fully saturated before fading back, in seconds.
 const TINT_FADE = 1.0;
-const KILL_FLASH_MS = 120;
 
 // Attack telegraph (#40). Yellow is not a paint colour, so the warning can
 // never be mistaken for a paint hit.
@@ -72,6 +71,15 @@ const GAIT = {
   bob: 0.075,        // metres of rise at full stride
   maxLean: 0.22,     // radians (~12 deg) forward at full speed
   leanPerSpeed: 0.035,
+  // #123 — the charge and the death are gaits too, sold by the same fake:
+  // chargeLean is extra pitch while a charge is in flight, so a Charger reads
+  // as COMMITTED, not merely upright-and-fast; the death numbers drive the
+  // sink every corpse takes before removal.
+  chargeLean: 0.26,   // radians (~15 deg) on top of the speed lean, Charger only
+  chargeWindup: 0.22, // s of recoil before a charge — the coil before the spring
+  chargeRecoil: 0.18, // radians (~10 deg) BACKWARD during the coil
+  deathTime: 0.45,    // s from the killing hit to removal
+  deathSink: 1.8,     // metres the corpse drops — deeper than the body, so nothing is left poking out
 };
 
 /**
@@ -447,6 +455,9 @@ export class Enemy {
     this._recoverTimer = 0;                // > 0 while standing in the opening
     this._chargeTime = 0;                  // seconds spent in the current charge
     this._chargeDistance = 0;              // metres covered in the current charge
+    // #123: the windup of the Charger's melee is procedural too — a recoil beat
+    // at the very start of a charge, counted down here and read by `_gait`.
+    this._chargeWindup = 0;
 
     // The Stalker's lunge (#120). The telegraph is the ordinary attack windup —
     // `config.windup` — so the tell, the plant, the audio and the swell all come
@@ -538,6 +549,12 @@ export class Enemy {
     // True when the model has bones of its own, which switches the fake gait off
     // (#114). Set by `_buildModel` from what preload actually found.
     this._skinned = false;
+    // Death sink (#123). `_deathTimer` counts down from GAIT.deathTime once
+    // `_die` runs; `_deathY` is where the body stood, so the sink is measured
+    // from the ground it died on, not from wherever a later frame left it.
+    this._deathTimer = 0;
+    this._deathY = 0;
+    this._disposed = false;
 
     this.mesh = this._buildMesh();
     this.mesh.position.copy(position);
@@ -727,6 +744,12 @@ export class Enemy {
 
   /** Per-frame entry point: logic first, then animation/gait. */
   update(dt, playerPos) {
+    // Death before everything, including the sleeping early-return: a corpse
+    // owes the sink and the disposal whether or not it died asleep (#123).
+    if (!this.alive) {
+      this._sinkDeath(dt);
+      return;
+    }
     if (this._frostShell.visible) this._frostShell.material.uniforms.uTime.value += dt;
     if (this.sleeping) {
       // Awake enough to look alive, asleep enough to be harmless: no movement, no
@@ -802,10 +825,22 @@ export class Enemy {
     // A feeding Drainer is the other case with a posture of its own: it folds
     // forward over the paint it is eating and its body sinks, so the two states
     // are told apart at a distance with no leg bones to help (#80).
+    //
+    // And a Charger mid-charge takes the commit posture (#123): `_trackCharge`
+    // only runs while a charge is covering ground, so its timers being non-zero
+    // IS the "charging" state — the extra pitch is what makes a charge read as
+    // a lunge rather than a brisk walk, which is the issue's manual check.
+    // The first beat of the charge is the coil: a brief backward recoil before
+    // the forward commit, which is the Charger's melee windup (it has no
+    // attackRange, so there is no telegraph machinery to reuse).
     const feeding = this._feeding;
+    const charging = this._chargeTime > 0 || this._chargeDistance > 0;
     const lean = this._windupTimer > 0 ? 0
-      : feeding ? FEEDING_LEAN
-        : Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed);
+      : this._chargeWindup > 0 ? -GAIT.chargeRecoil
+        : feeding ? FEEDING_LEAN
+          : charging
+            ? Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed) + GAIT.chargeLean
+            : Math.min(GAIT.maxLean, speed * GAIT.leanPerSpeed);
 
     this._model.position.y = this._feetOffset + bob - (feeding ? FEEDING_DROP : 0);
     this._model.rotation.x = lean;
@@ -1552,6 +1587,14 @@ export class Enemy {
       return;
     }
 
+    // The first moving frame of a new charge (#123): set the coil. The Charger
+    // has no attackRange, so this recoil beat IS its melee windup — the read
+    // that a hit is coming before the body commits forward.
+    if (this._chargeTime <= 0 && this._chargeDistance <= 0) {
+      this._chargeWindup = GAIT.chargeWindup;
+    }
+    if (this._chargeWindup > 0) this._chargeWindup -= dt;
+
     this._chargeTime += dt;
     this._chargeDistance += speed * dt;
 
@@ -1906,8 +1949,38 @@ export class Enemy {
     this._climbFace = null;
     this.mesh.scale.setScalar(1);
     this._clearFreeze();
+    // The death is one of the procedural motions too (#123): the body SINKS —
+    // quick, accelerating, gone in GAIT.deathTime — and disposal rides the same
+    // timer, so removal can never outrun the animation the way the old
+    // setTimeout could fire before the next frame did. The timer is ticked by
+    // update(), which the level runs for every enemy, alive or not.
+    this._deathTimer = GAIT.deathTime;
+    this._deathY = this.position.y;
+  }
 
-    setTimeout(() => this.dispose(), KILL_FLASH_MS);
+  /**
+   * The corpse animation (#123): drop the body GAIT.deathSink metres with an
+   * ease-in, then dispose. Sink rather than topple or dissolve, decided once
+   * for every enemy: it reads as weight, it cannot clip through a neighbour
+   * the way a rotation could, and it needs no material changes — the toon
+   * materials are shared per enemy and an opacity fade would fight the outline
+   * pass. The killing tint is untouched: the corpse wears the colour that
+   * killed it all the way down.
+   *
+   * Normalised by the TIMER, not by counting frames, so the sink covers the
+   * same ground at any frame rate. Allocation-free: two number fields and two
+   * writes to objects that already exist.
+   */
+  _sinkDeath(dt) {
+    if (this._deathTimer <= 0) return;
+    this._deathTimer -= dt;
+
+    // p*p ease-in: slow at the top of the fall, fast at the bottom — weight,
+    // not a slide at constant speed.
+    const p = 1 - Math.max(0, this._deathTimer) / GAIT.deathTime;
+    this.mesh.position.y = this._deathY - GAIT.deathSink * p * p;
+
+    if (this._deathTimer <= 0) this.dispose();
   }
 
   _fadeTint(dt) {
@@ -2218,6 +2291,12 @@ export class Enemy {
    *  Model clones SHARE geometry with each other (and the cached GLB), so only
    *  the box fallback disposes geometry. The per-enemy material is always ours. */
   dispose() {
+    // The death sink may already have removed and disposed the corpse; the
+    // level's own dispose() also calls this for every enemy it ever spawned.
+    // Either way the second call must be a no-op.
+    if (this._disposed) return;
+    this._disposed = true;
+
     this._frostShell?.geometry.dispose();
     this._frostShell?.material.dispose();
 
