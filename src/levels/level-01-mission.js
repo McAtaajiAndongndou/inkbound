@@ -1120,18 +1120,6 @@ export class Level01 extends LevelBase {
         // Gap into them.
         if (spec.sleeping) this.sleepers.push({ enemy, wakeOn: spec.wakeOn });
       }
-
-      // TEMP #114 look-again — NOT COMMITTED, strip before any commit. Nothing
-      // in any level spawns a wall-crawler yet (that is #115's job), so the
-      // model only appears while this line is here.
-      this.enemies.push(
-        new Enemy({
-          position: new THREE.Vector3(2.5, 0, 8),
-          config: ENEMY.wallCrawler,
-          parent: this.root,
-          floors,
-        }),
-      );
     } catch (err) {
       console.error('[Level01] enemy spawn failed, running without enemies:', err);
       this.enemies = [];
