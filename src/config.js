@@ -86,6 +86,23 @@ export const ANIM = {
   blend: 0.1,     // ground transitions: idle <-> run
   airBlend: 0.08, // into and out of jump / fall / land
   riseSpeed: 0.1, // m/s of upward velocity that counts as RISING, not falling
+
+  // #124 — the combat poses. Three fades, each for a different job:
+  //   aimBlend  raising and lowering the gun. Slower than a step so the body does
+  //             not snap, fast enough that the pose still tracks the button.
+  //   fireBlend short on purpose: a shot that faded in over 0.1 s would read as a
+  //             pose change rather than as a reaction to the trigger.
+  //   hitBlend  a flinch arrives faster than it leaves, which is the reason only
+  //             the way IN is here — the way out reuses `blend`.
+  aimBlend: 0.12,
+  fireBlend: 0.04,
+  hitBlend: 0.06,
+
+  // #124 — the viewmodel bob. The first-person gun sways sideways as the player
+  // walks; the numbers are deliberately small, because a viewmodel that swings
+  // reads as the camera being loose rather than as the player having weight.
+  viewBob: 0.012,       // metres at full stride
+  viewBobSpeed: 9,      // radians of sway per second
 };
 
 // Camera rig (#34). TPV is the default; FPV is the V toggle / ADS target.

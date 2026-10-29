@@ -8,10 +8,31 @@ const CLIP_PREFIX = 'CharacterArmature|';
 const HAND_BONE = 'Wrist-R';
 const HAND_ROTATION = new THREE.Euler(1.557,0.042, 1.393);
 const HAND_OFFSET = new THREE.Vector3(0,0.08,0);
+// #124. The armed set is FIVE poses, and the two that shipped as the defaults
+// were the wrong two: `Idle_Gun_Pointing` is the aim pose and `Run_Shoot` is the
+// shooting pose, so the player was permanently aiming and permanently firing.
+// That is why "aiming is a FOV change with no body language" — there was nothing
+// left for the body to say. The defaults are now the neutral ones and the
+// pointing/shooting clips are the states that mean something.
 const CLIPS = {
   unarmed: {idle: 'Idle', move: 'Run'},
-  armed: {idle: 'Idle_Gun_Pointing', move: 'Run_Shoot'},
+  armed: {
+    idle: 'Idle_Gun',            // gun held ready, not raised
+    move: 'Run',
+    aim: 'Idle_Gun_Pointing',    // #124 aiming, standing
+    aimMove: 'Run_Shoot',        // #124 aiming, moving
+    fire: 'Gun_Shoot',           // #124 the shot, standing
+    fireMove: 'Run_Shoot',       // #124 the shot while moving
+  },
 };
+
+/**
+ * Hit reactions (#124), alternated so two consecutive hits do not look like one.
+ *
+ * `HitRecieve` is the clip the issue names; `HitRecieve_2` is its only sibling
+ * and using it on every other hit is the difference between "pain" and "a GIF".
+ */
+const HIT_CLIPS = ['HitRecieve', 'HitRecieve_2'];
 
 // #121. The jump clips are from the Quaternius Universal Animation Library, baked
 // onto this rig ahead of time so they arrive named for the soldier's bones and
@@ -80,6 +101,26 @@ export class Avatar {
     this.disposed = false;
     this.armed = false;
     this.moving = false;
+    // #124. `aiming` is read from the same input the ADS camera uses, so the body
+    // and the camera can never disagree about whether the gun is up.
+    this.aiming = false;
+
+    // A one-shot accent (a shot, or a hit reaction) that OWNS THE BODY until its
+    // clip ends — the same idea as `_landing`, and for the same reason: `setMoving`
+    // runs every frame and would otherwise cut the beat off on the next one.
+    //   _accent      true while the beat is up
+    //   _accentKind  'fire' | 'hit' — a shot yields to a change in ground speed,
+    //                a flinch does not
+    //   _accentName  which clip it is, so `finished` can be matched to it
+    //   _accentLeft  seconds left on it — the watchdog for a beat whose clip ends
+    //                without a `finished` event (missing clip, mixer reset, a
+    //                state that ended early). Without it a clamped last frame can
+    //                hold the avatar in a shooting pose for the rest of the run.
+    this._accent = false;
+    this._accentKind = null;
+    this._accentName = null;
+    this._accentLeft = 0;
+    this._hits = 0;             // alternates the two hit reactions
 
     // Airborne state (#82). `airborne` is the physics truth as last reported,
     // `_landing` means a land beat is still playing and owns the body, so the
@@ -168,10 +209,10 @@ export class Avatar {
     if (!bone) {
       console.warn('avatar: hand bone not found');
       for (const o of this._pendingHand) this.root.add(o);
-        this._pendingHand.length = 0;
-        return;
-     }
- 
+      this._pendingHand.length = 0;
+      return;
+    }
+
     this.root.updateMatrixWorld(true);
     const rel = new THREE.Matrix4().copy(this.root.matrixWorld).invert().multiply(bone.matrixWorld);
     const s = new THREE.Vector3();
@@ -187,8 +228,8 @@ export class Avatar {
     this.handSlot.add(this.handGrip);
 
     for (const o of this._pendingHand) this.handGrip.add(o);
-      this._pendingHand.length = 0;
-    }
+    this._pendingHand.length = 0;
+  }
 
   attachToHand(object) {
     if (this.handGrip) this.handGrip.add(object);
@@ -198,7 +239,7 @@ export class Avatar {
   detachFromHand(object) {
     const i = this._pendingHand.indexOf(object);
     if (i !== -1) this._pendingHand.splice(i, 1);
-      object.removeFromParent();
+    object.removeFromParent();
   }
 
   /**
@@ -229,9 +270,18 @@ export class Avatar {
       });
   }
 
+  /**
+   * Which clip the ground state asks for (#124).
+   *
+   * Four answers, not two: aiming changes the pose standing AND moving, and this
+   * rig ships a clip for each. `aim`/`aimMove` are absent on the unarmed set, so
+   * an unarmed avatar ignores the flag rather than falling through to a gun pose
+   * it has no business playing.
+   */
   _locomotionClip() {
     const set = this.armed ? CLIPS.armed : CLIPS.unarmed;
-    return this.moving ? set.move : set.idle;
+    if (this.moving) return (this.aiming && set.aimMove) || set.move;
+    return (this.aiming && set.aim) || set.idle;
   }
 
   _idleClip() {
@@ -246,8 +296,89 @@ export class Avatar {
 
   setArmed(armed) {
     this.armed = armed;
-    if (this.airborne || this._landing) return;   // the air state owns the body
+    if (this.airborne || this._landing || this._accent) return;   // they own the body
     this.play(this._locomotionClip());
+  }
+
+  /**
+   * Aim pose (#124). Called every frame with the same flag the ADS camera gets,
+   * so raising the gun and raising the camera are one gesture.
+   *
+   * The early return is not an optimisation: `play()` is a no-op for the clip
+   * already up, but this runs at frame rate and there is no reason to ask it 60
+   * times a second.
+   */
+  setAiming(aiming) {
+    if (this.aiming === aiming) return;
+    this.aiming = aiming;
+    if (this.airborne || this._landing || this._accent) return;
+    this.play(this._locomotionClip(), ANIM.aimBlend);
+  }
+
+  /**
+   * One shot (#124). A short accent, not a state: the legs keep doing whatever
+   * they were doing, because a shot that stops you running reads as a stutter.
+   *
+   * That is why the moving answer is `Run_Shoot` and not `Gun_Shoot`: this rig
+   * has no bone masks to layer a clip onto, so the only way to keep the legs
+   * running is to play a clip that already has them running. The pack ships the
+   * combination, so `Gun_Shoot` is used standing where the legs are idle anyway.
+   */
+  fire() {
+    const set = this.armed ? CLIPS.armed : null;
+    if (!set || this._ownsSpecial()) return;
+    this._beat(this.moving ? set.fireMove : set.fire, ANIM.fireBlend, 'fire');
+  }
+
+  /** A hit landed (once per hit). Alternate the two reactions (#124). */
+  hit() {
+    if (this._ownsSpecial()) return;
+    const name = HIT_CLIPS[this._hits++ % HIT_CLIPS.length];
+    this._beat(this.actions[name] ? name : HIT_CLIPS[0], ANIM.hitBlend, 'hit');
+  }
+
+  /** True while a state with a better claim on the body is up. */
+  _ownsSpecial() {
+    return this.airborne || this._landing;
+  }
+
+  /**
+   * Play `name` as a one-shot that owns the body until it ends (#124).
+   *
+   * Deliberately NOT `play()`: that returns early when the clip is already the
+   * current one, so holding the trigger would fire the first shot and then show
+   * nothing while the accent ran out. An accent restarts.
+   */
+  _beat(name, fade, kind) {
+    const action = this.actions[name];
+    if (!action) return;               // a rig without the clip just does not flinch
+
+    action.setLoop(THREE.LoopOnce, 1);
+    // NOT clamped: a clamped accent holds its last frame forever if its `finished`
+    // event is ever missed, which is exactly the "stuck in a pose" failure #124
+    // rules out. The watchdog below is the belt to this pair of braces.
+    action.clampWhenFinished = false;
+    action.reset().fadeIn(fade).play();
+    if (this.current && this.current !== action) this.current.fadeOut(fade);
+    this.current = action;
+
+    this._accent = true;
+    this._accentKind = kind;
+    this._accentName = name;
+    this._accentLeft = action.getClip().duration + fade;
+  }
+
+  /** End the accent and hand the body back to whatever state is current. */
+  _endAccent() {
+    if (!this._accent) return;
+    this._accent = false;
+    this._accentKind = null;
+    this._accentName = null;
+    this._accentLeft = 0;
+    // A jump may have started while the accent was finishing; the air state wins
+    // and `setAirborne` will put its own clip up. Only the ground state comes back.
+    if (this._ownsSpecial()) return;
+    this.play(this._locomotionClip(), ANIM.blend);
   }
 
   /**
@@ -257,8 +388,16 @@ export class Avatar {
    * run cycle back on, and the airborne pose would be a single frame long.
    */
   setMoving(moving) {
+    const changed = this.moving !== moving;
     this.moving = moving;
-    if (this.airborne || this._landing) return;
+    // A shot in flight is not a reason to keep the legs still: swap to the variant
+    // that matches the new ground speed instead of waiting the accent out (#124).
+    // A flinch is the one accent that DOES hold the body — being hit staggers you.
+    if (changed && this._accent && this._accentKind === 'fire') {
+      this.fire();
+      return;
+    }
+    if (this.airborne || this._landing || this._accent) return;
     this.play(this._locomotionClip());
   }
 
@@ -283,6 +422,11 @@ export class Avatar {
       this._airKind = kind;
       this._landing = false;            // a new jump cancels an unfinished land
       this._landClipName = null;
+      // ...and a shot or a flinch (#124): the air state owns the body from here,
+      // so the accent must not be left believing it still does.
+      this._accent = false;
+      this._accentName = null;
+      this._accentLeft = 0;
       this._playOrIdle(this._airClip(kind), ANIM.airBlend);
       return;
     }
@@ -321,12 +465,16 @@ export class Avatar {
   }
 
   /**
-   * Mixer `finished` handler. Only a land beat ends here — every other one-shot
-   * (Death) leaves `_landing` false, so it is ignored rather than hijacking the
-   * body from a corpse animation.
+   * Mixer `finished` handler. A land beat and a combat accent (#124) both end
+   * here; every other one-shot (Death) leaves both flags false, so it is ignored
+   * rather than hijacking a corpse animation.
    */
   _onFinished(e) {
-    if (this._landing && e.action === this.actions[this._landClipName]) this._endLand();
+    if (this._landing && e.action === this.actions[this._landClipName]) {
+      this._endLand();
+      return;
+    }
+    if (this._accent && e.action === this.actions[this._accentName]) this._endAccent();
   }
 
   /**
@@ -350,11 +498,20 @@ export class Avatar {
   }
 
   die() {
+    // A death is not an accent (#124): clearing these first means the watchdog
+    // cannot hand the body back to a run cycle a third of a second later.
+    this._accent = false;
+    this._accentName = null;
+    this._accentLeft = 0;
     this.play('Death', 0.1);
   }
 
   update(dt) {
     if (this.mixer) this.mixer.update(dt);
+    // The #124 watchdog: an accent that has run its length is over, whether or
+    // not the mixer said so. This is the guarantee behind "no clip can leave the
+    // avatar stuck in a pose if its state ends early".
+    if (this._accent && (this._accentLeft -= dt) <= 0) this._endAccent();
   }
 
   dispose() {
