@@ -18,7 +18,12 @@ test('colour -> physics is the whole game: friction / restitution / climbable', 
 });
 
 test('ammo tanks are ordered by level pressure (L1 plentiful, L2 starved)', () => {
-  assert.equal(AMMO[1] > AMMO[2], true);
+  // #155 — AMMO is now keyed by REGISTRY id (`primer`, `outskirts`, `ascent`,
+  // `last-colour`), not by number. The intent is unchanged: earlier in the
+  // campaign means more ink. Outskirts > Last Colour, Last Colour > The Ascent.
+  assert.equal(AMMO.outskirts > AMMO['last-colour'], true);
+  assert.equal(AMMO['last-colour'] > AMMO.ascent, true);
+  assert.equal(AMMO.primer, AMMO.outskirts);
 });
 
 test('one enemy class, six configs — not six systems', () => {
