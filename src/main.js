@@ -13,7 +13,7 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER, PAINT_GUN } from "./config.js";
+import { PLAYER, PAINT_GUN, ANIM } from "./config.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -53,6 +53,31 @@ const muzzleVec = new THREE.Vector3();
 const handVec = new THREE.Vector3();
 let avatar = null;
 const lastPos = new THREE.Vector3();
+
+// #124 viewmodel bob. It lives in this file rather than in
+// `paint/paint-gun-model.js` because #124's file list is avatar.js / main.js /
+// config.js — and the gun's own `update()` has just laid the model out at its
+// rest position, so adding the sway AFTER it is all the hook this needs.
+//   viewSpeed  the player's horizontal speed, refreshed by `simulate`
+//   viewPhase  the sway's phase, so the gun stays in step with the walking
+let viewSpeed = 0;
+let viewPhase = 0;
+
+/**
+ * Sway the first-person gun while the player walks (#124). No-op in third person
+ * and while standing, so the gun never drifts between frames on its own.
+ */
+function applyViewBob(dt) {
+  const viewmodel = gunModel?.firstPersonGun;
+  if (!viewmodel || !viewmodel.visible) return;
+
+  // Ramp with speed rather than switch on at a threshold, so a slow walk sways
+  // gently instead of the gun starting to swing the instant the player moves.
+  const stride = Math.min(1, viewSpeed / 3);
+  if (stride > 0.02) viewPhase += dt * ANIM.viewBobSpeed;
+  viewmodel.position.x += Math.sin(viewPhase) * ANIM.viewBob * stride;
+}
+
 const hud = new Hud(document.getElementById("hud"));
 hud.onColourClick((i) => gun && gun.selectColour(i));
 
@@ -266,23 +291,33 @@ function simulate(dt, elapsed, actions, mouse) {
   const dz = p.z - lastPos.z;
   const speed = dt > 0 ? Math.hypot(dx, dz) / dt : 0;
   lastPos.copy(p);
+  viewSpeed = speed;              // #124, for the viewmodel bob
   if (!player.dead) {
     // #82 — the ONE call this issue adds to this file (coordinated with Ozuko):
     // the physics already knows whether we are on the floor, so the avatar is
     // only told. It goes before setMoving because setMoving defers to the air
     // state; the order is what stops a run cycle appearing mid-jump.
     avatar.setAirborne(player.onGround, player.velocity.y);
+    // #124 — the SAME flag the ADS camera reads in `animate`, so the body and the
+    // camera raise the gun together instead of one lagging the other.
+    avatar.setAiming(input.aiming);
     avatar.setMoving(speed > 0.5);
   }
   avatar.update(dt);
 
   level.update(dt, player);
+  // #124 — `checkEnemyContact` reports a hit by moving health rather than by
+  // returning one, and the player's own hurt cooldown already de-dupes, so the
+  // difference is exactly one flinch per hit.
+  const healthBefore = player.health;
   player.checkEnemyContact(level.enemies);
+  if (player.health < healthBefore) avatar.hit();
 
   gun.update(dt);
   if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {
     gunModel?.kick();
     audio.play("fire");
+    avatar.fire();                // #124 — the shot accent, after the shot lands
   }
 
   for (const s of level.surfaces) s.update(elapsed);
@@ -311,6 +346,8 @@ function animate() {
 
   if (gunModel){
     gunModel.update(rig.firstPerson,dt);
+    // #124 — after the gun's own update, which is what lays it out at rest.
+    applyViewBob(dt);
   }
 
   hud.update(dt, {
