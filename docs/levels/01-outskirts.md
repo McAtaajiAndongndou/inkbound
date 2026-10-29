@@ -160,7 +160,7 @@ Numbers: `OUTSKIRTS.reveal` in `src/config.js`. Viewer shot: `ledge`.
 
 Polish pass 1 lifted the sky from navy to a washed overcast and paled the haze (`OUTSKIRTS.mood` in `src/config.js`). The grey has to read as colour taken away, so the player's paint is the most saturated thing on screen. A dark sky read as night instead.
 
-**Open:** the toxic waste (`WASTE.colour`, lime) is still the most saturated colour in an unpainted frame, and it is close to green paint. A sicklier, less saturated yellow-green would protect green's readability. Not changed in this pass; Renda's call.
+**The waste is muted** from lime to a sickly olive (`OUTSKIRTS.waste`). Lime was the most saturated colour in an unpainted frame and sat close to green paint, so the poison out-shouted the player. Shots: `waste-gap1-before.jpg` / `waste-gap1-after.jpg`.
 
 ---
 

@@ -483,8 +483,8 @@ const WASTE = {
   // visible where the floor is not.
   y: -0.10,
   tuck: 2.5,
-  colour: 0x86b32d,    // toxic green, in the same drained family as the dead ground
-  emissive: 0x1d2c07,  // a little self-lit, so it reads as something you should not touch
+  colour: OUTSKIRTS.waste.colour,      // sickly olive; see config for why not lime
+  emissive: OUTSKIRTS.waste.emissive,
   wave: 0.05,          // crests peak at -0.02: below the floor, above the shelves
   bob: 0.03,
   bobSpeed: 0.7,

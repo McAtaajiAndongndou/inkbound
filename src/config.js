@@ -198,6 +198,15 @@ export const OUTSKIRTS = {
     fillIntensity: 0.55,
   },
 
+  // The toxic waste. Muted from lime (0x86b32d) in polish pass 1: lime was the
+  // most saturated colour in an unpainted frame and sat close to green paint
+  // (PAINT.green), so the poison out-shouted the player's paint. A sickly olive
+  // reads as poison, not as paint.
+  waste: {
+    colour: 0x7a7d34,
+    emissive: 0x1b1c06,  // a little self-lit, so it still reads as something not to touch
+  },
+
   // The Ledge reveal: reaching the extraction ledge re-reads every prop in the
   // level, and a prop within `radius` of the player's paint takes that colour.
   reveal: {
