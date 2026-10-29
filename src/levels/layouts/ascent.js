@@ -5,8 +5,8 @@
 // This file is the single source of truth for the level's shape. Three things
 // read it, and none of them may hold a second copy of any number here:
 //
-//   1. docs/levels/ascent/massing.html — the 3D massing model you orbit
-//   2. docs/levels/ascent/render-diagrams.mjs — the plan, side views and pacing
+//   1. docs/levels/massing/massing.html?layout=ascent — the 3D massing model
+//   2. docs/levels/massing/render-diagrams.mjs ascent — the plan, side views and pacing
 //      chart in docs/levels/02-the-ascent.md
 //   3. src/levels/level-02-ascent.js — the playable level (once rebuilt)
 //
@@ -19,6 +19,7 @@
 // west ledge → summit.
 //
 // BOXES are [x0, x1, y0, y1, z0, z1], metres, axis-aligned.
+import { PAINT_GRID } from '../../config.js';
 
 /** Solid rock. `top: true` means its top face is walkable floor. */
 const solids = [
@@ -228,4 +229,36 @@ const rooms = [
     question: '—' },
 ];
 
-export const ASCENT = { solids, slabs, strips, kerbs, landmarks, enemies, routes, rooms };
+/**
+ * The win: the lift cage (#95), on the far side of the summit from where you
+ * arrive, so you get the view first. It leaves once the ledge (R6) is clear.
+ */
+const win = { box: [-3, 3, 39.7, 43.2, 12, 18], requires: 'R6' };
+
+/**
+ * What the design tools need that is not geometry: the plan's extent, the
+ * section cuts, the massing model's camera views, the goal every sightline is
+ * measured to, and the alternative route the pacing chart compares.
+ */
+const doc = {
+  planBounds: [-42, 72, -48, 84],
+  goal: { label: 'the lift tower', point: [0, 50.8, 18] },
+  altRoute: { route: 'chain', replaces: 'R5', extraSeconds: 7, paintSeconds: 3 },
+  offMap: { from: [-30, -38], to: [-40, -46], label: 'the base, ~200 m NW' },
+  sections: [
+    { id: 'a', axis: 'x', at: 0, from: 84, to: -46, title: 'SECTION A — north–south through x 0: trailhead, staged climb, Terrace One, the core, the chain' },
+    { id: 'b', axis: 'z', at: 0, from: -42, to: 70, title: 'SECTION B — west–east through z 0: the ledge and its catch, the core, the canyon, the Foot, Terrace Two' },
+    { id: 'c', axis: 'z', at: 32, from: -26, to: 44, top: 26, title: 'SECTION C — west–east through z 32: Terrace One, catwalk span 1, the scree that catches a fall' },
+  ],
+  views: [
+    { name: 'overview', label: 'Overview (from the south-east)', pos: [110, 95, 120], target: [10, 18, -5], fov: 55, caption: 'The whole spiral: south face → east canyon → north face → west ledge → summit.' },
+    { name: 'top', label: 'Top-down plan', pos: [12, 230, 21], target: [12, 0, 20], fov: 40, caption: 'Plan view. Floors are coloured by room.' },
+    { name: 'north', label: 'From the north (the chain)', pos: [10, 45, -110], target: [5, 22, -30], fov: 50, caption: 'The north face: three switchback legs, the chain straight up the middle.' },
+    { name: 'west', label: 'From the west (the ledge)', pos: [-110, 50, 10], target: [-26, 28, 0], fov: 50, caption: 'The ledge: a free ridge with a catch shelf 6 m below it.' },
+  ],
+};
+
+export const ASCENT = {
+  id: 'ascent', name: 'The Ascent', cells: PAINT_GRID.level2Cells,
+  solids, slabs, strips, kerbs, landmarks, enemies, routes, rooms, win, doc,
+};

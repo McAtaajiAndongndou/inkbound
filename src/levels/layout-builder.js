@@ -140,6 +140,12 @@ export function buildLayout(level, layout, { cells }) {
       const standsOn = oy0 <= y1 + EPS && oy1 > y1 + EPS;
       const sameHeight = Math.abs(oy1 - y1) < EPS;
       if (standsOn || sameHeight) tops = subtract(tops, { a0: ox0, a1: ox1, b0: oz0, b1: oz1 });
+      // Two LIPS at the same height can still cross at a corner (Last Colour's
+      // south-west balcony): the box listed first keeps the corner.
+      if (sameHeight && o.lips && boxes.indexOf(o) < boxes.indexOf(s)) {
+        const ol = o.lips;
+        tops = subtract(tops, { a0: ox0 - (ol['-x'] ?? 0), a1: ox1 + (ol['+x'] ?? 0), b0: oz0 - (ol['-z'] ?? 0), b1: oz1 + (ol['+z'] ?? 0) });
+      }
     }
     // A slab at the same height replaces the floor under it. Terrace One's east
     // lip (for the scree-return climb) runs the whole edge and slid 0.3 m under

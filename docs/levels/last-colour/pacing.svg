@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1095" height="346" viewBox="0 0 1095 346" font-family="system-ui, Segoe UI, sans-serif" font-size="11">
+<rect width="1095" height="346" fill="#ffffff"/>
+<text x="50" y="18" fill="#1d232a" font-size="12" font-weight="600">PACING — first-timer, main route. 8 min 22 s; 5 min 40 s without the planned beats.</text>
+<text x="50" y="34" fill="#5b6570" font-size="11">Bar width = time (travel measured from the route at 4.2 m/s on grey + climbs; fights are estimates). Height = intensity.</text>
+<line x1="50" y1="230" x2="1054.6" y2="230" stroke="#eef1f4"/>
+<text x="44" y="234" fill="#5b6570" font-size="11" text-anchor="end">0</text>
+<line x1="50" y1="140" x2="1054.6" y2="140" stroke="#eef1f4"/>
+<text x="44" y="144" fill="#5b6570" font-size="11" text-anchor="end">5</text>
+<line x1="50" y1="50" x2="1054.6" y2="50" stroke="#eef1f4"/>
+<text x="44" y="54" fill="#5b6570" font-size="11" text-anchor="end">10</text>
+<rect x="50" y="212" width="12.4" height="18" fill="#d8c9a3" stroke="#4b545c" stroke-width="0.6"/>
+<text x="56.7" y="274" fill="#1d232a" font-size="11" text-anchor="middle" font-weight="700">R0</text>
+<text x="56.7" y="288" fill="#5b6570" font-size="11" text-anchor="middle">7 s</text>
+<rect x="63.4" y="104" width="167" height="126" fill="#a9cbbf" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="81.4" y="104" width="149" height="126" fill="#000" fill-opacity="0.12"/>
+<line x1="63.4" y1="212" x2="63.4" y2="104.00000000000001" stroke="#1d232a" stroke-width="1"/>
+<text x="147.4" y="246" fill="#1d232a" font-size="11" text-anchor="middle" font-weight="700">R1</text>
+<text x="147.4" y="260" fill="#5b6570" font-size="11" text-anchor="middle">84 s</text>
+<rect x="231.4" y="122" width="113" height="108" fill="#e3b48f" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="255.4" y="122" width="89" height="108" fill="#000" fill-opacity="0.12"/>
+<line x1="231.4" y1="104.00000000000001" x2="231.4" y2="122" stroke="#1d232a" stroke-width="1"/>
+<text x="288.4" y="246" fill="#1d232a" font-size="11" text-anchor="middle" font-weight="700">R2</text>
+<text x="288.4" y="260" fill="#5b6570" font-size="11" text-anchor="middle">57 s</text>
+<rect x="345.4" y="68" width="384.2" height="162" fill="#bdb7dd" stroke="#4b545c" stroke-width="0.6"/>
+<rect x="370.6" y="68" width="359" height="162" fill="#000" fill-opacity="0.12"/>
+<line x1="345.4" y1="122" x2="345.4" y2="68" stroke="#1d232a" stroke-width="1"/>
+<text x="538" y="246" fill="#1d232a" font-size="11" text-anchor="middle" font-weight="700">R3</text>
+<text x="538" y="260" fill="#5b6570" font-size="11" text-anchor="middle">193 s</text>
+<rect x="730.6" y="50" width="203" height="180" fill="#e6c97a" stroke="#4b545c" stroke-width="0.6" stroke-dasharray="4 3" fill-opacity="0.5"/>
+<rect x="754.6" y="50" width="179" height="180" fill="#000" fill-opacity="0.12"/>
+<line x1="730.6" y1="68" x2="730.6" y2="50" stroke="#1d232a" stroke-width="1"/>
+<text x="832.6" y="246" fill="#1d232a" font-size="11" text-anchor="middle" font-weight="700">R4*</text>
+<text x="832.6" y="260" fill="#5b6570" font-size="11" text-anchor="middle">102 s</text>
+<rect x="934.6" y="86" width="119" height="144" fill="#9fbedb" stroke="#4b545c" stroke-width="0.6" stroke-dasharray="4 3" fill-opacity="0.5"/>
+<rect x="934.6" y="86" width="119" height="144" fill="#000" fill-opacity="0.12"/>
+<line x1="934.6" y1="50" x2="934.6" y2="86" stroke="#1d232a" stroke-width="1"/>
+<text x="994.6" y="246" fill="#1d232a" font-size="11" text-anchor="middle" font-weight="700">R5*</text>
+<text x="994.6" y="260" fill="#5b6570" font-size="11" text-anchor="middle">60 s</text>
+<line x1="50" y1="296" x2="50" y2="302" stroke="#1d232a"/>
+<text x="50" y="316" fill="#5b6570" font-size="11" text-anchor="middle">0 min</text>
+<line x1="170" y1="296" x2="170" y2="302" stroke="#1d232a"/>
+<text x="170" y="316" fill="#5b6570" font-size="11" text-anchor="middle">1 min</text>
+<line x1="290" y1="296" x2="290" y2="302" stroke="#1d232a"/>
+<text x="290" y="316" fill="#5b6570" font-size="11" text-anchor="middle">2 min</text>
+<line x1="410" y1="296" x2="410" y2="302" stroke="#1d232a"/>
+<text x="410" y="316" fill="#5b6570" font-size="11" text-anchor="middle">3 min</text>
+<line x1="530" y1="296" x2="530" y2="302" stroke="#1d232a"/>
+<text x="530" y="316" fill="#5b6570" font-size="11" text-anchor="middle">4 min</text>
+<line x1="650" y1="296" x2="650" y2="302" stroke="#1d232a"/>
+<text x="650" y="316" fill="#5b6570" font-size="11" text-anchor="middle">5 min</text>
+<line x1="770" y1="296" x2="770" y2="302" stroke="#1d232a"/>
+<text x="770" y="316" fill="#5b6570" font-size="11" text-anchor="middle">6 min</text>
+<line x1="890" y1="296" x2="890" y2="302" stroke="#1d232a"/>
+<text x="890" y="316" fill="#5b6570" font-size="11" text-anchor="middle">7 min</text>
+<line x1="1010" y1="296" x2="1010" y2="302" stroke="#1d232a"/>
+<text x="1010" y="316" fill="#5b6570" font-size="11" text-anchor="middle">8 min</text>
+<text x="50" y="338" fill="#5b6570" font-size="11">Darker part of a bar = fighting (estimate). Lighter = moving, climbing (measured) and refilling (estimate). * = planned, not built.</text>
+</svg>

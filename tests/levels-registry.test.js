@@ -64,7 +64,8 @@ test('a stub level can be completed, so selecting it proves the whole path', asy
   let wins = 0;
   game.onWin = () => { wins += 1; };
 
-  const level = createLevel('last-colour', game);
+  // The one level still a stub — Last Colour is built from data now (29 Oct).
+  const level = createLevel('primer', game);
   await level.load();
 
   const player = { position: level.extraction.getCenter(new THREE.Vector3()) };

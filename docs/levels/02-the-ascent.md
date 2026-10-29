@@ -14,11 +14,11 @@ v1 of this doc was a list of rooms and a top-down sketch. The blockout built fro
 |---|---|---|
 | **The layout, as data** | [`src/levels/layouts/ascent.js`](../../src/levels/layouts/ascent.js) | It's the single source of truth: every box, strip, pad, enemy and route |
 | **Physics check** | [`tests/ascent-layout.test.js`](../../tests/ascent-layout.test.js) | 12 tests check the data against `config.js`: climb heights, top-out lips, stair rises, pad reach and headroom, catch floors, sightlines |
-| **3D massing model** | [`docs/levels/ascent/massing.html`](ascent/massing.html), run with `npm run dev` | Built from the data, so you can orbit it, open each room's "what you see" frame, and toggle turret ranges and sightlines |
+| **3D massing model** | [`docs/levels/massing/massing.html?layout=ascent`](massing/massing.html), run with `npm run dev` | Built from the data, so you can orbit it, open each room's "what you see" frame, and toggle turret ranges and sightlines |
 | **Plan, sections, pacing** | [`docs/levels/ascent/`](ascent/) `*.svg` | **Generated** from the data by `render-diagrams.mjs`. Never hand-drawn, never hand-edited |
 | **The playable level** | `src/levels/level-02-ascent.js` + `src/levels/layout-builder.js` | **Built from the same data file.** The builder makes no layout decisions; [`tests/level-02-ascent.test.js`](../../tests/level-02-ascent.test.js) checks the built level matches the data exactly |
 
-**To change the level:** edit the data → `node --test tests/ascent-layout.test.js` → `node docs/levels/ascent/render-diagrams.mjs` → look at it in the massing model. Then this doc's words, if a decision changed.
+**To change the level:** edit the data → `node --test tests/ascent-layout.test.js` → `node docs/levels/massing/render-diagrams.mjs ascent` → look at it in the massing model. Then this doc's words, if a decision changed.
 
 ---
 
