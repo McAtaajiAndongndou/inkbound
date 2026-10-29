@@ -100,7 +100,7 @@ The game is submittable when **all of these are true**:
 | D4  | **Turret** — static, slow track, bursts, flankable            | MUST   | —    | shaders | ✅ Built                                                                 |
 | D5  | **Drainer** — feeding and hunting postures                    | MUST   | M    | shaders | ❌ Not built                                                             |
 | D6  | **Stalker** — fast on your paint, slow on grey                | COULD  | M    | shaders | ⚠️ Built (#120) — behaviour only; no model/spawn yet                     |
-| D7  | **Big Arm** — wave-three arena boss with three phases         | SHOULD | L    | shaders | ❌ Not built                                                             |
+| D7  | **Big Arm** — wave-three arena boss with three phases         | SHOULD | L    | shaders | ✅ Built (#99) — `enemies/boss.js`: three phases (slam that greys 4 m, then the grab and two Drainers, then enraged), dies only to blue freeze → green pin → red knockdown, ×3; `tests/big-arm.test.js`. **Not playtested** |
 | D8  | **Siphon** — three-phase colour exam, no health bar           | SHOULD | M    | levels  | ✅ Built (#100) — `levels/siphon.js`: intake (blue) → three thrashing arms (green) → core (red), each with a 2 s colour tell and a leaked refill pool; wins only after phase three; `tests/siphon.test.js` incl. the real paint gun. **Not playtested** |
 
 **Acceptance for D1:** a player can bait a charge, sidestep, and land a full combo before the Charger recovers. If they cannot, the window is too short.
@@ -114,7 +114,7 @@ The game is submittable when **all of these are true**:
 | E1  | **The Primer** — tutorial, ends with one Charger and a trap | MUST | M    | levels | ✅ Built — layout level, one verb per room, spike pit, rebel dressing, mood (polish pass 1, #177). Not the default start level until the sergeant lines land |
 | E2  | **Outskirts** — island-hopping, pillars setpiece, 4 enemies | MUST | M    | levels | ✅ Built — islands A–C, gates, the C vent, the Ledge colour reveal, drained mood (polish pass 1, #175). Playtest pending |
 | E3  | **The Ascent** — mountain, terraces and climbs, turrets     | MUST | L    | levels | ✅ Built — design v2 from layout data, 13 enemies, tank 60 (#155); polish pass 1: collapsing catwalk (#102), chain scaffold, base on the horizon, cold dawn |
-| E4  | **Last Colour** — three chambers, waves, Big Arm, Siphon    | MUST | L    | levels | ⚠️ Built except Big Arm — hangar, corridor + crusher, Core waves 2–3, Corp props, amber mood, the Siphon exam (#100). Big Arm (#99) is a cut candidate; its bay stays shut |
+| E4  | **Last Colour** — three chambers, waves, Big Arm, Siphon    | MUST | L    | levels | ✅ Built — hangar, corridor + crusher, Core waves 2–3, Big Arm (#99), the Siphon exam (#100), Corp props, amber mood. Playtest pending |
 | E5  | **Level select** — any level reachable from the pause menu  | MUST | S    | ui     | ✅ Built (#78) — pause-menu list, fed by the one registry |
 | E6  | Encounter gates — exit sealed until the arena is clear      | MUST | —    | levels | ✅ Built                                                  |
 | E7  | Fail forward — a fall costs time, not the run               | MUST | S    | levels | ⚠️ Partial                                                |

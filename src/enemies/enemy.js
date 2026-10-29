@@ -408,9 +408,9 @@ export class Enemy {
     this.config = config;
     // Derived from the config's identity rather than passed alongside it, so
     // `type` and `config` cannot be handed over disagreeing. `model` is the
-    // exception (#116): the Charger zombie and Big Arm are level-3 kinds with no
-    // `ENEMY` entry yet, so a spawn names the GLB directly and keeps the config
-    // it borrows for stats. No config edit, no second config.
+    // exception (#116): the Charger zombie is a level-3 kind with no `ENEMY`
+    // entry, so a spawn names the GLB directly and keeps the config it borrows
+    // for stats. (Big Arm has its own entry and class now: boss.js, #99.)
     this.type = model
       ?? Object.keys(ENEMY).find((key) => ENEMY[key] === config)
       ?? "sprayer";

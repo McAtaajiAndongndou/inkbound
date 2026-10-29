@@ -258,8 +258,15 @@ const enemies = [
   { id: 'w3-charger-e', type: 'charger', pos: [31, 0, -31], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
   { id: 'w3-turret-nw', type: 'turret', pos: [-23, 5, -59], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
   { id: 'w3-turret-ne', type: 'turret', pos: [23, 5, -59], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
-  // Big Arm (#99, a cut candidate): its bay is built, it is not.
-  { id: 'big-arm', type: 'bigArm', pos: [0, 0, -68], room: 'R4', wave: 1, wake: 'cleared:R3.3+12', planned: true },
+  // Big Arm (#99, src/enemies/boss.js): the Core's fourth wave, out of the
+  // north bay when its gate drops. Room R3, so "the Core is clear" — which the
+  // Siphon waits for — includes it. The bay floor is part of R3.
+  { id: 'big-arm', type: 'bigArm', pos: [0, 0, -68], room: 'R3', wave: 4, wake: 'cleared:R3.3+12' },
+  // The two Drainers it calls in phase 2. They exist from load (the paint gun
+  // takes its target list once), dormant and visible at the back of the bay;
+  // `summon` is a rule nothing satisfies, so only Big Arm (or a hit) wakes them.
+  { id: 'ba-drainer-w', type: 'drainer', pos: [-3.5, 0, -72], room: 'R3', wave: 5, wake: 'summon' },
+  { id: 'ba-drainer-e', type: 'drainer', pos: [3.5, 0, -72], room: 'R3', wave: 5, wake: 'summon' },
 ];
 
 /** Routes. The main route walks the floor; the flank takes the walkway. */
@@ -291,10 +298,10 @@ const rooms = [
     eye: { pos: [0, 1.5, -9.5], target: [0, 8, -36] },
     question: 'Can I hold ground and fight at the same time?' },
   // dwell: the 12 s warning while Big Arm's gate pulses (decision 1).
-  { id: 'R4', name: 'Big Arm', act: 3, intensity: 10, fightSeconds: 90, dwellSeconds: 12, planned: true,
+  { id: 'R4', name: 'Big Arm', act: 3, intensity: 10, fightSeconds: 90, dwellSeconds: 12,
     eye: { pos: [-23, 6.5, -20], target: [0, 2, -66] },
     question: 'Can you beat it by understanding it, not by shooting it?' },
-  { id: 'R5', name: 'The Siphon', act: 3, intensity: 8, fightSeconds: 60, planned: true,
+  { id: 'R5', name: 'The Siphon', act: 3, intensity: 8, fightSeconds: 60,
     eye: { pos: [0, 1.5, -24], target: [0, 10, -36] },
     question: 'Do you know the order?' },
 ];

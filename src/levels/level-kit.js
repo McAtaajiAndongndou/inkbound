@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { PaintSurface } from '../paint/paint-surface.js';
 import { Enemy } from '../enemies/enemy.js';
+import { ENEMY_CLASSES } from '../enemies/boss.js';
 import { ENEMY } from '../config.js';
 
 /**
@@ -186,7 +187,10 @@ export function spawnEnemies(level, specs, label = 'level') {
     const floors = level.surfaces.filter((s) => s.isFloor);
     const walls = level.surfaces.filter((s) => !s.isFloor);
     for (const spec of specs) {
-      const enemy = new Enemy({
+      // A type with its own class (Big Arm) is built by it; every other type
+      // is an `Enemy` with its config.
+      const Kind = ENEMY_CLASSES[spec.type] ?? Enemy;
+      const enemy = new Kind({
         position: new THREE.Vector3(spec.x, spec.y, spec.z),
         config: ENEMY[spec.type] ?? ENEMY.sprayer,
         parent: level.root,

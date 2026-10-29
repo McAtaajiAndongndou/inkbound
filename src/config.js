@@ -681,6 +681,37 @@ export const ENEMY = {
     stopDistance: HEALTH.contactRange + 0.2,
   },
 
+  // BIG ARM (#99): Last Colour's arena boss (DECISIONS 2026-10-06: "L3 = zombies
+  // + Big Arm"; 2026-10-30 for the design). Built in src/enemies/boss.js.
+  //
+  // DAMAGE DOES NOT KILL IT. `hp` counts COMBOS LEFT: blue freeze → green pin →
+  // red knockdown, landed three times, one per phase. Each phase entry below
+  // overrides the top-level numbers while that phase runs.
+  bigArm: {
+    hp: 3,
+    speed: 1.6,
+    canShoot: false,
+    canMove: true,
+    climbsGreen: false,
+    drainsPaint: false,
+    contactDamage: 20,
+    attackDamage: 30,     // a slam that lands
+    windup: 1.0,          // the slam's tell (algorithms.md: 1.0 s)
+    attackRange: 4.0,     // it starts a slam with you inside this
+    attackCooldown: 2.5,
+    stopDistance: 2.6,
+    slamRadius: 4.0,      // the grey it leaves, and the reach of the hit
+    slamReach: 1.5,       // metres in front of it the slam lands
+    pinFor: 3.0,          // combo step 2: seconds on one knee, waiting for red
+    downFor: 2.5,         // combo step 3: seconds flat before the next phase
+    grab: { range: 2.6, windup: 0.6, cooldown: 4.0, damage: 15, pull: 9 },
+    phases: [
+      {},                                                                   // 1: slow, the slam
+      { speed: 2.6, windup: 0.9, attackCooldown: 2.0, grabs: true },        // 2: faster, the grab, two Drainers
+      { speed: 3.2, windup: 0.7, attackCooldown: 0.4, grabs: true, ignoresPaint: true }, // 3: enraged
+    ],
+  },
+
   // THE STALKER (#120). The only enemy that attacks the loop from the other
   // side: it is fast on YOUR paint and slow on grey, so the escape is to give up
   // your own territory. See the STALKER block above for the speeds and the lunge.

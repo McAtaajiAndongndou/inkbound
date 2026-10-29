@@ -148,11 +148,46 @@ This is an arena level: 115 m of route and almost all of its time is fighting. *
 
 ![The Core from above](last-colour/frames/core-from-above.png)
 
-### R4 — Big Arm *(planned, #99, a cut candidate)*
+### R4 — Big Arm · *the arena boss (#99)*
 
 ![R4](last-colour/frames/eye-r4-big-arm.png)
 
-- Enters from the north bay **12 s after wave three is gone**, while its gate field pulses as the warning. Its behaviour (slam that greys 4 m, grab, enrage, dies to a three-colour combo) is #99. **The bay is built either way.** If Big Arm is cut, the bay stays shut and the Siphon follows wave three directly.
+- Enters from the north bay **12 s after wave three is gone**, while its gate field pulses as the warning. Built in `src/enemies/boss.js`, tuning in `ENEMY.bigArm`, tested in `tests/big-arm.test.js`. In the data it's the Core's **wave 4** (room R3, whose floor includes the bay), so the Siphon's "Core clear" waits for it, and for its two Drainers (wave 5, dormant at the back of the bay until phase 2).
+
+#### Design, 30 Oct 2026. Status: decided (Renda): three combos, one per phase; built in `src/enemies/boss.js` with Lethabo's agreement
+
+- **Question:** *can you hold your nerve for three colours in a row while it takes your floor?* The Siphon asks whether you *know* the colours. Big Arm asks whether you can *chain* them under pressure. Same verbs, different test, so the two finales don't repeat each other.
+- **Its job is territory, not damage** (#99). Every slam greys 4 m of floor. The arena gets smaller the longer you take, which is the level's identity (drowning) turned up to a boss.
+- **Damage doesn't kill it.** Plain hits only stagger it. It dies to **the combo, landed three times**, and each combo ends a phase:
+
+| Phase | Behaviour (#99) | Ends when |
+|---|---|---|
+| 1 | Slow advance; ground slam with a 1.0 s tell; greys a 4 m radius | combo 1 |
+| 2 | Faster; adds a grab; calls 2 Drainers out of the bays | combo 2 |
+| 3 | Enraged: back-to-back slams, paint no longer slows it | combo 3 = death |
+
+- **The combo, in order: blue → green → red.** All three are effects every enemy already has, so the player is never taught anything new:
+  1. **Blue freezes it.** Three blue hits, the game's existing freeze (`BLUE_FREEZE`: frozen for 2 s, frost shell).
+  2. **Green, while it's frozen, pins its arm.** It drops to one knee for 3 s, with green shackles. Green on an unfrozen Big Arm does nothing special.
+  3. **Red, while it's pinned, knocks it flat.** It stays down for a beat and the phase ends.
+
+  Miss a window and the chain resets: frost and shackles break, it roars, it carries on. That's the "committed" part: you need ink for all three colours and the nerve to switch while it's in reach.
+- **Every step has its own tell**, so a failed attempt teaches the next one (#99: "dodgeable on the second attempt"): a frost shell (step 1 done), green shackles (step 2 done), and a crack of red light when it's knocked down.
+- **Why high ground still matters:** the slam greys the **floor only**. The 5 m balconies are out of its reach, so the hangar's lesson ("raised paint is safe paint") is the refill plan. But the combo needs you in range of it, so you have to come down to finish each phase. That push and pull is the fight.
+- **The manual check (#99):** a painted arena means short walks to refill between combos, so it should be winnable. A bare arena means every combo is a long walk to ink, so it should be much harder but still winnable from the balconies.
+- **After it dies:** the Siphon's exam starts (the Core counts as clear only once Big Arm is gone).
+- **Alternatives:**
+  - (B) **One combo kills it, and phases advance by time** (40 s each). Shorter and harder, and the combo is learnt under the most pressure.
+  - (C) **Cut it** and keep today's build, where the Siphon follows wave three. The fallback #99 itself names.
+
+**Who builds what (lanes):**
+
+| Part | Lane | Files |
+|---|---|---|
+| Movement, slam and its grey, grab, enrage, the combo state machine and its tells, an `onDefeated` hook | Enemies (Lethabo, per #99) | `src/enemies/boss.js` (a stub today) |
+| Waking it, its Drainer calls, the Siphon waiting for it, the arena | Levels (Renda) | `level-03-horde.js`, the layout's `big-arm` entry |
+| Tuning | shared | a `BIG_ARM` block in `src/config.js` |
+| Boss name and combo readout | UI (Moses) | `hud.js` already has `BIG ARM` |
 
 ### R5 — The Siphon · *the final exam (#100)*
 
@@ -183,9 +218,9 @@ This is an arena level: 115 m of route and almost all of its time is fighting. *
 | Corridor | 2 turrets + 1 Charger | T1 by the Core door, T2 in the alcove, Charger mid-corridor | turrets always; Charger when you enter |
 | Wave 2 (Core) | 8 Drainers, 2 Chargers, 1 Stalker | west and east bays, behind gate fields | you enter the Core (the bay gates drop) |
 | Wave 3 (Core) | 6 Drainers, 2 Chargers, 2 turrets | back of the same bays; turrets on the north balcony | 8 s after wave 2 is gone |
-| Big Arm *(planned)* | 1 | north bay | 12 s after wave 3 is gone (the north gate pulses, then drops) |
+| Big Arm | 1, then 2 Drainers | north bay; the Drainers dormant at its back | 12 s after wave 3 is gone (the north gate pulses, then drops); the Drainers when it reaches phase 2 |
 
-**30 enemies built, plus Big Arm.** Types: Drainer, Charger, Turret, Stalker. No new enemy types (Stalker is #120, merged).
+**33 enemies built: 30, Big Arm, and its two Drainers.** Types: Drainer, Charger, Turret, Stalker. No new enemy types (Stalker is #120, merged).
 
 **Gates** (`layout-level.js`, shared with the Ascent): corridor gate on `cleared:R1.1`, side bays on `enter:R3`, north bay on `cleared:R3.3+12`. The `+12` is new: **a rule can wait**, and a gate pulses while it counts down. "Gone" means dead or knocked out of the room, the same soft-lock guard the Ascent needed.
 
