@@ -22,6 +22,15 @@ const KILL_FLASH_MS = 120;
 // Attack telegraph (#40). Yellow is not a paint colour, so the warning can
 // never be mistaken for a paint hit.
 const TELEGRAPH_COLOUR = 0xffe600;
+
+// Body size for wall collision. Enemies have no collider of their own — the probe
+// is a ray, not a capsule — so these are the two numbers the wall test needs.
+const ENEMY_BODY = { radius: 0.4, chest: 0.9 };
+
+// The four foot probes used before committing to a fall. A centre-only probe
+// makes an enemy step off a ledge the moment its CENTRE passes the lip, even
+// though half its body is still standing on it.
+const FOOT_OFFSETS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const TELEGRAPH_SWELL = 0.35;       // body grows by this fraction by the end of the windup
 const DEFAULT_WINDUP = 0.6;         // seconds; overridden by config.windup
 const DEFAULT_ATTACK_COOLDOWN = 2;  // seconds; overridden by config.attackCooldown
@@ -339,7 +348,7 @@ export class Enemy {
    *                                        level has put under `parent`, which is
    *                                        where they already live.
    */
-  constructor({ position, config, parent, floors, surfaces, sleeping = false, blockers }) {
+  constructor({ position, config, parent, floors, surfaces, walls = [], sleeping = false, blockers }) {
     this.config = config;
     // Derived from the config's identity rather than passed alongside it, so
     // `type` and `config` cannot be handed over disagreeing.
@@ -398,6 +407,15 @@ export class Enemy {
     // Without floors we cannot tell ground from void, so the safe fallback is
     // to stand still rather than walk off the edge.
     this._probe = new SurfaceProbe(floors ?? []);
+
+    // WALLS ARE SOLID TO ENEMIES TOO. Until this existed the probe only knew
+    // floors, so every cover block in the game was player-only: the AI walked
+    // straight through it and the room's shape meant nothing to them. Empty by
+    // default so tests and any caller that does not pass walls still work.
+    this.walls = walls ?? [];
+    this._wallPoint = new THREE.Vector3();
+    this._wallLocal = new THREE.Vector3();
+    this._footPoint = new THREE.Vector3();
 
     // --- awareness (#109) ----------------------------------------------------
     // Dormant -> Alert -> Search, per `docs/enemies/algorithms.md`. An enemy
@@ -1160,6 +1178,40 @@ export class Enemy {
       this._applyKnockback(dt);
       return;
     }
+
+    // GLUE TO THE FLOOR under us, every frame. If a floor is within a step below
+    // the feet, the enemy stands on it — full stop. This is what makes "sank
+    // through the deck" impossible even if something moved `position.y` between
+    // frames.
+    if (ground.y >= this.position.y - ENEMY_NAV.maxStepDown) {
+      this.position.y = ground.y;
+    }
+
+    // CARRIED OFF A LEDGE — FALL. Knockback and blue slips can put an enemy over
+    // a floor far below its feet (e.g. a Sprayer shoved off B's deck). The old
+    // rule refused the step and left it hovering; on screen that read as the
+    // enemy dropping through the deck. Falling to the floor is the honest answer,
+    // and it cannot make an enemy walk off an edge: `maxStepDown` still refuses
+    // ordinary steps, so this only triggers when something already moved it.
+    if (ground.y < this.position.y - ENEMY_NAV.maxStepDown) {
+      // Before dropping, check the body's footprint: a centre a few centimetres
+      // past the lip is still standing on the plank, and falling from there is
+      // what made the deck Sprayer "drop through the deck" (playtest, 29 Oct).
+      const edgeY = this._edgeGround();
+      if (edgeY !== null) {
+        this.position.y = edgeY;
+        this._applyKnockback(dt);
+        return;
+      }
+
+      this.position.y = Math.max(
+        ground.y,
+        this.position.y - ENEMY_NAV.fallSpeed * dt,
+      );
+      this._applyKnockback(dt);
+      return;
+    }
+
     const rules = ground.surface.surfaceAtWorld(ground.point);
 
     // A direct blue hit slows even on grey ground; on blue ground the grid
@@ -1240,22 +1292,49 @@ export class Enemy {
 
     this._next.copy(this.position).addScaledVector(this._vel, dt);
 
-    // Probe the DESTINATION, not just the current spot. If the step would put
-    // us over a gap there is no floor to stand on, so the move is refused.
-    // This is what keeps an enemy on its own island without a leash radius or
-    // any knowledge of the level layout.
+    // Probe the DESTINATION, not just the current spot. A step is refused when:
+    //   - there is no floor under it (keeps an enemy on its own island),
+    //   - it drops more than `ENEMY_NAV.maxStepDown` (keeps it on its platform), or
+    //   - it crosses a WALL panel (which is what makes cover real; before this the
+    //     AI walked straight through island C's block and the room's shape meant
+    //     nothing to it).
     //
-    // It also refuses a step DOWN more than `ENEMY_NAV.maxStepDown`. Without that
-    // second rule an enemy walk off the edge of any raised platform and drops to
-    // whatever is below — which is what the shooters on island C's pillars did
-    // (#39). The probe only ever asked "is there a floor", never "is it the same
-    // floor I am on".
-    const nextGround = this._probe.down(this._next);
-    if (nextGround && nextGround.y >= this.position.y - ENEMY_NAV.maxStepDown) {
+    // Refused steps are retried one axis at a time, so an enemy pressed into a
+    // wall slides along it instead of freezing the chase.
+    const nextGround = this._stepGround(this._next.x, this._next.z);
+
+    if (nextGround) {
       this.position.x = this._next.x;
       this.position.z = this._next.z;
       this.position.y = nextGround.y;      // stay glued to the floor
-    
+    } else {
+      // Only try an axis if there is actually displacement along it. Otherwise
+      // "slide on x" returns the current cell, looks like a successful move, and
+      // the enemy never tries z — which is how a head-on block became a freeze.
+      const dx = this._next.x - this.position.x;
+      const dz = this._next.z - this.position.z;
+
+      const slideX = Math.abs(dx) > 1e-6
+        ? this._stepGround(this._next.x, this.position.z)
+        : null;
+      const slideZ = Math.abs(dz) > 1e-6
+        ? this._stepGround(this.position.x, this._next.z)
+        : null;
+
+      if (slideX) {
+        this.position.x = this._next.x;
+        this.position.y = slideX.y;
+      } else if (slideZ) {
+        this.position.z = this._next.z;
+        this.position.y = slideZ.y;
+      } else {
+        // Refused: stop pushing into the void or a wall. That is also the end
+        // of the charge (#76) — hitting something is the tell the player reads
+        // before the opening, so it must not be a free retry.
+        this._vel.set(0, 0, 0);
+        if (this._recovery > 0) this._startRecovery();
+      }
+    }
 
     // ...and only turn the body when it is actually TRAVELLING. The threshold used
     // to be 1e-6 (0.001 m/s), which meant an enemy pressed up against something
@@ -1264,28 +1343,82 @@ export class Enemy {
     const vx = this._vel.x;
     const vz = this._vel.z;
     if (vx * vx + vz * vz > 0.04) {
-        // Face the direction of travel, not the player — on ice the heading is
-        // the whole point, and watching it plough past aimed the wrong way
-        // would read as broken.
-        //
-        // A bare yaw, not `lookAt`. An enemy on flat ground only ever needs to
-        // turn about Y, and `lookAt` measured ~12 bytes/frame of garbage
-        // because it updates the world matrix and inverts the parent
-        // quaternion every call. atan2 gives the identical result for a +Z
-        // facing mesh, and the mesh is built with no base rotation.
-        this.mesh.rotation.y = Math.atan2(vx, vz);
-      }
-
-      if (this._recovery > 0) this._trackCharge(dt);
-    } else {
-      // Refused: stop pushing into the void. Against a wall, a ledge or a drop
-      // that is also the end of the charge (#76) — hitting something is the tell
-      // the player reads before the opening, so it must not be a free retry.
-      this._vel.set(0, 0, 0);
-      if (this._recovery > 0) this._startRecovery();
+      // Face the direction of travel, not the player — on ice the heading is
+      // the whole point, and watching it plough past aimed the wrong way
+      // would read as broken.
+      //
+      // A bare yaw, not `lookAt`. An enemy on flat ground only ever needs to
+      // turn about Y, and `lookAt` measured ~12 bytes/frame of garbage
+      // because it updates the world matrix and inverts the parent
+      // quaternion every call. atan2 gives the identical result for a +Z
+      // facing mesh, and the mesh is built with no base rotation.
+      this.mesh.rotation.y = Math.atan2(vx, vz);
     }
 
+    if (this._recovery > 0) this._trackCharge(dt);
+
     this._applyKnockback(dt);
+  }
+
+  /**
+   * Ground under one of the four foot probes, if any of them finds a floor within
+   * `maxStepDown` of the current height. Null means the body really is over a drop.
+   */
+  _edgeGround() {
+    const r = ENEMY_BODY.radius;
+    for (let i = 0; i < FOOT_OFFSETS.length; i++) {
+      const [dx, dz] = FOOT_OFFSETS[i];
+      this._footPoint.set(this.position.x + dx * r, this.position.y, this.position.z + dz * r);
+      const g = this._probe.down(this._footPoint);
+      if (g && g.y >= this.position.y - ENEMY_NAV.maxStepDown) return g.y;
+    }
+    return null;
+  }
+
+  /**
+   * Ground under a proposed step, or null when the step must be refused: no
+   * floor, a drop past `maxStepDown`, or a wall in the way. Allocation-free —
+   * this runs per enemy per frame.
+   */
+  _stepGround(x, z) {
+    this._wallPoint.set(x, this.position.y, z);
+    if (this._wallBlocked(this._wallPoint)) return null;
+
+    const ground = this._probe.down(this._wallPoint);
+    if (!ground) return null;
+    if (ground.y < this.position.y - ENEMY_NAV.maxStepDown) return null;
+    return ground;
+  }
+
+  /**
+   * Is this point inside a wall panel?
+   *
+   * Same maths the player's `_resolveWalls` uses: every wall is a plane whose
+   * normal is local +Z, so a point within the panel's footprint and within
+   * `radius` of its plane is touching it. The chest offset matters — an enemy
+   * standing ON a deck is above the deck's own walls and must not be blocked by
+   * them, which the vertical bounds test handles.
+   */
+  _wallBlocked(point) {
+    // A crawler on a face, or dropping off one, is held CLIMB.gap (0.4 m) from
+    // the plane — inside ENEMY_BODY.radius. Testing it here would refuse every
+    // knockback mid-climb, so the climb (#115) owns its own spacing instead.
+    if (this._climbing || this._falling) return false;
+
+    for (let i = 0; i < this.walls.length; i++) {
+      const wall = this.walls[i];
+      wall.mesh.updateWorldMatrix(true, false);
+
+      this._wallLocal.copy(point);
+      this._wallLocal.y += ENEMY_BODY.chest;
+      wall.mesh.worldToLocal(this._wallLocal);
+
+      if (Math.abs(this._wallLocal.x) > wall.width * 0.5 + ENEMY_BODY.radius) continue;
+      if (Math.abs(this._wallLocal.y) > wall.height * 0.5) continue;
+      if (Math.abs(this._wallLocal.z) > ENEMY_BODY.radius) continue;
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -1393,6 +1526,17 @@ export class Enemy {
    */
   _applyKnockback(dt) {
     if (this._knockback.lengthSq() < 1e-6) return;
+
+    // Knockback ignores the GROUND probe on purpose — that is how a red hit
+    // flings an enemy off a ledge. It must NOT ignore walls: a red hit on the
+    // sprayer standing on B's deck pushed it sideways through the deck's own
+    // wall and into the box, so it read as "fell into the deck" (playtest 29 Oct).
+    this._wallPoint.copy(this.position).addScaledVector(this._knockback, dt);
+    if (this._wallBlocked(this._wallPoint)) {
+      this._knockback.set(0, 0, 0);
+      return;
+    }
+
     this.position.addScaledVector(this._knockback, dt);
     this._knockback.multiplyScalar(Math.max(0, 1 - dt * 6));
   }
