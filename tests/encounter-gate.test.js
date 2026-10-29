@@ -43,15 +43,16 @@ test('each gate watches only the enemies that belong to its own arena (#37, #56)
   const { level } = await buildLevel();
 
   assert.equal(level.gateB.open, false, 'island B starts sealed');
-  assert.deepEqual(level.gateB.watch.map((e) => e.type), ['charger'],
-    'island C\'s enemies must not hold island B shut');
+  assert.deepEqual(level.gateB.watch.map((e) => e.type).sort(),
+    ['charger', 'charger', 'sprayer'],
+    'island B watches its own three — two Chargers and the deck Sprayer');
 
   assert.equal(level.gateC.open, false, 'island C starts sealed');
-  // Island C's door watches the ARENA FLOOR only — the two that rush you. The two
+  // Island C's door watches the ARENA FLOOR only — the five in the arena. The two
   // shooters up the right-hand pillar are not part of it: they stand on the only
   // landing you can bounce to, so there is nothing to run past.
   assert.deepEqual(level.gateC.watch.map((e) => e.type).sort(),
-    ['charger', 'sprayer'],
+    ['charger', 'charger', 'sprayer', 'sprayer', 'sprayer'],
     `island C's door watches the arena floor only, got ${level.gateC.watch.map((e) => e.type)}`);
 });
 
@@ -71,10 +72,11 @@ test('the island B gate blocks progress until island B is clear (#37)', async ()
 test('the island C gate blocks the arena exit until island C is clear (#56, #39 #6)', async () => {
   const { level } = await buildLevel();
 
-  // Stand in the arena, in front of the tower doorway. It seals the way in until
-  // island C's arena is clear — the door is the only route, so the fight has to
-  // be won rather than run past.
-  const player = new Player(level.surfaces, new THREE.Vector3(0, 0, -21));
+  // Stand in the arena, in the right-hand lane (the block is x -3..1, z -22..-20,
+  // so x=0 is inside it), in front of the tower doorway. It seals the way in until
+  // island C's arena is clear — the door is the only route, so the fight has to be
+  // won rather than run past.
+  const player = new Player(level.surfaces, new THREE.Vector3(6, 0, -21));
   player.onGround = true;
   const furthest = walkForward(player, 120);
 
@@ -86,7 +88,8 @@ test('the island C gate blocks the arena exit until island C is clear (#56, #39 
 
 test('clearing island B opens gate B, and gate C is untouched (#37)', async () => {
   const { level } = await buildLevel();
-  const sprayer = level.enemies.find((e) => e.type === 'sprayer');
+  // C's Sprayer specifically — B has one on its deck now, and clearing B kills it.
+  const sprayer = level.gateC.watch.find((e) => e.type === 'sprayer');
 
   clearArena(level, level.gateB);
 
@@ -109,24 +112,25 @@ test('clearing island B opens gate B, and gate C is untouched (#37)', async () =
 
 test('an enemy flung out of an arena cannot hold its gate shut (#37, #56)', async () => {
   const { level } = await buildLevel();
-  // The Charger that BELONGS to island B, not merely the first one in the list —
-  // island A has had its own Charger since #011.
-  const charger = level.gateB.watch.find((e) => e.type === 'charger');
-  assert.ok(charger, 'island B should be watching a Charger');
 
   // The soft-lock the issues warn about: a red hit flings an enemy off the
   // edge, and with no gravity it floats there ALIVE forever
   // (`enemy.js` `_applyKnockback`). A clear condition that only checks `alive`
   // would seal the level permanently.
-  charger.position.set(0, 0, -11);   // mid-Gap 2, out of island B, still alive
-  assert.equal(charger.alive, true);
+  //
+  // Island B watches three now (two Chargers + the deck Sprayer), so all three
+  // have to leave: the rule under test is "left the arena counts as cleared".
+  for (const e of level.gateB.watch) {
+    e.position.set(0, 0, -11);   // mid-Gap 2, out of island B, still alive
+    assert.equal(e.alive, true);
+  }
 
   level.update(1 / 60, { position: new THREE.Vector3(0, 0, 20) });
 
   assert.equal(level.gateB.open, true,
     'an enemy that left the island must still release island B');
 
-  // Same guard for island C: both of its enemies flung clear, both still alive.
+  // Same guard for island C: all of its arena enemies flung clear, all still alive.
   for (const e of level.gateC.watch) e.position.set(0, 0, -11);
   level.update(1 / 60, { position: new THREE.Vector3(0, 0, 20) });
 
@@ -256,9 +260,12 @@ test('clearing island C opens the door, and the way past it is genuinely open (#
 
   // Open to the player, not just to the flag: walking into the doorway now gets
   // through it and on down the tower's ground floor, instead of stopping dead.
-  const player = new Player(level.surfaces, new THREE.Vector3(0, 0, -21));
+  // Right-hand lane again: the block sits at x -3..1, z -22..-20.
+  const player = new Player(level.surfaces, new THREE.Vector3(6, 0, -21));
   player.onGround = true;
-  const furthest = walkForward(player, 120);
+  // 240 frames, not 120: the room is 14 m deep now, and from x=6 this is a 9 m
+  // walk at a terminal ~5.5 m/s (PLAYER.accel 55 against SURFACE.grey.friction 10).
+  const furthest = walkForward(player, 240);
 
   assert.ok(furthest < gateZ(level.gateC),
     `the gate stayed shut: got no further than z=${furthest}`);
@@ -280,8 +287,10 @@ test('restart rebuilds both gates sealed, not left open (#37, #56, R)', async ()
     'the island B panel must be back in the corridor, not left dropped below the world');
 
   // Island C's door sits on the arena floor now, not on a platform lip (#39 #6).
+  // Find the arena by its own back edge, which is where the door is — not by a
+  // hardcoded centre, which drifted when the room grew from 8 m to 14 m.
   const arenaC = fresh.surfaces.find((s) => s.isFloor && s.mesh.position.y === 0
-    && Math.abs(s.mesh.position.z - (-20)) < 1e-6);
+    && Math.abs((s.mesh.position.z - s.height / 2) - gateZ(fresh.gateC)) < 1e-6);
   assert.ok(Math.abs(panelBottom(fresh.gateC) - arenaC.mesh.position.y) < 1e-6,
     'the island C panel must be back on the arena floor');
   assert.equal(fresh.gateB.light.material.color.getHex(), PAINT.red.hex);

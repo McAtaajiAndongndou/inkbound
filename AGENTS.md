@@ -82,6 +82,7 @@ Creative direction sits with Renda + Moses; the mechanics trio build the systems
 | `ENEMIES.md` | Enemy roster and counters |
 | `docs/enemies/algorithms.md` | Behaviour specs, state machines, tuning |
 | `docs/levels/` | One document per level |
+| `docs/level-design-principles.md` | Sourced level-design principles + the sketch rubric |
 | `docs/adr/` | Decisions that were hard to reverse and would look surprising later |
 | `docs/DECISIONS.md` | The decision ledger. Append-only |
 | `docs/issues/` | Draft issues — one per requirement, with lane and acceptance criteria |

@@ -37,6 +37,14 @@ Ideas, playtest findings and parked work. **Check triage status before building 
 - **Third platform is too easy.**
 - **TPV preferred over FPV** for aiming and painting — pending confirmation, and this is the Splatoon-vs-CoD balance decision.
 
+## Playtest findings — 28–29 Oct 2026 (B/C rework)
+
+- **C's block is only cover if the AI collides with it.** Enemies walked through it; walls were player-only. Fixed in `enemy.js` (walls + LOS + knockback), but it needed the fix to have any meaning.
+- **Enemies piled up at the arena lip** before the player arrived, so every fight was waiting at the jump. Now dormant until the player enters the island.
+- **Enemy ranged attacks did no damage** — `onAttack` was never assigned. Now wired to `player.takeDamage` with `attackDamage` per config.
+- **Decor grows through cover.** A 3 m block in a forest had trees inside its footprint. `Decor` now takes keep-out rects; C's block has one.
+- **OPEN: B's deck Sprayer drops to the floor when shot.** Not reproduced in simulation (position stays 4.6 through blue hits, death, and edge cases). Two defensive fixes are in (glue-to-floor, foot-width edge probe). Next step is an on-screen `y` readout, not another guess.
+
 ## Playtest findings — Outskirts entry island (Renda, 24 Oct 2026)
 
 - **The deck read as climbable but had no point.** Being off the route meant there was no reason to spend paint on it. It also duplicated Island C's right pillar (Sprayers above you; shoot them or knock them off; left pillar for high ground).

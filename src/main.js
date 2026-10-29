@@ -149,6 +149,14 @@ function loadLevel() {
   player = new Player(level.surfaces, level.spawn);
   scene.add(player.mesh);
 
+  // ENEMY RANGED ATTACKS DO DAMAGE. `Enemy` fires `onAttack` when a windup
+  // completes, but nothing ever assigned it — every ranged enemy in the game was
+  // a light show, so standing in the open cost nothing (playtest, 28 Oct). The
+  // damage number lives on each config (`attackDamage`) beside `contactDamage`.
+  for (const enemy of level.enemies) {
+    enemy.onAttack = (e) => player.takeDamage(e.config.attackDamage ?? 0);
+  }
+
   // Hidden NOW, before the avatar exists, and revealed only if the model never
   // arrives. See `setPlaceholderVisible` (#39 #1). Order matters: hiding it
   // after `new Avatar(...)` would need to know to leave the avatar's own root

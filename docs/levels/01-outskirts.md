@@ -66,6 +66,12 @@ replay hook, and it means more enemies do not make the level hostile.
 The mechanical form of this is a **dormant enemy**: visible, inert, woken by a level
 trigger (see `INTEGRATION.md`). Hidden-then-spawned is a reveal, not a choice.
 
+**Dormant per arena, not per distance.** Enemies tick from load and walk toward the
+player, so without a trigger every arena's fight is already standing at its lip when
+the player arrives — B's Chargers pile onto B's edge and you jump the Gap into them.
+Each spawn carries `wakeOn: 'B' | 'C'` and wakes when the player is inside that
+island's bounds. The fight starts where it was placed.
+
 ### The trap language: rhythm → paint → weapon
 
 Outskirts teaches three different questions, in order. A static spike pit teaches
@@ -139,6 +145,8 @@ Two **Chargers** on the floor, one **Sprayer** on a deck. No single colour answe
 
 Exit: the Gap, via a **collapsing bridge**. Blue crosses it in one slide; running it works and feels reckless.
 
+**Blockout (28 Oct 2026):** the room has **one solid deck block** at x 5…9, z −6…−2, y **4.6** — unpaintable, above the red-bounce apex (4.33), so it cannot be climbed, bounced onto, or camped. It splits the room and the Sprayer stands on it; **elevation belongs to the enemy**. There is no separate cover block: one obstacle per room, or 11.5 m is over-divided. Roster **2 Chargers (z −3, −4) + 1 deck Sprayer**, 7–8 m from the landing so the charge has runway and the player has ~1.5 s to read the room.
+
 **Paint budget:** large floor, deliberately — this is where the player learns that running out is survivable if the ground is theirs.
 
 ---
@@ -160,6 +168,8 @@ Two **Chargers** and two **Sprayers**, one of them elevated. A **swinging blade*
 That last detail is the point. Red knockback can put a Charger into the chasm, so the room rewards the player who understands their kit. It needs a distinct sound and hit confirmation — players will chase this once they find it.
 
 The blade denies the middle of the room on a rhythm, so the safe route costs time and the fast route costs position.
+
+**Blockout (28 Oct 2026):** C is **30 m wide and 14 m deep** (grown from 22 × 8 m), Gate C moved to z −30 and widened to match, vestibule shrunk. One **4 × 2 m block at y 3.0**, at x 7…11, z −21…−19 — on the **right**, away from the treeline at x −14, which was sitting in the block's lane. Unpaintable: a wall chunk to route around, not a landmark or a perch. Roster **3 Sprayers (x −8/−5/−2, z −28) + 2 Chargers (z −26)** on the left. Verified in-engine: **20 of 450 floor cells are blind to all three guns**, a wedge in the front-right; everything else is covered by all three (10 damage per 2.5 s each). Flush to the wall would remove the pocket — the pocket's width is exactly how far the block reaches past the guns' sightline.
 
 **Paint budget:** the tightest room in the level, and the only one where a careless player can run dry.
 
@@ -203,7 +213,7 @@ No enemies. No hazard. A view back across the forest, and the decor reveal payin
 |---|---|
 | A | **none** — the vantage |
 | B | 2 Chargers, 1 deck Sprayer |
-| C | 2 Chargers, 2 Sprayers (one elevated) |
+| C | 2 Chargers, 3 Sprayers in the arena (+2 on the pillar behind the gate) |
 | Pillars | 2 Sprayers |
 
 The extra enemies are mostly **above** the player. That is deliberate: it adds combat
@@ -230,7 +240,7 @@ cannot be walked around. See "The trap language" above.
 ## Constraints that come with this
 
 - **Paint budget.** More enemies and traps both spend paint, and there is no trickle. Every island needs enough paintable ground that a dry player is one splat from recovery.
-- **Readability.** Nine enemies means the player must be able to tell them apart at 20 m. See issue 054.
+- **Readability.** Nine enemies means the player must be able to tell them apart at 20 m. See issue #126.
 - **Tests.** `tests/level-01-decor.test.js` asserts every tree stands on a floor. Moving an island breaks it; adding a deck does not.
 
 ---
