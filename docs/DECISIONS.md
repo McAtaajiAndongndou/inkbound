@@ -148,3 +148,8 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **It plays on a new mission, not on a restart.** R after a loss, and restart from the pause menu, go straight to play (CoD does not replay an intro on a retry).
 - **The intro is not play time:** the scorecard clock and dry time start when control is handed over. The simulation is paused under it exactly as under the menu.
 - **Parked:** a mission outro over the level as painted, voice, and multi-shot cameras. The outro needs its own entry.
+
+## 2026-10-30 — the UI wears the game's colour rule (Moses)
+
+- **Menus and panels are Corp grey; paint appears where the player acts.** Panels are dark cuts of `PAINT.grey`, not navy. A button is grey until hovered, then paint sweeps in from the left (blue, red, green in turn), the grey-to-colour transition in miniature. The selected thing (Play, the level you're in) is already painted. Tokens live at the top of `src/ui/style.css`.
+- **Amber and telegraph yellow never appear in menus.** They mean danger (#126).
