@@ -43,6 +43,17 @@ const AIR_CLIPS = {
   fall: ['Fall', 'Jump_Loop', 'Jump'],
   land: ['Land', 'Jump_Land'],
 };
+/**
+ * Climb clips (#122), most specific first, first match wins.
+ *
+ * DOCUMENTED FALLBACK. Neither the player rig nor the #121 library ships a climb
+ * clip (recorded on #121 and in docs/ASSETS.md). Rather than a T-pose, or the run
+ * cycle the avatar used to play up a wall, a climbing player holds `Jump_Loop`:
+ * the library's airborne loop, limbs off the ground. A real climb clip added to
+ * the rig later wins automatically, because the real names are listed first.
+ */
+
+const CLIMB_CLIPS = ['Climb', 'Climb_Up', 'Climbing', 'Jump_Loop'];
 
 function findBone(root, wanted){
   const clean = (s) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
@@ -88,6 +99,8 @@ export class Avatar {
     this._airKind = null;       // 'jump' | 'fall' — which airborne clip is up
     this._landing = false;
     this._landClipName = null;
+
+    this.climbing = false;
 
     this.handSlot = null;
     this.handGrip = null;
@@ -222,7 +235,9 @@ export class Avatar {
         // The clips arrive after the avatar does, so a jump taken before this
         // point played the idle fallback. Re-play the state the player is
         // actually in rather than leaving them idling through the air.
-        if (this.airborne) this._playOrIdle(this._airClip(this._airKind), ANIM.airBlend);
+
+        if (this.climbing) this._playOrIdle(this._climbClip(), ANIM.airBlend);
+        else if (this.airborne) this._playOrIdle(this._airClip(this._airKind), ANIM.airBlend);
       })
       .catch((err) => {
         console.warn(`[avatar] library clips unavailable (${err.message}) - jump states will use locomotion`);
@@ -244,9 +259,14 @@ export class Avatar {
     return null;
   }
 
+  _climbClip(){
+    for (const name of CLIMB_CLIPS) if (this.actions[name]) return name;
+    return null;
+  }
+
   setArmed(armed) {
     this.armed = armed;
-    if (this.airborne || this._landing) return;   // the air state owns the body
+    if (this.airborne || this._landing || this.climbing) return;   // the air state owns the body
     this.play(this._locomotionClip());
   }
 
@@ -258,8 +278,43 @@ export class Avatar {
    */
   setMoving(moving) {
     this.moving = moving;
-    if (this.airborne || this._landing) return;
+    if (this.airborne || this._landing || this.climbing) return;
     this.play(this._locomotionClip());
+  }
+
+    /**
+   * Report whether the player is on a green wall (#122). Call every frame, BEFORE
+   * setAirborne and setMoving: both defer to a climb that is already active.
+   *
+   * A read, not a simulation. Entering takes the body from any air state or
+   * unfinished land beat; leaving lets the air and ground states pick the next
+   * clip on the same frame, so a wall-jump exit lands on the jump clip and a
+   * top-out lands on locomotion.
+   *
+   * @param {boolean} climbing       player.climbing
+   * @param {number} [verticalSpeed] player.velocity.y, +up; negative plays the
+   *                                 clip backwards, so up and down differ
+   */
+  setClimbing(climbing, verticalSpeed = 0) {
+    if (climbing) {
+      if (!this.climbing) {
+        this.climbing = true;
+        this.airborne = false;
+        this._airKind = null;
+        this._landing = false;
+        this._landClipName = null;
+        this._playOrIdle(this._climbClip(), ANIM.airBlend);
+      }
+      const name = this._climbClip();
+      if (name) this.actions[name].timeScale = verticalSpeed < -ANIM.riseSpeed ? -1 : 1;
+      return;
+    }
+
+    if (this.climbing) {
+      this.climbing = false;
+      const name = this._climbClip();
+      if (name) this.actions[name].timeScale = 1;
+    }
   }
 
   /**
@@ -274,6 +329,8 @@ export class Avatar {
    * @param {number} [verticalSpeed] player.velocity.y, +up
    */
   setAirborne(grounded, verticalSpeed = 0) {
+    if (this.climbing) return;
+
     if (!grounded) {
       const kind = verticalSpeed > ANIM.riseSpeed ? 'jump' : 'fall';
       // Re-decide only when the answer CHANGES: this runs at frame rate and
