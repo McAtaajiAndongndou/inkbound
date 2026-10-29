@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { ENEMY, ENEMY_NAV, PAINT, PAINT_IDS, BLUE_FREEZE, AWARENESS } from "../config.js";
+import { ENEMY, ENEMY_NAV, GREY_IMPACT, PAINT, PAINT_IDS, BLUE_FREEZE, AWARENESS } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
@@ -328,12 +328,18 @@ export class Enemy {
    *                                        straight off the island and glides
    *                                        across the gap, because nothing here
    *                                        ever applies gravity.
+   * @param {PaintSurface[]} [opts.surfaces] every surface its shots can reach,
+   *                                        for the grey conversion (#107).
+   *                                        Defaults to `floors` — which is
+   *                                        correct for "a shot does not cross to
+   *                                        the next island", but only a full
+   *                                        list stops a wall eating the shot.
    * @param {THREE.Object3D[]} [opts.blockers] upright surfaces a sight line stops
    *                                        at (#109). Defaults to every wall the
    *                                        level has put under `parent`, which is
    *                                        where they already live.
    */
-  constructor({ position, config, parent, floors, sleeping = false, blockers }) {
+  constructor({ position, config, parent, floors, surfaces, sleeping = false, blockers }) {
     this.config = config;
     // Derived from the config's identity rather than passed alongside it, so
     // `type` and `config` cannot be handed over disagreeing.
@@ -421,6 +427,16 @@ export class Enemy {
     this._sight = new THREE.Vector3();
     this._hits = [];                        // reused: intersectObjects fills it
 
+    // Ranged grey conversion (#107). The ray is tested against the SURFACES,
+    // not just the floors: a wall is a PaintSurface too, and a shot that should
+    // stop at a wall must not grey the ground behind it. Meshes are cached
+    // because an attack walks this same list every time. The raycaster and
+    // `_hits` above are shared with the sight line (#109): every caller sets
+    // its own origin, direction and far, and clears before it casts.
+    this._surfaceMeshes = (surfaces ?? floors ?? []).map((s) => s.mesh).filter(Boolean);
+    this._muzzle = new THREE.Vector3();
+    this._aim = new THREE.Vector3();
+    this._shot = new THREE.Vector3();
 
     // Animation state. Must exist BEFORE _buildMesh: _buildModel fills it in.
     this._anim = null;
@@ -1419,6 +1435,11 @@ export class Enemy {
     if (this._windupTimer <= 0) {
       this._endTelegraph();
       this._attackCooldown = this.config.attackCooldown ?? DEFAULT_ATTACK_COOLDOWN;
+      // The shot has landed. Converting the ground is the enemy's own business,
+      // so it happens before `onAttack` — a listener that damages the player, or
+      // that is not wired up at all (which is the state today), cannot switch
+      // the territory half of the attack off (#107).
+      this._greyImpact(playerPos);
       this.onAttack?.(this);
       return;
     }
@@ -1433,6 +1454,64 @@ export class Enemy {
     this._tintBlend.copy(this._baseColour).lerp(this._telegraphColour, amount);
     this._setColour(this._tintBlend);
     this.mesh.scale.setScalar(1 + TELEGRAPH_SWELL * p);
+  }
+
+  /**
+   * Turn the ground grey where an attack LANDS (#107).
+   *
+   * WHERE IT LANDS, not where the enemy stands. The aim point is the ground
+   * under the player rather than their chest, because an enemy shooting at a
+   * horizon paints nothing and the design's manual check is "ground near the
+   * impacts should go grey" while you stand on the paint.
+   *
+   * The FIRST surface the ray reaches is the one that greys, and that single
+   * rule IS the occlusion rule: a wall, a raised deck or an unpaintable gate in
+   * the way takes the hit and nothing behind it is touched. There is no second
+   * "is this actually visible" test that could disagree with the first.
+   *
+   * Only enemies that declare `config.greyRadius` do this — the Sprayer today.
+   * The Drainer's grey is continuous and comes from eating (#80), and turrets
+   * deliberately leave the ground alone, so neither of them comes through here.
+   *
+   * Nothing is allocated per attack: the raycaster, the three vectors and the
+   * intersection array are all built once in the constructor.
+   *
+   * @param {THREE.Vector3} playerPos feet of the player, as passed to update()
+   * @returns {boolean} true if a surface took the conversion
+   */
+  _greyImpact(playerPos) {
+    const radius = this.config.greyRadius;
+    if (!radius) return false;
+    if (this._surfaceMeshes.length === 0) return false;
+    if (!playerPos || !Number.isFinite(playerPos.x) || !Number.isFinite(playerPos.z)) return false;
+
+    this._aim.copy(playerPos);
+    this._muzzle.set(
+      this.position.x,
+      this.position.y + GREY_IMPACT.muzzleHeight,
+      this.position.z
+    );
+    this._shot.subVectors(this._aim, this._muzzle);
+    const dist = this._shot.length();
+    if (!(dist > 1e-4)) return false;   // standing on the target: no shot to resolve
+    this._shot.divideScalar(dist);
+
+    this._raycaster.set(this._muzzle, this._shot);
+    // `far` reaches a little PAST the target, so a shot whose aim point sits
+    // exactly on the floor it lands on is still a hit rather than a graze.
+    this._raycaster.far = dist + GREY_IMPACT.reach;
+
+    this._hits.length = 0;
+    this._raycaster.intersectObjects(this._surfaceMeshes, false, this._hits);
+
+    for (let i = 0; i < this._hits.length; i++) {
+      const surface = this._hits[i].object.userData.paintSurface;
+      if (!surface) continue;
+      // `splat` refuses an unpaintable surface (a gate) by returning false,
+      // which is the behaviour we want: the shot dies on the barrier.
+      return surface.splat(this._hits[i].point, "grey", radius);
+    }
+    return false;   // the shot hit nothing: no territory changed hands
   }
 
   _endTelegraph() {
