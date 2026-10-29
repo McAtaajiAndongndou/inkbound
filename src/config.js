@@ -267,6 +267,39 @@ export const CLIMB = {
   maxFall: 14,      // m/s cap, so a long drop cannot tunnel through a floor in one step
 };
 
+// Stalker (#120). The second enemy whose speed is a property of the GROUND
+// rather than of itself — the wall-crawler above was the first, for climbing.
+//
+// WHY THE GROUND: the Stalker punishes you for being WET. Every other enemy in
+// the game punishes you for being dry; this one is fast inside the territory you
+// painted and slow on grey, so the counterplay is to give up your own ground and
+// walk on the boring stuff. That only works if the difference is brutal rather
+// than a tweak — a stalker merely "slightly slower" on grey reads as noise, and
+// the player never deduces the rule (the design note is explicit: never tell
+// them).
+//
+// The speeds live here, not on `ENEMY.stalker`, for the same reason CLIMB does:
+// they are read off the paint under the crawler every frame. It can start a
+// chase on green and finish it on grey.
+//
+// `lungeWindup` is the telegraph, and it is the whole counterplay: the heading is
+// captured when the telegraph ENDS, so a sidestep during those 0.4 s makes it
+// commit to empty ground. `lungeRecovery` is what that miss costs it.
+//
+// Ratios worth checking against PLAYER.maxSpeed (7.0): 6.0 on your paint means a
+// SPRINTING player still outruns it, and 2.0 on grey means a WALKING one does.
+// If the manual check reads wrong, this pair is the dial.
+export const STALKER = {
+  paintSpeed: 6.0,      // m/s on anything the player has painted
+  greySpeed: 2.0,       // m/s on unpainted ground
+  lungeWindup: 0.4,     // s of telegraph before it commits
+  lungeSpeed: 7.5,      // m/s during the commitment — faster than it can run
+  lungeTime: 0.5,       // s committed; reach is speed x time, 3.75 m
+  lungeRecovery: 0.8,   // s planted after a MISS. A hit costs it nothing but time
+  lookahead: 2.5,       // m: how far ahead it sniffs the ground for paint
+  fan: [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9], // rad, in preference order
+};
+
 // Level 1 plentiful, level 2 starved, level 3 contested.
 export const AMMO = {
   1: 100,
@@ -419,6 +452,46 @@ export const ENEMY = {
     windup: 0.5,
     attackRange: 3,
     attackCooldown: 2.5,
+    stopDistance: HEALTH.contactRange + 0.2,
+  },
+
+  // THE STALKER (#120). The only enemy that attacks the loop from the other
+  // side: it is fast on YOUR paint and slow on grey, so the escape is to give up
+  // your own territory. See the STALKER block above for the speeds and the lunge.
+  //
+  // Three flags carry the whole identity:
+  //   surfaceSpeed  its speed comes from the ground, not from `speed` below
+  //   prefersPaint it steers to stay inside your territory, even when a grey
+  //                 line would be shorter — the preference has to be visible or
+  //                 the speed rule looks like a random fast thing
+  //   lunges        its telegraph is a lunge, not a shot (`_commitLunge`)
+  //
+  // `speed` is only a fallback for anything reading a single number (gait, the
+  // charge tracker); the walk speed is `_moveSpeed`.
+  //
+  // NO `noProcs`: freeze, pin and knockback all work on it, as they do on
+  // everything except the turret — tests/turret-no-procs.test.js pins that
+  // turret-only exemption and would fail if this block opted out.
+  //
+  // NO stealth or fade anywhere: the design note is that an enemy which is both
+  // faster than you and invisible where you feel safe is unfairness, not tension.
+  stalker: {
+    hp: 30,
+    speed: STALKER.greySpeed,
+    canShoot: false,
+    canMove: true,
+    climbsGreen: false,
+    drainsPaint: false,
+    surfaceSpeed: true,
+    prefersPaint: true,
+    lunges: true,
+    contactDamage: 20,
+    // The telegraph IS the lunge windup, and the range is exactly "close enough
+    // to arrive": reach (speed x time) plus contact range. Bigger and it commits
+    // from a distance it cannot cover, which reads as a bug rather than a miss.
+    windup: STALKER.lungeWindup,
+    attackRange: STALKER.lungeSpeed * STALKER.lungeTime + HEALTH.contactRange,
+    attackCooldown: 1.8,
     stopDistance: HEALTH.contactRange + 0.2,
   },
 };
