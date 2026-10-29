@@ -32,18 +32,18 @@ export const PAINT = {
 //   speedScale  how much extra speed this surface grants. You keep a BOOST after
 //               you leave, and a lower value never takes a boost away (red's 1.0
 //               means "no boost", not "back to base"). See #52.
-//
-//               EXCEPTION: grey is a LIVE modifier, not an accumulator. Being on
-//               dead ground slows you now and stops the moment you step off it.
-//               Without that exception the grey penalty would evaporate the first
-//               time the player touched blue.
+//   standSlow   LIVE speed multiplier, applied only while standing on this
+//               surface. Unlike speedScale this is not sticky: it applies this
+//               frame and drops the moment you leave. This is how grey penalises
+//               you without being erased by the first blue patch you touch (#74).
+//               1.0 = no penalty.
 //   restitution > 0 makes the surface a trampoline (see PLAYER.minBounce)
 //   climbable   walls of this colour can be climbed
 export const SURFACE = {
-  grey: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: false },
-  blue: { friction: 0.4, traction: 0.5, speedScale: 1.6, restitution: 0.0, climbable: false }, // ice: slide, hard to steer
-  red: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.9, climbable: false }, // bounce
-  green: { friction: 14.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: true }, // grip + climb
+  grey: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: false, standSlow: 0.6 }, // Corrupt Corp's territory — live penalty (#74)
+  blue: { friction: 0.4, traction: 0.5, speedScale: 1.6, restitution: 0.0, climbable: false, standSlow: 1.0 }, // ice: slide, hard to steer
+  red: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.9, climbable: false, standSlow: 1.0 }, // bounce
+  green: { friction: 14.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: true, standSlow: 1.0 }, // grip + climb
 };
 
 export const PLAYER = {

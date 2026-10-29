@@ -129,13 +129,13 @@ export class Player {
     }
   }
 
-  look(dx,dy,aiming = false){
-    if (this.dead){
+  look(dx, dy, aiming = false) {
+    if (this.dead) {
       return;
     }
     let sensitivity = PLAYER.lookSensitivity;
 
-    if (aiming){
+    if (aiming) {
       sensitivity *= PLAYER.adsSensitivityMultiplier;
     }
 
@@ -324,14 +324,25 @@ export class Player {
     if (settled) this.speedCap = granted;
     else if (granted > this.speedCap) this.speedCap = granted;
 
+    // ---- #74: grey's LIVE penalty ---------------------------------------
+    // speedScale is sticky (#52). If we put grey's penalty on speedScale it
+    // would be wiped the moment the player touched blue once, and grey would
+    // silently stop mattering. So `standSlow` is a separate, LIVE multiplier
+    // applied only while standing on the surface. It is min'd with the sticky
+    // cap, so stepping off grey restores speed immediately.
+    const standSlow = (this.onGround && rules && rules.standSlow < 1) ? rules.standSlow : 1;
+    const speedCap = this.speedCap * standSlow;
+
+    // ---- absolute movement cap ------------------------------------------
+    // ADS also reduces speed; both modifiers compose.
+    const maxSpeed = speedCap * (input.aiming ? PLAYER.adsSpeedMultiplier : 1);
+
     // not Math.hypot — V8 allocates on every hypot call
     const vx = this.velocity.x;
     const vz = this.velocity.z;
     const planar = Math.sqrt(vx * vx + vz * vz);
 
-    const maxSpeed = this.speedCap * (input.aiming ? PLAYER.adsSpeedMultiplier : 1);
-
-    if(planar > maxSpeed){
+    if (planar > maxSpeed) {
       this.velocity.x *= maxSpeed / planar;
       this.velocity.z *= maxSpeed / planar;
     }
