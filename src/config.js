@@ -678,3 +678,37 @@ export const MANTLE = {
   inward: 0.6,      // how far onto the top surface the player ends up
   duration: 0.25,   // seconds of the lift; instant enough that it never feels slow
 };
+
+// --- PAINTSTREAK (#131, PRD C7) ----------------------------------------------
+// The reward for playing the loop well. New ground and kills fill a gauge, in
+// that order of weight; doing several kinds of thing at once fills it faster
+// than repeating one. A full gauge is spent (never auto-fired) on one large
+// splat at your feet that claims the zone and stuns what stands in it.
+//
+// Target: a full gauge in ~90-120 s of normal varied play. Under a minute and
+// it is a spammable button; much over three and nobody ever sees it. These are
+// first numbers from arithmetic, not from a playtest — tune them here.
+export const PAINTSTREAK = {
+  key: 'KeyQ',               // spend. Unbound elsewhere (input.js, menu controls)
+  max: 100,                  // the gauge; only a FULL gauge can be spent
+
+  // Fill sources. Coverage is counted in newly painted cells: one splat claims
+  // ~25 cells of fresh ground, so ~0.5 points a splat before variety.
+  cellsPerPoint: 50,
+  pointsPerKill: 3,          // a kill is worth ~6 splats of new ground: less than painting overall
+  sampleInterval: 0.25,      // s between coverage scans — it is a grid scan, like the HUD's
+
+  // Variety. Each channel — paint, kill, traverse — counts as "active" for
+  // varietyWindow seconds after it last happened. Fill is multiplied by
+  // 1 + varietyBonus × (active channels − 1): ×1 for one thing, ×2 for all three.
+  // Traversal only ever counts toward variety; it fills nothing by itself.
+  varietyWindow: 8,
+  varietyBonus: 0.5,
+  traverseSpeed: 3,          // m/s of horizontal movement that counts as traversing
+
+  // The spend.
+  zoneRadius: 6,             // m — the splat at your feet
+  zoneHeight: 2.5,           // m above/below your feet a floor or enemy must be to count
+  stunTime: 2.5,             // s an enemy in the zone stands still and cannot attack
+  stunColour: DANGER.amber,  // the one danger amber (#126), not a second value
+};

@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_NAV, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, STALKER } from "../config.js";
+import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_NAV, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, STALKER } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
@@ -442,6 +442,11 @@ export class Enemy {
     this._blueBuildupTimer = 0;
     this._frozenTimer = 0;
     this._frostShell = null;
+    // Paintstreak stun (#131): a status, like the freeze — stands still and
+    // cannot attack, pulsing amber, faster as it runs out. See `stun`.
+    this._stunTimer = 0;
+    this._stunTotal = 0;
+    this._stunColour = new THREE.Color(PAINTSTREAK.stunColour);
 
     // Feeding (Drainer, #80). `_feeding` is the posture AND the hold: a feeding
     // drainer does not chase, it eats the grid under itself. `_drainCredit` is
@@ -1207,6 +1212,11 @@ export class Enemy {
 
     if (this._frozenTimer > 0){
       this._updateFrozen(dt);
+      return;
+    }
+
+    if (this._stunTimer > 0) {
+      this._updateStun(dt);
       return;
     }
 
@@ -2071,6 +2081,48 @@ export class Enemy {
   /** True while the enemy is winding up an attack. */
   get telegraphing() {
     return this._windupTimer > 0;
+  }
+
+  /** True while a paintstreak zone has it stunned (#131). */
+  get stunned() {
+    return this._stunTimer > 0;
+  }
+
+  /**
+   * Paintstreak stun (#131). A status, not a brain change: for `seconds` the
+   * enemy holds still and cannot attack — a windup in progress is cancelled —
+   * then picks up exactly where its AI left off. A no-procs enemy (the turret,
+   * #77) is immune, the same as it is to every colour's status.
+   * @returns {boolean} whether it took the stun
+   */
+  stun(seconds) {
+    if (!this.alive || (this.config.noProcs ?? this.type === "turret")) return false;
+    this._stunTimer = Math.max(this._stunTimer, seconds);
+    this._stunTotal = this._stunTimer;
+    this._windupTimer = 0;
+    this.mesh.scale.setScalar(1);
+    this._vel.set(0, 0, 0);
+    return true;
+  }
+
+  /**
+   * Amber, like every danger status (DECISIONS.md). The pulse speeds up as the
+   * stun runs out, so the player can see it is about to end — a stun that
+   * lifts without warning would be the one unfair thing in the zone.
+   */
+  _updateStun(dt) {
+    this._stunTimer -= dt;
+    this._vel.set(0, 0, 0);
+    this._applyKnockback(dt);   // red can still throw a stunned enemy
+    if (this._stunTimer <= 0) {
+      this._stunTimer = 0;
+      this._setColour(this._baseColour);
+      return;
+    }
+    const p = 1 - this._stunTimer / this._stunTotal;
+    const pulse = 0.5 + 0.5 * Math.sin(p * Math.PI * 2 * (2 + 6 * p));
+    this._tintBlend.copy(this._baseColour).lerp(this._stunColour, 0.45 + 0.55 * pulse);
+    this._setColour(this._tintBlend);
   }
 
   /** True while the enemy is in the post-charge opening and cannot re-alert (#76). */
