@@ -19,9 +19,10 @@ export const LEVELS = [
   { id: 'last-colour', name: 'Last Colour', create: (game) => new Level03(game) },
 ];
 
-// The campaign's first *playable* level today. Not `primer`, because the Primer
-// is still a stub and landing a new player in an empty pad is worse than landing
-// them in Outskirts -- which is also what main.js has always done.
+// The level a new player lands in. Still `outskirts`, not `primer`: the Primer
+// is a blockout now (29 Oct), but without its sergeant (#111/#112) or its trap
+// (#101) it does not teach yet. Switching the start is a campaign decision for
+// when it does -- and main.js has always started here.
 export const DEFAULT_LEVEL_ID = 'outskirts';
 
 /** The registry entry for `id`, falling back to the default rather than throwing. */

@@ -5,8 +5,10 @@
 // model, a plan, sections and a pacing chart by being added here.
 import { ASCENT } from './ascent.js';
 import { LAST_COLOUR } from './last-colour.js';
+import { PRIMER } from './primer.js';
 
 export const LAYOUTS = {
+  [PRIMER.id]: PRIMER,
   [ASCENT.id]: ASCENT,
   [LAST_COLOUR.id]: LAST_COLOUR,
 };

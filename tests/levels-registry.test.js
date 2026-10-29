@@ -18,7 +18,7 @@ test('the four levels are listed under the names the design fixed', () => {
   assert.ok(LEVELS.some((l) => l.id === DEFAULT_LEVEL_ID), 'the default must be a real entry');
 });
 
-test('every registered level loads as a playable package, stubs included', async () => {
+test('every registered level loads as a playable package', async () => {
   for (const entry of LEVELS) {
     const game = makeGame();
     const level = entry.create(game);
@@ -57,21 +57,4 @@ test('an unknown id falls back to the default rather than leaving a dead page', 
   }
 
   assert.ok(warned, 'the fallback must say so; silence makes a typo unfindable');
-});
-
-test('a stub level can be completed, so selecting it proves the whole path', async () => {
-  const game = makeGame();
-  let wins = 0;
-  game.onWin = () => { wins += 1; };
-
-  // The one level still a stub — Last Colour is built from data now (29 Oct).
-  const level = createLevel('primer', game);
-  await level.load();
-
-  const player = { position: level.extraction.getCenter(new THREE.Vector3()) };
-  level.update(1 / 60, player);
-  level.update(1 / 60, player);
-
-  assert.equal(wins, 1, 'win must fire exactly once');
-  level.dispose();
 });

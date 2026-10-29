@@ -100,6 +100,13 @@ for (const s of L.strips) {
   scene.add(boxMesh([x[0], x[1], s.y[0], s.y[1], z[0], z[1]], new THREE.MeshBasicMaterial({ color: 0x2fa58a })));
 }
 
+// --- paint already on the floor when the level loads (the Primer's examples) ---
+const PREPAINT = { blue: 0x2f7fe0, red: 0xe0453a, green: 0x2fae4e };
+for (const p of L.prepaint ?? []) {
+  const [x0, x1, z0, z1] = p.rect;
+  scene.add(boxMesh([x0, x1, p.y + 0.08, p.y + 0.14, z0, z1], new THREE.MeshBasicMaterial({ color: PREPAINT[p.colour] })));
+}
+
 // --- gates: the red fields; trap zones: amber volumes; Siphon targets ------------
 for (const g of L.gates ?? []) {
   layers.gates.add(boxMesh(g.box, new THREE.MeshBasicMaterial({ color: 0xd9473c, transparent: true, opacity: 0.35, depthWrite: false })));
