@@ -146,10 +146,60 @@ const gates = [
   { id: 'gate-bay-n', box: [-6, 6, 0, 14, -62.2, -61.8], opens: 'cleared:R3.3+12' },
 ];
 
-/** Trap zones — placed now, built in the trap pass (#101–#105). Not geometry. */
+/**
+ * Trap zones. The crusher is built (crusher.js, polish pass 1); the laser grid
+ * is cut to BACKLOG Parked (the crusher is the trap with a rhythm). Not geometry.
+ */
 const traps = [
   { id: 'cargo-crusher', room: 'R2', kind: 'crusher', box: [-6, 2, 0, 10, 22, 24], note: 'Fixed rhythm. Cross in the gap, or blue-slide under. The walkway passes beside it.' },
-  { id: 'laser-grid', room: 'R2', kind: 'laser', box: [-6, 6, 0, 3, 0, 1], note: 'Never through. Red bounce over (4.33 > 3), or the walkway at 4 m passes above it.' },
+  { id: 'laser-grid', planned: true, room: 'R2', kind: 'laser', box: [-6, 6, 0, 3, 0, 1], note: 'Never through. Red bounce over (4.33 > 3), or the walkway at 4 m passes above it.' },
+];
+
+/**
+ * Props — the Corp prop kit (#56, polish pass 1), built by prop-kit.js. Not
+ * geometry: no collision, no paint, so enemies path exactly as before. Grey
+ * machinery; the amber lamps are the one colour. Keep-outs are tested: off
+ * every strip and route point, and nothing on an arena floor above 1.2 m.
+ * Each room is dressed differently, so the three read as three places:
+ *   hangar    crate stacks and jersey barriers — a cargo bay
+ *   corridor  pipe runs on both walls and a rail on the walkway — a service duct
+ *   Core      lamps over every bay gate, overhead pipes, barriers at the mouths
+ */
+const props = [
+  // --- R1 The Hangar: cargo ------------------------------------------------
+  ...[[-17, 46], [-17, 47.3], [-15.7, 46], [16, 66], [16, 67.3], [-17, 70], [14.6, 74]].map(([x, z], i) => ({
+    id: `hangar-crate-${i + 1}`, room: 'R1', kind: 'crate', box: [x, x + 1.2, 0, 1.2, z, z + 1.2],
+  })),
+  { id: 'hangar-barrier-w', room: 'R1', kind: 'barrier', box: [-14, -11, 0, 0.9, 76, 76.6] },
+  { id: 'hangar-barrier-e', room: 'R1', kind: 'barrier', box: [11, 14, 0, 0.9, 76, 76.6] },
+  { id: 'hangar-barrier-n', room: 'R1', kind: 'barrier', box: [-4, -1, 0, 0.9, 43, 43.6] },
+  { id: 'hangar-pipe-w', room: 'R1', kind: 'pipe', box: [-23.9, -23.3, 9, 9.6, 40, 78] },
+  { id: 'hangar-pipe-e', room: 'R1', kind: 'pipe', box: [23.3, 23.9, 9, 9.6, 40, 78] },
+
+  // --- R2 The Corridor: a service duct --------------------------------------
+  { id: 'corridor-pipe-e-lo', room: 'R2', kind: 'pipe', box: [5.5, 5.9, 7, 7.4, -8, 38] },
+  { id: 'corridor-pipe-e-hi', room: 'R2', kind: 'pipe', box: [5.3, 5.9, 8.2, 8.8, -8, 38] },
+  { id: 'corridor-pipe-w-s', room: 'R2', kind: 'pipe', box: [-5.9, -5.3, 8.2, 8.8, 20, 38] },
+  { id: 'corridor-pipe-w-n', room: 'R2', kind: 'pipe', box: [-5.9, -5.3, 8.2, 8.8, -8, 10] },
+  { id: 'walkway-rail', room: 'R2', kind: 'rail', box: [2.05, 2.15, 4.95, 5.05, -4, 31] },
+
+  // --- R3 The Core: lamps over the bay gates are the waves' tell ------------
+  // West and east bays: blink through wave three's 8 s breath.
+  { id: 'lamp-bay-w-n', room: 'R3', kind: 'light', rule: 'cleared:R3.2+8', box: [-26, -25.5, 10.5, 11.3, -43.2, -42.4] },
+  { id: 'lamp-bay-w-s', room: 'R3', kind: 'light', rule: 'cleared:R3.2+8', box: [-26, -25.5, 10.5, 11.3, -29.6, -28.8] },
+  { id: 'lamp-bay-e-n', room: 'R3', kind: 'light', rule: 'cleared:R3.2+8', box: [25.5, 26, 10.5, 11.3, -43.2, -42.4] },
+  { id: 'lamp-bay-e-s', room: 'R3', kind: 'light', rule: 'cleared:R3.2+8', box: [25.5, 26, 10.5, 11.3, -29.6, -28.8] },
+  // North bay: blinks with Big Arm's 12 s gate pulse.
+  { id: 'lamp-bay-n-w', room: 'R3', kind: 'light', rule: 'cleared:R3.3+12', box: [-7.2, -6.4, 12, 12.8, -62, -61.5] },
+  { id: 'lamp-bay-n-e', room: 'R3', kind: 'light', rule: 'cleared:R3.3+12', box: [6.4, 7.2, 12, 12.8, -62, -61.5] },
+  { id: 'core-pipe-n-w', room: 'R3', kind: 'pipe', box: [-26, -6, 11, 11.6, -61.9, -61.3] },
+  { id: 'core-pipe-n-e', room: 'R3', kind: 'pipe', box: [6, 26, 11, 11.6, -61.9, -61.3] },
+  { id: 'core-pipe-s-w', room: 'R3', kind: 'pipe', box: [-26, -6, 11, 11.6, -10.7, -10.1] },
+  { id: 'core-pipe-s-e', room: 'R3', kind: 'pipe', box: [6, 26, 11, 11.6, -10.7, -10.1] },
+  { id: 'core-barrier-w', room: 'R3', kind: 'barrier', box: [-18, -17.4, 0, 0.9, -39, -36] },
+  { id: 'core-barrier-e', room: 'R3', kind: 'barrier', box: [17.4, 18, 0, 0.9, -36, -33] },
+  { id: 'core-crate-w', room: 'R3', kind: 'crate', box: [-17.4, -16.2, 0, 1.2, -48.6, -47.4] },
+  { id: 'core-crate-e', room: 'R3', kind: 'crate', box: [16.2, 17.4, 0, 1.2, -48.6, -47.4] },
 ];
 
 /**
@@ -271,5 +321,5 @@ const doc = {
 
 export const LAST_COLOUR = {
   id: 'last-colour', name: 'Last Colour', cells: PAINT_GRID.level3Cells,
-  solids, slabs: [], strips, kerbs: [], landmarks, gates, traps, targets, enemies, routes, rooms, win, doc,
+  solids, slabs: [], strips, kerbs: [], landmarks, gates, traps, props, targets, enemies, routes, rooms, win, doc,
 };

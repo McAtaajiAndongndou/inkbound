@@ -25,6 +25,9 @@ Ideas, playtest findings and parked work. **Check triage status before building 
 - **Jetpack** — rejected as a base ability: it makes every gap in every level trivial and forces a level-design rewrite. If it ever returns, it is a single-level pickup with a fuel limit.
 - **Vehicle level** — rejected: new physics, new camera, new collision and no paint. An on-rails transition gets the same breather for a tenth of the cost.
 - **More enemy types** — rejected. Add enemy *questions*, not enemy types.
+- **Last Colour laser grid (#33)** — cut in polish pass 1: the crusher is the corridor's trap with a rhythm; two traps in one 50 m corridor muddy both. Zone kept in the layout as `planned`.
+- **Big Arm (#99) and the Siphon phases (#100)** — not in polish pass 1; they need their own budget. Open for Renda: fund #100, or a cheap stand-in ending (the Siphon greys out and its beacon dies as you reach it).
+- **ITHappy Military Free models for Last Colour** — not this pass: the licence is unchecked in ASSETS.md, and the procedural kit already reads as grey machinery.
 
 ---
 

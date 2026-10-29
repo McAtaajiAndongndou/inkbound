@@ -116,3 +116,9 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Blue and red examples are pre-painted at load; green is not**, so the third lesson is the first you paint yourself. Paint at load is a layout feature (`prepaint`), applied by `LayoutLevel`.
 - **Nothing in the Primer kills** (#79): every wall beats its floor plus a bounce, and the blue pit is enclosed with stairs out (both tested).
 - **The default start level stays Outskirts** until the Primer's sergeant (#111/#112) and trap (#101) land.
+
+## 2026-10-29 — Last Colour, polish pass 1
+
+- **The cargo crusher is built; the laser grid is cut** (BACKLOG Parked). The crusher runs a fixed rhythm with an amber lamp as its tell, and **blue on the floor slides under it**, the same rule as the Primer's spike pit, so blue means "slide past the hazard" everywhere. Numbers in `LAST_COLOUR.crusher`.
+- **Props are layout data, built procedurally, grey only, instanced and without collision** (`prop-kit.js`). Amber is the one colour, and it means warning: the lamps over the bay gates blink while a wave's breath counts down.
+- **Mood numbers live in `LAST_COLOUR.mood`**; `src/levels/mood.js` is the Primer's (#177), copied here and to be reconciled at merge.
