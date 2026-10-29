@@ -1,0 +1,163 @@
+{
+  "assumptions": {
+    "walkSpeed": 4.2,
+    "climbSpeed": 4.5,
+    "note": "Walk speed is grey ground (maxSpeed x grey standSlow). Fight times are design estimates."
+  },
+  "routeMetres": 191.8,
+  "rooms": [
+    {
+      "id": "R0",
+      "name": "Briefing",
+      "intensity": 0,
+      "planned": false,
+      "travel": 0,
+      "dwell": 8,
+      "fight": 0,
+      "total": 8
+    },
+    {
+      "id": "R1",
+      "name": "Move",
+      "intensity": 1,
+      "planned": false,
+      "travel": 3.6,
+      "dwell": 0,
+      "fight": 0,
+      "total": 3.6
+    },
+    {
+      "id": "R2",
+      "name": "The First Splat",
+      "intensity": 2,
+      "planned": false,
+      "travel": 4.5,
+      "dwell": 8,
+      "fight": 0,
+      "total": 12.5
+    },
+    {
+      "id": "R3",
+      "name": "Blue",
+      "intensity": 3,
+      "planned": false,
+      "travel": 5.9,
+      "dwell": 10,
+      "fight": 0,
+      "total": 15.9
+    },
+    {
+      "id": "R4",
+      "name": "Red",
+      "intensity": 3,
+      "planned": false,
+      "travel": 4,
+      "dwell": 8,
+      "fight": 0,
+      "total": 12
+    },
+    {
+      "id": "R5",
+      "name": "Green",
+      "intensity": 3,
+      "planned": false,
+      "travel": 7,
+      "dwell": 8,
+      "fight": 0,
+      "total": 15
+    },
+    {
+      "id": "R6",
+      "name": "The Trap",
+      "intensity": 4,
+      "planned": false,
+      "travel": 0,
+      "dwell": 4,
+      "fight": 0,
+      "total": 4
+    },
+    {
+      "id": "R7",
+      "name": "One of Theirs",
+      "intensity": 6,
+      "planned": false,
+      "travel": 12.6,
+      "dwell": 0,
+      "fight": 30,
+      "total": 42.6
+    },
+    {
+      "id": "R8",
+      "name": "Free Play",
+      "intensity": 2,
+      "planned": false,
+      "travel": 2.6,
+      "dwell": 30,
+      "fight": 0,
+      "total": 32.6
+    },
+    {
+      "id": "R9",
+      "name": "Extraction",
+      "intensity": 1,
+      "planned": false,
+      "travel": 6.7,
+      "dwell": 5,
+      "fight": 0,
+      "total": 11.7
+    }
+  ],
+  "totalSeconds": 157.9,
+  "sightlines": [
+    {
+      "id": "R0",
+      "seesGoal": false,
+      "metres": 178
+    },
+    {
+      "id": "R1",
+      "seesGoal": false,
+      "metres": 171
+    },
+    {
+      "id": "R2",
+      "seesGoal": false,
+      "metres": 157
+    },
+    {
+      "id": "R3",
+      "seesGoal": false,
+      "metres": 145
+    },
+    {
+      "id": "R4",
+      "seesGoal": false,
+      "metres": 117
+    },
+    {
+      "id": "R5",
+      "seesGoal": false,
+      "metres": 103
+    },
+    {
+      "id": "R6",
+      "seesGoal": true,
+      "metres": 91
+    },
+    {
+      "id": "R7",
+      "seesGoal": true,
+      "metres": 67
+    },
+    {
+      "id": "R8",
+      "seesGoal": true,
+      "metres": 37
+    },
+    {
+      "id": "R9",
+      "seesGoal": true,
+      "metres": 5
+    }
+  ]
+}
