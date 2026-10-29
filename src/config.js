@@ -155,14 +155,22 @@ export const HEALTH = {
   contactHeight: 1.7, // ...and within this vertical distance
 };
 
+// #126 — ONE danger colour for the whole game (DECISIONS.md): attack
+// telegraphs, trap warnings, incoming fire. Amber is chosen precisely because
+// it is not a paint colour, so nothing the player can paint is ever a warning
+// and nothing dangerous ever shares a colour with something helpful.
+export const DANGER = {
+  amber: 0xffe600,
+};
+
 // Traps: authored meshes plus ONE damage-volume helper (`docs/DECISIONS.md`,
 // 2026-10-24). This block is not a trap table -- each level still owns the shape
 // it hurts you with. It holds only the numbers a hazard would otherwise hardcode,
 // and the colours that make a hazard legible.
 export const TRAP = {
-  // Amber is the only danger colour in the game (DECISIONS.md), because it is not
-  // one of the three paint colours: nothing you are able to paint is a warning.
-  amber: 0xd98a2b,
+  // The trap warning IS the game-wide danger amber -- one value, defined once
+  // in DANGER, not a second amber chosen per system.
+  amber: DANGER.amber,
   bed: 0x1c1a17,       // the dark recess, so the spikes read against the floor
 
   spike: {

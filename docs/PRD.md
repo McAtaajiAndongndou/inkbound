@@ -171,8 +171,8 @@ The game is submittable when **all of these are true**:
 | --- | ---------------------------------------------------------- | ------ | ---- | ------- | -------------------------------------------------------------------------------- |
 | J1  | **Grey-to-colour decor reveal** near painted ground        | SHOULD | M    | levels  | ✅ Built in `decor.js` — palette, instanced buckets and delayed reveal all exist |
 | J2  | Per-level mood — fog, light, palette                       | MUST   | S    | levels  | ⚠️ Outskirts only                                                                |
-| J3  | Readability — enemies visible from where you fight         | MUST   | S    | levels  | ❌ Not verified                                                                  |
-| J4  | Enemies distinguishable by silhouette and telegraph colour | MUST   | S    | shaders | ❌ Not verified                                                                  |
+| J3  | Readability — enemies visible from where you fight         | MUST   | S    | levels  | ⚠️ Partial (#126) — state language tested; spawn placement stays with levels     |
+| J4  | Enemies distinguishable by silhouette and telegraph colour | MUST   | S    | shaders | ✅ Built (#126) — one amber in config; distinct GLB per mover; pin holds green   |
 
 ---
 
