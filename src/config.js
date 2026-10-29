@@ -153,12 +153,16 @@ export const TRAP = {
 
 export const PAINT_GUN = {
   range: 30,
-  radius: 1.4, // splat radius in world units
-  cost: 4, // ammo per shot
-  fireDelay: 0.14, // seconds
+  radius: 1.4,
+  cost: 4,
+  fireDelay: 0.14,
   hipSpread: 0.025,
   adsSpread: 0.005,
   refillRate: 8,
+
+  damage: 10,
+  splashRadius: 1.4,
+  splashFraction: 0.5,
 };
 
 // Starting master volume (0..1). The options menu overrides it per player.
