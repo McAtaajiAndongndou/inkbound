@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER, HEALTH, CAMERA, SUBMERGE } from '../config.js';
+import { PLAYER, HEALTH, CAMERA, SUBMERGE,MANTLE } from '../config.js';
 
 const ID_TO_NAME = ['grey', 'blue', 'red', 'green'];
 
@@ -58,6 +58,13 @@ export class Player {
     // "on your own paint". Off either, it is `false` that frame — no timer,
     // no stuck state.
     this.submerged = false;
+    // mantle (#157). Set when a green climb reaches the top of its wall and a
+    // floor exists just past the edge. Runs as a short lerp over
+    // MANTLE.duration; disables all physics for its duration.
+    this.mantling = false;
+    this.mantleTimer = 0;
+    this.mantleFrom = new THREE.Vector3();
+    this.mantleTo = new THREE.Vector3();
     // visible avatar for third-person
     const geometry = new THREE.CapsuleGeometry(
       PLAYER.radius, PLAYER.height - PLAYER.radius * 2, 4, 12,
@@ -223,6 +230,50 @@ export class Player {
     ground.point.set(this._probe.x, ground.y, this._probe.z);
     return ground;
   }
+  /**
+   * Downward ground probe from an arbitrary world point. Same maths as
+   * _probeGround, but the ray starts wherever the caller says. Used by the
+   * mantle (#157) to ask "is there a floor just past the top of this wall?" —
+   * the standing probe starts at the player's position, which is on the FACE
+   * of the wall, not past its top edge.
+   */
+  _probeGroundAt(x, y, z) {
+    this._probe.set(x, y + PLAYER.groundProbeLift, z);
+
+    let best = null;
+    let bestDist = PLAYER.groundProbeRange;
+
+    const EPS = 1e-6;
+
+    for (const floor of this.floors) {
+      floor.mesh.updateWorldMatrix(true, false);
+      this._inv.copy(floor.mesh.matrixWorld).invert();
+      this._local.copy(this._probe).applyMatrix4(this._inv);
+      const e = this._inv.elements;
+      this._dirLocal.set(-e[4], -e[5], -e[6]);
+
+      if (this._dirLocal.z >= 0) continue;
+
+      const dist = -this._local.z / this._dirLocal.z;
+      if (dist < 0 || dist > bestDist + EPS) continue;
+
+      const hx = this._local.x + this._dirLocal.x * dist;
+      const hy = this._local.y + this._dirLocal.y * dist;
+      if (Math.abs(hx) > floor.width * 0.5 + EPS
+        || Math.abs(hy) > floor.height * 0.5 + EPS) continue;
+
+      best = floor;
+      bestDist = dist;
+    }
+
+    if (!best) return null;
+
+    const ground = this._ground;
+    ground.surface = best;
+    ground.y = this._probe.y - bestDist;
+    ground.point.set(x, ground.y, z);
+    return ground;
+  }
 
   /**
    * Solid wall collision AND the climb check, in one pass.
@@ -276,6 +327,15 @@ export class Player {
       contact.rules = wall.surfaceAtWorld(this._local);
       contact.normal.copy(this._normal);
       contact.contactZ = contactZ;
+
+      // #157 — the wall's world-space TOP Y. All climbable walls in this game
+      // are vertical planes with local +Y as their height axis, so the top is
+      // directly above the plane's center. This is what the mantle trigger
+      // measures against — "how far below the top are my feet?".
+      this._local.set(0, wall.height * 0.5, 0);
+      wall.mesh.localToWorld(this._local);
+      contact.topY = this._local.y;
+
       this.touchingWall = contact;
 
       // kill velocity heading into the wall so we do not grind through it
@@ -288,6 +348,30 @@ export class Player {
     if (this.hurtTimer > 0) this.hurtTimer -= dt;
     if (this.dead) return;     // dead: frozen in place until the level restarts
 
+    // ---- mantle (#157) — locked lift; no input, no physics, no gravity ----
+    // Runs before anything else in the frame so no other system can fight
+    // with it. When the timer hits zero, the player is placed exactly on
+    // the target and control resumes.
+    if (this.mantling) {
+      this.mantleTimer -= dt;
+      if (this.mantleTimer <= 0) {
+        this.position.copy(this.mantleTo);
+        this.velocity.set(0, 0, 0);
+        this.mantling = false;
+        this.mantleTimer = 0;
+        this.onGround = true;
+      } else {
+        const t = 1 - (this.mantleTimer / MANTLE.duration);
+        // Ease-out: most of the motion happens early, so the visible lift
+        // reads as a fast pull-up rather than a linear slide.
+        const e = 1 - (1 - t) * (1 - t);
+        this.position.lerpVectors(this.mantleFrom, this.mantleTo, e);
+      }
+      this.mesh.position.copy(this.position);
+      this.mesh.position.y += PLAYER.height * 0.5;
+      this.mesh.rotation.y = this.yaw;
+      return;
+    }
     // ---- jump feel (#33) — decay the grace windows -----------------------
     // onGround here is last frame's value: exactly what coyote time wants.
     if (this.onGround || this.climbing) this._coyoteTimer = PLAYER.coyoteTime;
@@ -328,8 +412,35 @@ export class Player {
     const pushingIntoWall = wall && this._wish.dot(wall.normal) < -PLAYER.climbPushThreshold;
     this.climbing = !!(wall && wall.rules.climbable && pushingIntoWall);
 
-    if (this.climbing) {
+  if (this.climbing) {
       this.velocity.y = PLAYER.climbSpeed;
+
+      // #157 — mantle check: are we near the top of this wall with a floor
+      // just past the edge? If yes, commit to a mantle and stop climbing.
+      // "Near" means the feet are within MANTLE.reach BELOW the top edge —
+      // above the top the wall test already fails, so this is the last
+      // chance before the player runs out of wall.
+      if (wall && wall.topY != null) {
+        const belowTop = wall.topY - this.position.y;
+        if (!this.onGround && belowTop > 0 && belowTop <= MANTLE.reach) {
+          // Probe just past the wall's face, at the top edge. The inward
+          // offset uses the wall normal so a wall facing -Z gets the floor
+          // on its -Z side, and a wall facing +Z on its +Z side.
+          const probeX = this.position.x + wall.normal.x * (PLAYER.radius + MANTLE.inward);
+          const probeZ = this.position.z + wall.normal.z * (PLAYER.radius + MANTLE.inward);
+          const probeY = wall.topY + 0.1;    // just above the edge
+          const topFloor = this._probeGroundAt(probeX, probeY, probeZ);
+          if (topFloor) {
+            // Commit to the mantle. Keep `climbing` true so the avatar still
+            // plays the climb pose (#122 wired it) — the physics will lift.
+            this.mantling = true;
+            this.mantleTimer = MANTLE.duration;
+            this.mantleFrom.copy(this.position);
+            this.mantleTo.set(probeX, topFloor.y, probeZ);
+            this.velocity.set(0, 0, 0);
+          }
+        }
+      }
     } else {
       this.velocity.y += PLAYER.gravity * dt;
     }

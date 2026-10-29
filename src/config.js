@@ -619,3 +619,18 @@ export const SUBMERGE = {
   cameraOffset: 0.9,         // metres the TPV camera drops, so you read as "in" the paint
   maxAngle: 1.1,             // radians — how far the camera tilts down while submerged
 };
+// Mantle (#157). A green climb ends by pulling the player onto the top
+// surface — the missing move every climbing game has. Automatic, not a
+// button: the player is already pushing into the wall, and a second input at
+// the top is the clumsy moment this removes.
+//
+// Green stays the gate. A mantle replaces only the last ~0.85 m of a climb
+// (the wall-contact test is at chest height, so the feet stop ~0.85 m short
+// of the top), so it makes climbing SMOOTHER, not easier — the paint cost is
+// unchanged. The reach below is the tune that decides how forgiving the
+// last metre is.
+export const MANTLE = {
+  reach: 1.0,       // how far below the wall's top edge the feet must be for mantle to fire
+  inward: 0.6,      // how far onto the top surface the player ends up
+  duration: 0.25,   // seconds of the lift; instant enough that it never feels slow
+};
