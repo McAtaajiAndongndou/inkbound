@@ -30,7 +30,7 @@ const SPLASH_LIFT = 0.05;
  * burst particle owning its material so it can fade on its own.
  */
 export class PaintGun {
-  constructor(surfaces, level = 1, enemies = [], scene = null) {
+  constructor(surfaces, levelId = 'outskirts', enemies = [], scene = null) {
     this.surfaces = surfaces;
     this.enemies = enemies;
     this.scene = scene;
@@ -38,7 +38,12 @@ export class PaintGun {
     this.colours = ["blue", "red", "green", "grey"];
     this.current = 0;
 
-    const ammo = AMMO[level] ?? AMMO[1];
+    // #155 — `levelId` is a REGISTRY id (primer / outskirts / ascent /
+    // last-colour), not a number. The fallback to Outskirts is defensive: a
+    // level that has not declared a tank gets the normal one, and the test
+    // `every registry level has an AMMO entry` catches the mistake before it
+    // ships.
+    const ammo = AMMO[levelId] ?? AMMO.outskirts;
     this.maxAmmo = ammo;
     this.ammo = ammo;
 
