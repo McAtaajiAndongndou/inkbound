@@ -24,6 +24,62 @@ const END_LOSE = {
 
 const RESTART_HINT = '<b>R</b> restart level · <b>Esc</b> menu';
 
+// Killfeed (#129). One line per kind of kill, not per kill: in Last Colour
+// dozens of Drainers die, and a line each would cover the arena exactly when
+// the player needs to see it. Same enemy, same verb, same colour while the
+// line is still up → the count goes up and the line's life restarts.
+export const KILLFEED = { life: 3.5, fade: 0.6, maxLines: 3 };
+
+// What the colour DID, from the enemy's `onDeath` cause — so the line teaches
+// which colour answers which enemy, and never claims an effect that did not
+// happen (a turret takes no procs, so it is never "flung").
+const KILL_VERBS = {
+  knockback: 'FLUNG',
+  pin: 'PINNED',
+  slip: 'SLICKED',
+  shatter: 'SHATTERED',
+  paint: 'PAINTED OUT',
+  trap: 'TRAPPED',
+};
+const ENEMY_NAMES = {
+  sprayer: 'SPRAYER',
+  charger: 'CHARGER',
+  wallCrawler: 'WALL-CRAWLER',
+  turret: 'TURRET',
+  drainer: 'DRAINER',
+  stalker: 'STALKER',
+  chargerZombie: 'CHARGER',
+  bigArm: 'BIG ARM',
+};
+
+/** The feed's lines and their lifetimes, free of the DOM so tests can step it. */
+export class KillFeed {
+  constructor() {
+    this.lines = [];   // newest first: { name, verb, colour, count, age }
+  }
+
+  push(name, verb, colour) {
+    const i = this.lines.findIndex((l) => l.name === name && l.verb === verb && l.colour === colour);
+    const line = i >= 0 ? this.lines.splice(i, 1)[0] : { name, verb, colour, count: 0, age: 0 };
+    line.count++;
+    line.age = 0;
+    this.lines.unshift(line);
+    this.lines.length = Math.min(this.lines.length, KILLFEED.maxLines);
+  }
+
+  update(dt) {
+    for (const line of this.lines) line.age += dt;
+    while (this.lines.length && this.lines[this.lines.length - 1].age >= KILLFEED.life) this.lines.pop();
+  }
+
+  clear() {
+    this.lines.length = 0;
+  }
+}
+
+/** "SPRAYER — FLUNG", "DRAINER — SLICKED ×5". */
+export const killText = ({ name, verb, count }) => `${name} — ${verb}${count > 1 ? ` ×${count}` : ''}`;
+
 /**
  * HUD. DOM-based, which is cheap and does not cost us a draw call.
  * Ammo counter, current colour, and a live readout of what the player is
@@ -35,6 +91,7 @@ export class Hud {
     root.innerHTML = `
       <div id="crosshair"></div>
       <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+      <ol id="killfeed" aria-live="polite">${'<li class="hidden"></li>'.repeat(KILLFEED.maxLines)}</ol>
       <div id="dry-warning" class="hidden">DRY OUT</div>
       <div id="hud-bottom">
         <div id="health-wrap" class="hidden">
@@ -83,6 +140,9 @@ export class Hud {
     this.endWin = root.querySelector('#end-win');
     this.endLose = root.querySelector('#end-lose');
     this.hitmarker = root.querySelector('#hitmarker');
+    this.killfeed = new KillFeed();
+    this.killfeedEls = [...root.querySelectorAll('#killfeed li')];
+    this._killfeedText = this.killfeedEls.map(() => '');
 
     this._coverageTimer = 0;
     this._coverageValue = 0;
@@ -104,6 +164,38 @@ export class Hud {
     void el.offsetWidth; // force a reflow so the animation restarts
     el.classList.add('show');
     el.classList.toggle('kill', kill);
+  }
+
+  /**
+   * Add a kill to the feed (#129). main.js wires this to every enemy's `onDeath`.
+   * @param {string} type                 the enemy's `type` (an ENEMY / model key)
+   * @param {{ colour: string|null, effect: string|null }} cause
+   */
+  reportKill(type, { colour, effect }) {
+    const name = ENEMY_NAMES[type] ?? type.toUpperCase();
+    this.killfeed.push(name, KILL_VERBS[effect] ?? 'DOWN', colour);
+  }
+
+  _renderKillfeed(dt) {
+    this.killfeed.update(dt);
+    const { lines } = this.killfeed;
+    for (let i = 0; i < this.killfeedEls.length; i++) {
+      const el = this.killfeedEls[i];
+      const line = lines[i];
+      el.classList.toggle('hidden', !line);
+      if (!line) {
+        this._killfeedText[i] = '';
+        continue;
+      }
+      const text = killText(line);
+      if (text !== this._killfeedText[i]) {
+        this._killfeedText[i] = text;
+        el.textContent = text;
+        el.style.color = line.colour ? `#${PAINT[line.colour].hex.toString(16).padStart(6, '0')}` : '';
+      }
+      // Fades on its own over the last KILLFEED.fade seconds of its life.
+      el.style.opacity = Math.min(1, (KILLFEED.life - line.age) / KILLFEED.fade);
+    }
   }
 
   /**
@@ -134,9 +226,11 @@ export class Hud {
   hideEnd() {
     this.endWin.classList.add('hidden');
     this.endLose.classList.add('hidden');
+    this.killfeed.clear(); // main.js calls this on every level load
   }
 
   update(dt, { gun, player, surfaces }) {
+    this._renderKillfeed(dt);
     const pct = gun.ammo / gun.maxAmmo;
 
     this.ammoFill.style.width = `${pct * 100}%`;

@@ -458,3 +458,31 @@ canvas {
   from { transform: translateX(-50%) scale(1);    opacity: 1;   }
   to   { transform: translateX(-50%) scale(1.06); opacity: 0.7; }
 }
+
+/* Killfeed (#129). Right edge, under the minimap (a 20vmin square 16px in from
+   the top-right) and clear of the slot just below it where the territory
+   readout sits (#127) — nowhere near ammo, health or the swatches, which live
+   bottom-left. At most three lines; each fades out on its own. */
+#killfeed {
+  position: absolute;
+  top: calc(16px + 20vmin + 52px);
+  right: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+#killfeed li {
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(15, 15, 22, .55);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-fg);
+  white-space: nowrap;
+}
