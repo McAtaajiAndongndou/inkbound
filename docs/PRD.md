@@ -173,6 +173,7 @@ The game is submittable when **all of these are true**:
 | J2  | Per-level mood — fog, light, palette                       | MUST   | S    | levels  | ⚠️ Outskirts only                                                                |
 | J3  | Readability — enemies visible from where you fight         | MUST   | S    | levels  | ❌ Not verified                                                                  |
 | J4  | Enemies distinguishable by silhouette and telegraph colour | MUST   | S    | shaders | ❌ Not verified                                                                  |
+| J5  | Paintable vs sealed faces read before you shoot            | MUST   | S–M  | shaders | ✅ Built (#156) — sealed faces: broken grid, seams, rivets; same grey           |
 
 ---
 

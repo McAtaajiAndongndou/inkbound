@@ -152,6 +152,26 @@ export const HEALTH = {
   contactHeight: 1.7, // ...and within this vertical distance
 };
 
+// #156 — how a SEALED (unpaintable) face reads before anyone shoots it.
+//
+// A wall that refuses paint and a wall that takes it used to be drawn
+// identically: the same grey grid, so the only way to find a climb was to shoot
+// and see where the green stuck. The difference is TEXTURE, never colour
+// (issue #156 design note, ADR-0002 "grey is Corrupt Corp's"): a sealed face
+// keeps the same grey, but its grid is broken into panels with dark seams and
+// a rivet at every seam corner. Nothing here introduces a hue, so nothing here
+// can ever be mistaken for a paint colour or for the danger amber.
+//
+// All four numbers live in PANEL space, where one unit is one panel — a panel
+// is `panelsPerSquare` to a visible grid square. Tune here.
+export const SEALED = {
+  panelsPerSquare: 2,   // panels across one visible grid square
+  seamDepth: 0.22,      // fraction a seam line darkens the panel face
+  seamWidth: 0.06,      // seam line half-width, panel space
+  rivetRadius: 0.05,    // rivet dot radius, panel space
+  rivetLift: 0.12,      // fraction a rivet brightens the panel face
+};
+
 // Traps: authored meshes plus ONE damage-volume helper (`docs/DECISIONS.md`,
 // 2026-10-24). This block is not a trap table -- each level still owns the shape
 // it hurts you with. It holds only the numbers a hazard would otherwise hardcode,
