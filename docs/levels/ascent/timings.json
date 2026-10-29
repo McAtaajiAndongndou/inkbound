@@ -10,6 +10,7 @@
       "id": "R0",
       "name": "Trailhead",
       "intensity": 1,
+      "planned": false,
       "travel": 5.2,
       "dwell": 0,
       "fight": 0,
@@ -19,6 +20,7 @@
       "id": "R1",
       "name": "The Staged Climb",
       "intensity": 2,
+      "planned": false,
       "travel": 7.7,
       "dwell": 6,
       "fight": 0,
@@ -28,6 +30,7 @@
       "id": "R2",
       "name": "Terrace One",
       "intensity": 8,
+      "planned": false,
       "travel": 7.1,
       "dwell": 0,
       "fight": 75,
@@ -37,6 +40,7 @@
       "id": "R3",
       "name": "The Catwalk",
       "intensity": 3,
+      "planned": false,
       "travel": 11.1,
       "dwell": 12,
       "fight": 0,
@@ -46,6 +50,7 @@
       "id": "R4",
       "name": "Terrace Two",
       "intensity": 9,
+      "planned": false,
       "travel": 11.2,
       "dwell": 0,
       "fight": 90,
@@ -55,6 +60,7 @@
       "id": "R5",
       "name": "The North Face",
       "intensity": 6,
+      "planned": false,
       "travel": 44.4,
       "dwell": 0,
       "fight": 30,
@@ -64,6 +70,7 @@
       "id": "R6",
       "name": "The Ledge",
       "intensity": 8,
+      "planned": false,
       "travel": 15,
       "dwell": 0,
       "fight": 40,
@@ -73,6 +80,7 @@
       "id": "R7",
       "name": "Summit",
       "intensity": 1,
+      "planned": false,
       "travel": 5.6,
       "dwell": 10,
       "fight": 0,
@@ -82,6 +90,7 @@
       "id": "R8",
       "name": "Supply Lift",
       "intensity": 0,
+      "planned": false,
       "travel": 0,
       "dwell": 0,
       "fight": 0,
@@ -89,52 +98,55 @@
     }
   ],
   "totalSeconds": 370.3,
-  "chainSecondsForR5": 5.9,
-  "totalWithChainSeconds": 338.8,
+  "altRoute": {
+    "route": "chain",
+    "seconds": 5.9,
+    "totalSeconds": 338.8
+  },
   "sightlines": [
     {
       "id": "R0",
-      "seesTower": true,
+      "seesGoal": true,
       "metres": 76
     },
     {
       "id": "R1",
-      "seesTower": true,
+      "seesGoal": true,
       "metres": 65
     },
     {
       "id": "R2",
-      "seesTower": true,
+      "seesGoal": true,
       "metres": 47
     },
     {
       "id": "R3",
-      "seesTower": true,
+      "seesGoal": true,
       "metres": 45
     },
     {
       "id": "R4",
-      "seesTower": true,
+      "seesGoal": true,
       "metres": 54
     },
     {
       "id": "R5",
-      "seesTower": true,
+      "seesGoal": true,
       "metres": 75
     },
     {
       "id": "R6",
-      "seesTower": false,
+      "seesGoal": false,
       "metres": 52
     },
     {
       "id": "R7",
-      "seesTower": true,
+      "seesGoal": true,
       "metres": 22
     },
     {
       "id": "R8",
-      "seesTower": true,
+      "seesGoal": true,
       "metres": 17
     }
   ]

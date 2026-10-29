@@ -160,7 +160,7 @@
 <line x1="35" y1="446" x2="595" y2="446" stroke="#2f6fb3" stroke-width="1" stroke-dasharray="8 4"/>
 <text x="35" y="442" stroke="#ffffff" stroke-width="3" fill="none" font-size="11" font-weight="600">C</text><text x="35" y="442" fill="#2f6fb3" font-size="11" font-weight="600">C</text>
 <line x1="90" y1="96" x2="40" y2="56" stroke="#3d4650" stroke-width="1.5"/>
-<text x="45" y="68" stroke="#ffffff" stroke-width="3" fill="none" font-size="11">the base, ~200 m NW</text><text x="45" y="68" fill="#3d4650" font-size="11">the base, ~200 m NW</text>
+<text x="41" y="68" stroke="#ffffff" stroke-width="3" fill="none" font-size="11">the base, ~200 m NW</text><text x="41" y="68" fill="#3d4650" font-size="11">the base, ~200 m NW</text>
 <path d="M 580 58 L 574 76 L 586 76 Z" fill="#1d232a"/>
 <text x="580" y="90" fill="#1d232a" font-size="11" text-anchor="middle" font-weight="700">N</text>
 <rect x="480" y="692" width="100" height="5" fill="#1d232a"/>
@@ -181,7 +181,7 @@
 <line x1="618" y1="236" x2="634" y2="236" stroke="#1d232a" stroke-width="3.5"/><line x1="618" y1="236" x2="634" y2="236" stroke="#fff" stroke-width="1.8"/>
 <text x="640" y="240" fill="#1d232a" font-size="11">Main route</text>
 <line x1="618" y1="256" x2="634" y2="256" stroke="#d9473c" stroke-width="2.4" stroke-dasharray="5 3"/>
-<text x="640" y="260" fill="#1d232a" font-size="11">Chain route</text>
+<text x="640" y="260" fill="#1d232a" font-size="11">Other route</text>
 <circle cx="626" cy="276" r="6" fill="#7d4fc4"/>
 <text x="640" y="280" fill="#1d232a" font-size="11">Wall-crawler</text>
 <circle cx="626" cy="296" r="6" fill="#d99a1e"/>
@@ -189,7 +189,7 @@
 <circle cx="626" cy="316" r="6" fill="#c0392b"/>
 <text x="640" y="320" fill="#1d232a" font-size="11">Charger</text>
 <circle cx="626" cy="336" r="6" fill="#fff" stroke="#7d4fc4" stroke-width="2"/>
-<text x="640" y="340" fill="#1d232a" font-size="11">Wave 2 (hollow)</text>
+<text x="640" y="340" fill="#1d232a" font-size="11">Later wave (hollow)</text>
 <line x1="618" y1="356" x2="634" y2="356" stroke="#2f6fb3" stroke-dasharray="8 4"/>
 <text x="640" y="360" fill="#1d232a" font-size="11">Section cut</text>
 <rect x="618" y="376" width="16" height="12" fill="#d8c9a3"/>

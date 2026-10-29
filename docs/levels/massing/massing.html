@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ascent Massing</title>
+    <title>Level Massing</title>
     <!--
       The Ascent's 3D massing model. A DESIGN tool, not the level: plain boxes
-      built from src/levels/layouts/ascent.js, so it can never disagree with the
+      built from a layout in src/levels/layouts/, so it can never disagree with the
       plan, the side views, or the level built from the same file.
-      Run `npm run dev` and open /docs/levels/ascent/massing.html
+      Run `npm run dev` and open /docs/levels/massing/massing.html?layout=<id>
     -->
     <link rel="icon" href="data:," />
     <style>
@@ -28,7 +28,7 @@
   </head>
   <body>
     <div id="panel">
-      <h1>THE ASCENT — MASSING v2</h1>
+      <h1 id="heading">MASSING</h1>
       <div>1 grid square = 10 m · drag to orbit</div>
       <h2>Views</h2>
       <div id="views"></div>
@@ -37,18 +37,24 @@
       <label><input type="checkbox" data-layer="enemies" checked /> Enemies</label>
       <label><input type="checkbox" data-layer="ranges" checked /> Turret range (15 m)</label>
       <label><input type="checkbox" data-layer="routes" checked /> Routes</label>
-      <label><input type="checkbox" data-layer="sight" /> Sightlines to the lift</label>
+      <label><input type="checkbox" data-layer="gates" checked /> Gates</label>
+      <label><input type="checkbox" data-layer="traps" checked /> Trap zones + targets</label>
+      <label><input type="checkbox" data-layer="sight" /> <span id="sight-label">Sightlines to the goal</span></label>
       <h2>Key</h2>
       <div><span class="swatch" style="background:#2fa58a"></span>Paintable climb strip</div>
-      <div><span class="swatch" style="background:#d9473c"></span>Chain pad</div>
+      <div><span class="swatch" style="background:#d9473c"></span>Chain pad / gate field</div>
       <div><span class="swatch" style="background:#e08a3c"></span>Catwalk segment</div>
+      <div><span class="swatch" style="background:#f08c00"></span>Trap zone / Siphon target</div>
       <div><span class="swatch" style="background:#b39b77"></span>Catch floor (a fall lands here)</div>
       <div><span class="swatch" style="background:#7b8a99"></span>Cover / kerb</div>
       <div><span class="swatch" style="background:#ffffff;border:1px solid #999"></span>Main route</div>
-      <div><span class="swatch" style="background:#d9473c"></span>Chain route</div>
+      <div><span class="swatch" style="background:#d9473c"></span>Other routes (dashed)</div>
       <div><span class="swatch" style="background:#7d4fc4"></span>Wall-crawler</div>
       <div><span class="swatch" style="background:#d99a1e"></span>Turret</div>
       <div><span class="swatch" style="background:#c0392b"></span>Charger</div>
+      <div><span class="swatch" style="background:#4c6ef5"></span>Drainer</div>
+      <div><span class="swatch" style="background:#0c8599"></span>Stalker</div>
+      <div><span class="swatch" style="background:#862e9c"></span>Big Arm (wireframe = planned)</div>
       <div><span class="swatch" style="background:#3b5bdb"></span>Player, 1.7 m</div>
     </div>
     <div id="labels"></div>
