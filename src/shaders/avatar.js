@@ -81,7 +81,22 @@ const RIG_BONES = [
 // false = leave them unregistered: the avatar stays on the armed idle (rifle held)
 // and the legs are posed procedurally in _applyAirPose. true = the old behaviour.
 const USE_LIBRARY_AIR = false;
-const LAND_TIME = 0.26;   // s the procedural land crouch lasts
+
+const LAND_TIME = 0.26;   // s the procedural land crouch lasts (scaled by impact)
+
+// Procedural jump arc. The physics launches on the frame jump is pressed, so the
+// anticipation crouch cannot come BEFORE take-off without delaying the jump. It is
+// shown as the push-off instead: legs start bent and straighten over PUSH_TIME
+// while the model is lowered so the boots stay down. Then the knees tuck up toward
+// the apex, extend again on the way down, and the landing crouch is as deep as the
+// fall was fast.
+const PUSH_TIME = 0.1;        // s from crouched to fully extended at take-off
+const TUCK_TIME = 0.32;       // s after take-off the knees are fully tucked
+const PUSH_FADE = 0.03;       // s to blend into the push crouch (fast: no lag)
+const FALL_BLEND = 0.18;      // s to unfold from tuck to the reaching fall pose
+const LAND_HARD_SPEED = 14;   // m/s fall speed that earns the full-depth crouch
+const LAND_MIN_DEPTH = 0.45;  // crouch depth for a small hop (0..1)
+const LAND_RELEASE = 0.12;    // s to stand back up when the land beat is cut short
 
 const AIR_LEG_OUT = 8;     // deg a thigh or shin may splay outward in the air
 const LAND_MAX_LEAN = 40;  // deg the torso may pitch forward in a land crouch
@@ -159,7 +174,16 @@ export class Avatar {
     this._feetFollow = false;
     this._baseY = 0;
     this._landAge = 0;
-        this._air = { jump: 0, fall: 0, land: 0 };   // procedural air pose weights
+
+    this._air = { jump: 0, fall: 0, land: 0, push: 0 };   // procedural air pose weights
+    this._airAge = 0;          // s since leaving the ground on a jump
+    this._pushOff = false;     // jumped from the ground (true) or off a wall (false)
+    this._fromWall = false;    // set when a climb ends, read by the next setAirborne
+    this._peakFall = 0;        // most negative vertical speed this airtime, m/s
+    this._landDepth = 1;       // 0..1, how deep the coming land crouch goes
+    this._landTime = LAND_TIME;
+    this._landOverlay = false; // procedural land crouch playing over locomotion
+    
 
     this.handSlot = null;
     this.handGrip = null;
@@ -384,6 +408,7 @@ export class Avatar {
 
     if (this.climbing) {
       this.climbing = false;
+      this._fromWall = true;   // a wall-jump has no floor to push off
       const name = this._climbClip();
       if (name) this.actions[name].timeScale = 1;
     }
@@ -410,9 +435,18 @@ export class Avatar {
 
     if (!grounded) {
       const kind = verticalSpeed > ANIM.riseSpeed ? 'jump' : 'fall';
+      // remember the hardest fall speed so the landing crouch can match it
+      this._peakFall = Math.min(this._peakFall ?? 0, verticalSpeed);
       // Re-decide only when the answer CHANGES: this runs at frame rate and
       // reset() would restart the clip 60 times a second.
       if (this.airborne && this._airKind === kind) return;
+      if (!this.airborne) {
+        // leaving the ground (or a wall): start the jump arc from the beginning
+        this._airAge = 0;
+        this._pushOff = kind === 'jump' && !this._fromWall;
+        this._fromWall = false;
+        this._landOverlay = false;   // jumping again: the crouch eases out
+      }
       this.airborne = true;
       this._airKind = kind;
       this._landing = false;            // a new jump cancels an unfinished land
@@ -424,7 +458,22 @@ export class Avatar {
     const wasAirborne = this.airborne;
     this.airborne = false;
     this._airKind = null;
-    if (wasAirborne) this._land();
+    this._fromWall = false;
+    if (wasAirborne) {
+      // a hop barely bends the knees, a long drop sinks deep and takes longer
+      const impact = THREE.MathUtils.clamp(-(this._peakFall ?? 0) / LAND_HARD_SPEED, 0, 1);
+      this._landDepth = LAND_MIN_DEPTH + (1 - LAND_MIN_DEPTH) * impact;
+      this._landTime = LAND_TIME * (0.8 + 0.5 * impact);
+      this._land();
+      // No land clip: _land() hands straight back to locomotion (the #82 contract),
+      // so the crouch is an OVERLAY on top of idle/run with its own short timer.
+      // Without this the procedural land pose never showed at all.
+      if (!this._landClipName) {
+        this._landOverlay = true;
+        this._landAge = 0;
+      }
+    }
+    this._peakFall = 0;
   }
 
   /**
@@ -512,7 +561,7 @@ export class Avatar {
     this.mixer.update(dt);
     if (this._landing){
       this._landAge += dt;
-      if (!this._landClipName && this._landAge >= LAND_TIME) this._endLand();
+      if (!this._landClipName && this._landAge >= this._landTime) this._endLand();
     }
     this._snapshotBase();
     this._rigPass(dt);
@@ -608,9 +657,9 @@ export class Avatar {
       if (feet) sink = this._followFeet();
     }
 
-    // plant the feet during a land beat: the clip squats but its hip drop was lost
-    // with the translation tracks, so the squat would hover. Lower the model instead.
-    const want = this._landing ? sink : 0;
+    // plant the feet during a land beat or the take-off push: the knees bend but
+    // nothing drops the hips, so the crouch would hover. Lower the model instead.
+    const want = (this._landing || this._air.land > 0 || this._air.push > 0) ? sink : 0;
     const y = this._baseY - want;
     this.model.position.y += (y - this.model.position.y) * (1 - Math.exp(-dt * 30));
   }
@@ -628,18 +677,40 @@ export class Avatar {
       jump: proceduralAir && this._airKind === 'jump' ? 1 : 0,
       fall: proceduralAir && this._airKind === 'fall' ? 1 : 0,
     };
-    const step = dt / ANIM.airBlend;
-    for (const k of ['jump', 'fall']) {
-      a[k] = target[k] > a[k] ? Math.min(1, a[k] + step) : Math.max(0, a[k] - step);
-    }
 
-    if (this._landing && !this._landClipName) {
+        if (this.airborne) this._airAge += dt;
+    const pushing = proceduralAir && this._pushOff && this._airAge < PUSH_TIME;
+
+    // Into the jump fast (the push must not lag the physics); tuck -> fall slower,
+    // so the legs unfold over the apex instead of snapping straight.
+    const inStep = dt / (pushing ? PUSH_FADE : ANIM.airBlend);
+    const crossStep = dt / FALL_BLEND;
+    a.jump = target.jump > a.jump ? Math.min(1, a.jump + inStep)
+      : Math.max(0, a.jump - (target.fall ? crossStep : dt / ANIM.airBlend));
+    a.fall = target.fall > a.fall ? Math.min(1, a.fall + (a.jump > 0 ? crossStep : dt / ANIM.airBlend))
+      : Math.max(0, a.fall - dt / ANIM.airBlend);
+
+    // push-off: 1 at take-off, 0 once the legs are straight
+    a.push = pushing ? 1 - this._airAge / PUSH_TIME : 0;
+
+    if (this._landOverlay && !this.climbing) {
+      // quick drop into the crouch, then an eased (not linear) stand-up
+      this._landAge += dt;
       const t = this._landAge;
-      a.land = t < 0.06 ? t / 0.06 : Math.max(0, 1 - (t - 0.06) / (LAND_TIME - 0.06));
+      const T = this._landTime ?? LAND_TIME;
+      const down = 0.06;
+      const env = t < down ? t / down
+        : 1 - THREE.MathUtils.smoothstep(t, down, T);
+      // running out of a landing absorbs the impact but does not squat as deep
+      a.land = env * (this._landDepth ?? 1) * (this.moving ? 0.7 : 1);
+      if (t >= T) this._landOverlay = false;
     } else {
-      a.land = 0;
+      this._landOverlay = false;
+      // cut short by running: stand up over LAND_RELEASE instead of popping
+      a.land = Math.max(0, a.land - dt / LAND_RELEASE);
     }
     return a.jump > 0 || a.fall > 0 || a.land > 0;
+    
   }
 
   /**
@@ -647,20 +718,36 @@ export class Avatar {
    * armed idle, so the arms stay holding the rifle. [thigh, shin] per side:
    * negative thigh = knee forward, positive shin = knee folded.
    */
+
   _applyAirPose() {
     const b = this._rig.bones;
-    const { jump, fall, land } = this._air;
-    const J = { L: [-48, 70], R: [-18, 45] };   // rising: a leap, left knee up
-    const F = { L: [-14, 22], R: [-6, 14] };    // falling: legs down, ready for the ground
-    const C = { L: [-54, 90], R: [-54, 90] };   // landing: crouch
+    const { jump, fall, land, push } = this._air;
+    const K = { L: [-42, 74], R: [-38, 68] };   // take-off: knees bent, loaded
+    const E = { L: [8, 4], R: [10, 6] };        // push-off: legs driven straight
+    const T = { L: [-64, 98], R: [-46, 80] };   // apex: knees tucked, left leads
+    const F = { L: [-16, 24], R: [-8, 16] };    // falling: legs reach for the ground
+    const C = { L: [-58, 96], R: [-52, 88] };   // landing: crouch, slightly staggered
+
+    // Rising pose over time: crouch -> straight -> tuck. `push` runs 1 -> 0 over
+    // PUSH_TIME, then `tuck` eases 0 -> 1 until TUCK_TIME.
+    const tuck = THREE.MathUtils.smoothstep(this._airAge, PUSH_TIME, TUCK_TIME);
+    const lerp = THREE.MathUtils.lerp;
+    const rise = (side, i) => {
+      const launch = lerp(E[side][i], K[side][i], push);   // crouch straightening
+      return lerp(launch, T[side][i], push > 0 ? 0 : tuck);
+    };
 
     for (const side of ['L', 'R']) {
-      this._rot(b[`UpperLeg.${side}`], AX, J[side][0] * jump + F[side][0] * fall + C[side][0] * land);
-      this._rot(b[`LowerLeg.${side}`], AX, J[side][1] * jump + F[side][1] * fall + C[side][1] * land);
+      this._rot(b[`UpperLeg.${side}`], AX, rise(side, 0) * jump + F[side][0] * fall + C[side][0] * land);
+      this._rot(b[`LowerLeg.${side}`], AX, rise(side, 1) * jump + F[side][1] * fall + C[side][1] * land);
     }
-    this._rot(b.Abdomen, AX, 6 * jump + 3 * fall + 14 * land);
-    this._rot(b.Neck, AX, -(4 * jump + 2 * fall + 10 * land));
+
+    // torso: leans into the push, curls a little in the tuck, opens on the way down
+    const lean = (10 * push + 4 + 6 * tuck) * jump + 3 * fall + 18 * land;
+    this._rot(b.Abdomen, AX, lean);
+    this._rot(b.Neck, AX, -0.75 * lean);   // keep the eyes on the horizon
   }
+  
 
   /**
    * The baked library clips were retargeted by copying rotations between two rigs
