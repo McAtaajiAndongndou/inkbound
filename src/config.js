@@ -334,7 +334,24 @@ export const ENEMY = {
     attackDamage: 10,   // per shot; wired to player.takeDamage in main.js
     windup: 0.6,
     attackRange: 12,
-    attackCooldown: 2.5,
+    attackCooldown: 2.5,  // unused while `reload` is set below — the reload IS the gap
+    // #118 — the THIRD beat, and this enemy's whole counterplay
+    // (docs/enemies/algorithms.md § Sprayer): AIM 0.6 s -> FIRE a burst of 3 ->
+    // RELOAD 1.2 s, and the reload is the window that makes it punishable
+    // rather than merely survivable.
+    //
+    // The Sprayer is also the territory enemy — each shot greys the ground —
+    // so the reload is the moment you can safely step onto grey and repaint.
+    // If the window is shorter than one splat plus a step back to cover, the
+    // Drainer and the Sprayer together become a death spiral (the design note,
+    // verbatim).
+    //
+    // For an enemy that declares `reload`, it REPLACES `attackCooldown` as the
+    // gap: both would stack into a second wait with no tell on it, and the
+    // point is one readable opening, not two silent ones.
+    burst: 3,           // shots per burst
+    burstGap: 0.12,     // s between shots INSIDE a burst (a burst, not a trickle)
+    reload: 1.2,        // s of opening after the burst — THE window to repaint
     stopDistance: HEALTH.contactRange + 0.2,
   },
 
