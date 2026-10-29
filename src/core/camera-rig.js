@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER, CAMERA } from '../config.js';
+import { PLAYER, CAMERA, SUBMERGE} from '../config.js';
 
 /**
  * Three camera modes, which is most of the Viewing rubric on its own:
@@ -79,11 +79,25 @@ export class CameraRig {
       // for "the camera can look beneath the character" (#34).
       const minY = position.y + CAMERA.minHeightAboveFeet;
       if (this.camera.position.y < minY) this.camera.position.y = minY;
+      // #108 — lower the camera while submerged, so the player reads as "in"
+      // the paint rather than over it. Applied AFTER the height clamp: a
+      // submerged player's feet are the surface, and "in the surface" means
+      // below it, deliberately. The clamp is for the standing case; this is
+      // the exception that proves the rule.
+      if (player.submerged) {
+        this.camera.position.y -= SUBMERGE.cameraOffset;
+      }
     }
 
+    // #108 — while submerged, tilt the aim point down a little, so the whole
+    // frame reads as "crouched". The camera does not just lower; it aims
+    // along a lower angle too.
+    const lookHeight = player.submerged
+      ? PLAYER.eyeHeight - SUBMERGE.maxAngle
+      : PLAYER.eyeHeight;
     this._target.set(
       position.x - Math.sin(yaw) * 12,
-      position.y + PLAYER.eyeHeight + Math.tan(pitch) * 12,
+      position.y + lookHeight + Math.tan(pitch) * 12,
       position.z - Math.cos(yaw) * 12,
     );
     this.camera.lookAt(this._target);

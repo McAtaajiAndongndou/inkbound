@@ -58,7 +58,7 @@ The game is submittable when **all of these are true**:
 | A3  | **Pushback when dry** — firing on empty produces a dry click and no shot  | MUST   | S    | paint   | ✅ Built                                                   |
 | A4  | **Grey slows you** and refills nothing, as a live modifier                | MUST   | S    | core    | ✅ Built — `SURFACE.grey.standSlow` (0.6), applied live in `player.js` |
 | A5  | **Dry out** — no tank and no territory ends the run, and the game says so | MUST   | S    | core    | ❌ Not built                                               |
-| A6  | **Submerge** — fast refill, hidden, cannot fire                           | MUST   | M    | core    | ❌ Not built                                               |
+| A6  | **Submerge** — fast refill, hidden, cannot fire                           | MUST   | M    | core    |✅ Built — `SUBMERGE` config, `player.submerged`, Shift to commit                                 |
 | A7  | **Partial stealth** — submerging halves detection; firing reveals         | MUST   | M    | shaders | ⚠️ Partial (#109) — awareness states, 16 m/7 m radii, last-known-position search and the turret exemption are built and tested; not yet wired to submerge or fire |
 | A8  | **Scorecard** — coverage, time, dry time at level end                     | SHOULD | S    | ui      | ❌ Not built                                               |
 

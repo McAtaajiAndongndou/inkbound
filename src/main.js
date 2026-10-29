@@ -13,7 +13,7 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER, PAINT_GUN, ANIM, DRY_OUT } from "./config.js";
+import { PLAYER, PAINT_GUN, ANIM, DRY_OUT, SUBMERGE } from "./config.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -288,9 +288,11 @@ function simulate(dt, elapsed, actions, mouse) {
     const onPlayerPaint = level.surfaces.some((surface) => surface.isPlayerPaintAtWorld(player.position));
 
     if (onPlayerPaint) {
-      gun.ammo = Math.min(gun.maxAmmo, gun.ammo + PAINT_GUN.refillRate * dt);
+      // #108 — submerged refills 3× faster. That is the "commit" half of the
+      // trade: you cannot fire, but you come back up with a full tank.
+      const refillMult = player.submerged ? SUBMERGE.refillMultiplier : 1;
+      gun.ammo = Math.min(gun.maxAmmo, gun.ammo + PAINT_GUN.refillRate * refillMult * dt);
     }
-
     // ---- dry out (#75) ---------------------------------------------------
     // Dry = empty tank AND no paint underfoot. The loss only fires after
     // DRY_OUT.graceTime seconds of continuous dry state, so the player has a
@@ -336,7 +338,7 @@ function simulate(dt, elapsed, actions, mouse) {
   if (player.health < healthBefore) avatar.hit();
 
   gun.update(dt);
-  if (input.firing && input.locked && !player.dead && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {
+  if (input.firing && input.locked && !player.dead && !player.submerged && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {
     gunModel?.kick();
     audio.play("fire");
     avatar.fire();                // #124 — the shot accent, after the shot lands
