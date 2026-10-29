@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { AWARENESS, BLUE_FREEZE, CLIMB, ENEMY, ENEMY_NAV, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, STALKER } from "../config.js";
+import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_NAV, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, STALKER } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
@@ -18,9 +18,9 @@ const BASE_COLOUR = GREY_TOON;
 // How long a colour hit stays fully saturated before fading back, in seconds.
 const TINT_FADE = 1.0;
 
-// Attack telegraph (#40). Yellow is not a paint colour, so the warning can
-// never be mistaken for a paint hit.
-const TELEGRAPH_COLOUR = 0xffe600;
+// Attack telegraph (#40). The warning is the game-wide danger amber (#126,
+// DANGER in config.js) — not a paint colour, so it can never be mistaken for
+// a paint hit, and the same amber a trap or incoming fire would use.
 
 // Body size for wall collision. Enemies have no collider of their own — the probe
 // is a ray, not a capsule — so these are the two numbers the wall test needs.
@@ -150,7 +150,7 @@ function sightBlockers(explicit, parent) {
 const FEEDING_LEAN = 0.62;   // radians (~35 deg) folded forward over the ground
 const FEEDING_DROP = 0.18;   // metres the body sinks, so the fold does not lift the face
 
-const MODEL_URLS = {
+export const MODEL_URLS = {
   charger: "./assets/soldier-charger.glb",
   sprayer: "./assets/soldier-sprayer.glb",
   // #114. The first model here from outside the soldier pack, and the first
@@ -446,7 +446,7 @@ export class Enemy {
     this._windupTimer = 0;                 // > 0 while telegraphing an attack
     this._windupTotal = 0;
     this._attackCooldown = 0;
-    this._telegraphColour = new THREE.Color(TELEGRAPH_COLOUR);
+    this._telegraphColour = new THREE.Color(DANGER.amber);
     this.onAttack = null;                  // fired when a windup completes: (enemy) => void
 
     // Charge recovery (#76). `recovery: 0` means this enemy has no such state,
@@ -1984,6 +1984,16 @@ export class Enemy {
   }
 
   _fadeTint(dt) {
+    // #126 — the green pin (1.5 s) outlasts the hit flash (TINT_FADE, 1 s), so
+    // for its last half-second a pinned enemy used to look exactly like a free
+    // one. While the root holds, hold the green at half strength: a pinned
+    // enemy reads as pinned for the WHOLE pin, from range, not just after the
+    // shot that pinned it.
+    if (this._pinnedTimer > 0) {
+      this._tintTarget.setHex(PAINT.green.hex);
+      this._tintTimer = Math.max(this._tintTimer, TINT_FADE * 0.5);
+    }
+
     if (this._tintTimer <= 0) return;
 
     this._tintTimer -= dt;
