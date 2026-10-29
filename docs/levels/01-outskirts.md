@@ -177,7 +177,7 @@ Each is in `BACKLOG.md`'s Parked list with the reason.
 
 ## Known gaps (other lanes)
 
-- **The waste kill** — knockback needs gravity so a flung enemy falls (enemies lane), and the kill needs hit confirmation and a sound (Moses, UI).
+- **The waste kill** — knockback needs gravity so a flung enemy falls (draft issue 064, a COULD), and the kill needs hit confirmation and a sound (Moses, UI).
 - **Jump feel and camera** — Ozuko, core.
 
 ---
