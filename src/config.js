@@ -86,6 +86,23 @@ export const ANIM = {
   blend: 0.1,     // ground transitions: idle <-> run
   airBlend: 0.08, // into and out of jump / fall / land
   riseSpeed: 0.1, // m/s of upward velocity that counts as RISING, not falling
+
+  // #124 — the combat poses. Three fades, each for a different job:
+  //   aimBlend  raising and lowering the gun. Slower than a step so the body does
+  //             not snap, fast enough that the pose still tracks the button.
+  //   fireBlend short on purpose: a shot that faded in over 0.1 s would read as a
+  //             pose change rather than as a reaction to the trigger.
+  //   hitBlend  a flinch arrives faster than it leaves, which is the reason only
+  //             the way IN is here — the way out reuses `blend`.
+  aimBlend: 0.12,
+  fireBlend: 0.04,
+  hitBlend: 0.06,
+
+  // #124 — the viewmodel bob. The first-person gun sways sideways as the player
+  // walks; the numbers are deliberately small, because a viewmodel that swings
+  // reads as the camera being loose rather than as the player having weight.
+  viewBob: 0.012,       // metres at full stride
+  viewBobSpeed: 9,      // radians of sway per second
 };
 
 // Camera rig (#34). TPV is the default; FPV is the V toggle / ADS target.
@@ -178,6 +195,7 @@ export const OPTIONS = {
 
 export const PAINT_GRID = {
   level1Cells: 4,
+  level2Cells: 4,   // the Ascent: same density, so a splat is the same size on every face
 };
 
 /**
@@ -247,6 +265,39 @@ export const CLIMB = {
   dropRange: 2.5,   // m: close enough to the player (and above) to let go
   gravity: 18,      // m/s² accelerating a fallen crawler — its own, not the player's
   maxFall: 14,      // m/s cap, so a long drop cannot tunnel through a floor in one step
+};
+
+// Stalker (#120). The second enemy whose speed is a property of the GROUND
+// rather than of itself — the wall-crawler above was the first, for climbing.
+//
+// WHY THE GROUND: the Stalker punishes you for being WET. Every other enemy in
+// the game punishes you for being dry; this one is fast inside the territory you
+// painted and slow on grey, so the counterplay is to give up your own ground and
+// walk on the boring stuff. That only works if the difference is brutal rather
+// than a tweak — a stalker merely "slightly slower" on grey reads as noise, and
+// the player never deduces the rule (the design note is explicit: never tell
+// them).
+//
+// The speeds live here, not on `ENEMY.stalker`, for the same reason CLIMB does:
+// they are read off the paint under the crawler every frame. It can start a
+// chase on green and finish it on grey.
+//
+// `lungeWindup` is the telegraph, and it is the whole counterplay: the heading is
+// captured when the telegraph ENDS, so a sidestep during those 0.4 s makes it
+// commit to empty ground. `lungeRecovery` is what that miss costs it.
+//
+// Ratios worth checking against PLAYER.maxSpeed (7.0): 6.0 on your paint means a
+// SPRINTING player still outruns it, and 2.0 on grey means a WALKING one does.
+// If the manual check reads wrong, this pair is the dial.
+export const STALKER = {
+  paintSpeed: 6.0,      // m/s on anything the player has painted
+  greySpeed: 2.0,       // m/s on unpainted ground
+  lungeWindup: 0.4,     // s of telegraph before it commits
+  lungeSpeed: 7.5,      // m/s during the commitment — faster than it can run
+  lungeTime: 0.5,       // s committed; reach is speed x time, 3.75 m
+  lungeRecovery: 0.8,   // s planted after a MISS. A hit costs it nothing but time
+  lookahead: 2.5,       // m: how far ahead it sniffs the ground for paint
+  fan: [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9], // rad, in preference order
 };
 
 // Level 1 plentiful, level 2 starved, level 3 contested.
@@ -401,6 +452,46 @@ export const ENEMY = {
     windup: 0.5,
     attackRange: 3,
     attackCooldown: 2.5,
+    stopDistance: HEALTH.contactRange + 0.2,
+  },
+
+  // THE STALKER (#120). The only enemy that attacks the loop from the other
+  // side: it is fast on YOUR paint and slow on grey, so the escape is to give up
+  // your own territory. See the STALKER block above for the speeds and the lunge.
+  //
+  // Three flags carry the whole identity:
+  //   surfaceSpeed  its speed comes from the ground, not from `speed` below
+  //   prefersPaint it steers to stay inside your territory, even when a grey
+  //                 line would be shorter — the preference has to be visible or
+  //                 the speed rule looks like a random fast thing
+  //   lunges        its telegraph is a lunge, not a shot (`_commitLunge`)
+  //
+  // `speed` is only a fallback for anything reading a single number (gait, the
+  // charge tracker); the walk speed is `_moveSpeed`.
+  //
+  // NO `noProcs`: freeze, pin and knockback all work on it, as they do on
+  // everything except the turret — tests/turret-no-procs.test.js pins that
+  // turret-only exemption and would fail if this block opted out.
+  //
+  // NO stealth or fade anywhere: the design note is that an enemy which is both
+  // faster than you and invisible where you feel safe is unfairness, not tension.
+  stalker: {
+    hp: 30,
+    speed: STALKER.greySpeed,
+    canShoot: false,
+    canMove: true,
+    climbsGreen: false,
+    drainsPaint: false,
+    surfaceSpeed: true,
+    prefersPaint: true,
+    lunges: true,
+    contactDamage: 20,
+    // The telegraph IS the lunge windup, and the range is exactly "close enough
+    // to arrive": reach (speed x time) plus contact range. Bigger and it commits
+    // from a distance it cannot cover, which reads as a bug rather than a miss.
+    windup: STALKER.lungeWindup,
+    attackRange: STALKER.lungeSpeed * STALKER.lungeTime + HEALTH.contactRange,
+    attackCooldown: 1.8,
     stopDistance: HEALTH.contactRange + 0.2,
   },
 };

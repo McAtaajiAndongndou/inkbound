@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { AWARENESS, BLUE_FREEZE, CLIMB, ENEMY, ENEMY_NAV, GREY_IMPACT, PAINT, PAINT_IDS } from "../config.js";
+import { AWARENESS, BLUE_FREEZE, CLIMB, ENEMY, ENEMY_NAV, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, STALKER } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
@@ -458,6 +458,18 @@ export class Enemy {
     // #123: the windup of the Charger's melee is procedural too — a recoil beat
     // at the very start of a charge, counted down here and read by `_gait`.
     this._chargeWindup = 0;
+
+    // The Stalker's lunge (#120). The telegraph is the ordinary attack windup —
+    // `config.windup` — so the tell, the plant, the audio and the swell all come
+    // from the machinery above. What is new is what happens when it ends: instead
+    // of a shot, `_commitLunge` captures a heading and holds it for
+    // `STALKER.lungeTime`. That capture is the counterplay: the tell says where
+    // it will go, so stepping aside for 0.4 s makes it miss.
+    this._lungeTimer = 0;                  // > 0 while committed to a heading
+    this._lungeLand = false;               // did it get within contact range?
+    this._lungeDir = new THREE.Vector3();  // the captured heading, unit length
+    this._heading = new THREE.Vector3();   // scratch: the steering answer
+    this._sample = new THREE.Vector3();    // scratch: a lookahead probe point
 
     // Without floors we cannot tell ground from void, so the safe fallback is
     // to stand still rather than walk off the edge.
@@ -1324,6 +1336,17 @@ export class Enemy {
     this._toPlayer.y = 0;
     const dist = this._toPlayer.length();
 
+    // --- the commitment (#120) -----------------------------------------------
+    // A lunge is time-boxed by STALKER.lungeTime, not by speed: `_endLunge` pays
+    // out the recovery when the box runs out. Arrival is tracked here rather than
+    // in the step below because the step already carries the player's own
+    // contact damage — the enemy only needs to know whether it got there.
+    const lunging = this._lungeTimer > 0;
+    if (lunging) {
+      this._lungeTimer -= dt;
+      if (dist <= HEALTH.contactRange) this._lungeLand = true;
+    }
+
     // Guard against a non-Vector3 argument. `.copy()` of an object without
     // x/y/z yields NaN, and `NaN > anything` is false — so a wrong argument
     // used to freeze the enemy in place with no error at all.
@@ -1359,7 +1382,13 @@ export class Enemy {
     if (Number.isFinite(dist) && dist > 0.001 && !holding) {
       const inv = 1 / dist;
 
-      if (icy) {
+      if (lunging) {
+        // Committed. The heading was captured when the telegraph ended, so this
+        // ignores the player's CURRENT position — that is the miss. It also keeps
+        // the full lunge speed instead of easing into it, because a half-speed
+        // lunge would make the 0.4 s tell impossible to punish.
+        this._vel.copy(this._lungeDir).multiplyScalar(STALKER.lungeSpeed);
+      } else if (icy) {
         // Can shove off, but cannot change course. A heading is picked once,
         // then kept — which is exactly why painting blue makes it slide
         // straight past instead of tracking you.
@@ -1370,21 +1399,39 @@ export class Enemy {
         if (this._vel.lengthSq() < 1e-4) {
           this._vel
             .set(this._toPlayer.x * inv, 0, this._toPlayer.z * inv)
-            .multiplyScalar(this.config.speed * rules.speedScale * speedMult);
+            .multiplyScalar(this._moveSpeed(rules, ground, speedMult, dt));
+        } else if (this.config.surfaceSpeed) {
+          // The Stalker's traction comes off the ground it is standing on, and
+          // its own paint reads as grip — so blue runs it at full paint speed
+          // and only takes away its ability to turn. Without the re-assert,
+          // ground friction bleeds the shove off down over the second (measured
+          // 4.96 m/s where the spec says 6.0). The heading is untouched: this
+          // is a magnitude, not a steer.
+          const sp = this._moveSpeed(rules, ground, speedMult, dt);
+          this._vel.multiplyScalar(sp / this._vel.length());
         }
       } else {
+        // Unit heading toward the target, leaned toward the player's territory
+        // when the config asks for it — the Stalker's preference (#120).
+        this._heading.set(this._toPlayer.x * inv, 0, this._toPlayer.z * inv);
+        if (this.config.prefersPaint) this._paintHeading(this._heading);
         this._desired
-          .set(this._toPlayer.x * inv, 0, this._toPlayer.z * inv)
-          .multiplyScalar(this.config.speed * rules.speedScale * speedMult);
+          .copy(this._heading)
+          .multiplyScalar(this._moveSpeed(rules, ground, speedMult, dt));
         this._vel.lerp(this._desired, Math.min(1, rules.traction));
       }
     }
 
     // Braking is friction. Blue at 0.4 barely slows anything, so a committed
     // Charger carries its momentum across the whole island.
-    const damping = Math.max(0, 1 - rules.friction * dt);
-    this._vel.x *= damping;
-    this._vel.z *= damping;
+    //
+    // A lunge is exempt: its speed is the commitment, and damping it would make
+    // the reach depend on what the ground's friction happens to be.
+    if (!lunging) {
+      const damping = Math.max(0, 1 - rules.friction * dt);
+      this._vel.x *= damping;
+      this._vel.z *= damping;
+    }
 
     this._next.copy(this.position).addScaledVector(this._vel, dt);
 
@@ -1429,8 +1476,15 @@ export class Enemy {
         // before the opening, so it must not be a free retry.
         this._vel.set(0, 0, 0);
         if (this._recovery > 0) this._startRecovery();
+        // ...and the end of a lunge (#120). Hitting a wall instead of the player
+        // is the same miss as running out of time, and pays the same recovery.
+        if (lunging) this._endLunge();
       }
     }
+
+    // The commitment ran out of time: `_endLunge` decides whether that was an
+    // arrival (no cost) or a miss (0.8 s planted).
+    if (lunging && this._lungeTimer <= 0) this._endLunge();
 
     // ...and only turn the body when it is actually TRAVELLING. The threshold used
     // to be 1e-6 (0.001 m/s), which meant an enemy pressed up against something
@@ -1561,6 +1615,105 @@ export class Enemy {
     this._chargeTime = 0;
     this._chargeDistance = 0;
     this._vel.set(0, 0, 0);
+  }
+
+  // --- the Stalker (#120) ----------------------------------------------------
+
+  /**
+   * How fast this enemy walks, right now.
+   *
+   * Most enemies have a speed and the ground MODIFIES it (`rules.speedScale`);
+   * the Stalker is the other way round — the ground IS its speed. 6 m/s anywhere
+   * the player has painted, 2 m/s on grey, and `rules.speedScale`/`standSlow` are
+   * deliberately ignored: grey's 0.6 is the PLAYER's penalty, and stacking it on
+   * a 2 m/s walk would turn the game's clearest 3:1 ratio into 1.8:1 measured
+   * over the same walk.
+   *
+   * The `/ damping` term is not physics, it is arithmetic. `_tick` damps `_vel`
+   * by the ground's friction after this returns, so a grey 10 s⁻¹ would cap a
+   * "2 m/s" enemy at 1.67 and green's 14 s⁻¹ at 0.77 of its own number — which
+   * would silently make green the SLOW lane. Dividing it out is what makes the
+   * speed the player measures match the speed the issue asked for.
+   */
+  _moveSpeed(rules, ground, speedMult, dt) {
+    if (!this.config.surfaceSpeed) return this.config.speed * rules.speedScale * speedMult;
+
+    const painted = ground.surface.isPlayerPaintAtWorld(ground.point);
+    const target = (painted ? STALKER.paintSpeed : STALKER.greySpeed) * speedMult;
+    const damping = Math.max(0.05, 1 - rules.friction * dt);
+    return target / damping;
+  }
+
+  /**
+   * Lean the heading toward the player's territory (#120).
+   *
+   * It prefers paint even when grey is the shorter line, because the preference
+   * is half of what makes the enemy readable: a thing that is fast on your paint
+   * AND hangs around in it teaches the rule, while one that merely moves fast
+   * whenever it happens to touch paint teaches nothing.
+   *
+   * The fan is in preference order, so the smallest deviation that lands on paint
+   * wins, and a heading that is already on paint is returned untouched. Probes
+   * the FLOOR under the candidate point, not the point itself — paint lives on
+   * the surface, and a candidate over a gap is not a better route.
+   *
+   * Mutates `heading` and returns it: this runs every frame and must not allocate.
+   */
+  _paintHeading(heading) {
+    for (const angle of STALKER.fan) {
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const x = heading.x * cos - heading.z * sin;
+      const z = heading.x * sin + heading.z * cos;
+      this._sample.set(
+        this.position.x + x * STALKER.lookahead,
+        this.position.y,
+        this.position.z + z * STALKER.lookahead,
+      );
+      const ground = this._probe.down(this._sample);
+      if (ground && ground.surface.isPlayerPaintAtWorld(ground.point)) {
+        heading.set(x, 0, z);
+        return heading;
+      }
+    }
+    return heading;                 // no paint in the fan: take the direct line
+  }
+
+  /**
+   * The telegraph ended, so the lunge starts (#120).
+   *
+   * This is where the counterplay lives: the heading is captured from the
+   * player's position AT THIS INSTANT and then held, so the 0.4 s tell is the
+   * whole window in which a sidestep works. A lunge that re-aimed would make the
+   * telegraph decorative.
+   */
+  _commitLunge(playerPos) {
+    if (!playerPos) return;
+    const dx = playerPos.x - this.position.x;
+    const dz = playerPos.z - this.position.z;
+    const d = Math.sqrt(dx * dx + dz * dz);
+    if (!(d > 1e-3)) return;                // on top of the player: nothing to aim
+
+    this._lungeDir.set(dx / d, 0, dz / d);
+    this._lungeTimer = STALKER.lungeTime;
+    this._lungeLand = false;
+  }
+
+  /**
+   * End the commitment, and pay for it if it missed.
+   *
+   * A MISS is the design's cost: 0.8 s planted. A lunge that reached the player
+   * gets no recovery window — it already spent its damage on arriving, and a
+   * stationary attacker after a hit would reward being hit. The next telegraph is
+   * spaced by `attackCooldown` either way.
+   */
+  _endLunge() {
+    const landed = this._lungeLand;
+    this._lungeTimer = 0;
+    this._lungeLand = false;
+    this._lungeDir.set(0, 0, 0);
+    this._vel.set(0, 0, 0);
+    if (!landed) this._recoverTimer = Math.max(this._recoverTimer, STALKER.lungeRecovery);
   }
 
   /**
@@ -2045,6 +2198,10 @@ export class Enemy {
       // that is not wired up at all (which is the state today), cannot switch
       // the territory half of the attack off (#107).
       this._greyImpact(playerPos);
+      // A lunge is the attack (#120). It starts HERE, on the same beat a shot
+      // would land, and like `_greyImpact` it is the enemy's own business — a
+      // level that never wires `onAttack` must still get the movement.
+      if (this.config.lunges) this._commitLunge(playerPos);
       this.onAttack?.(this);
       return;
     }

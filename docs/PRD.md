@@ -99,7 +99,7 @@ The game is submittable when **all of these are true**:
 | D3  | **Wall-crawler climbs green paint** faster than grey          | MUST   | M    | shaders | ⚠️ Built (#115): 3.5 m/s on grey, 5.0 on green, cannot shoot on the wall |
 | D4  | **Turret** — static, slow track, bursts, flankable            | MUST   | —    | shaders | ✅ Built                             |
 | D5  | **Drainer** — feeding and hunting postures                    | MUST   | M    | shaders | ❌ Not built                         |
-| D6  | **Stalker** — fast on your paint, slow on grey                | COULD  | M    | shaders | ❌ Not built                         |
+| D6  | **Stalker** — fast on your paint, slow on grey                | COULD  | M    | shaders | ⚠️ Built (#120) — behaviour only; no model/spawn yet |
 | D7  | **Big Arm** — wave-three arena boss with three phases         | SHOULD | L    | shaders | ❌ Not built                         |
 | D8  | **Siphon** — three-phase colour exam, no health bar           | SHOULD | M    | levels  | ❌ Not built                         |
 
@@ -229,13 +229,13 @@ The player ships **five clips** and the code wires **two states**. This is why t
 | AN3  | Player death                           | MUST   | —    | shaders        | ✅ Built                                    |
 | AN4  | **Player airborne — jump, fall, land** | MUST   | S    | shaders + core | 🟡 Clips ready (#121): jump start, loop and land drive the player rig. The pack has no fall clip; the state machine that plays them is #82 |
 | AN5  | Player climb                           | SHOULD | S    | shaders        | ❌ Not built, and the animation library has no climb clip (#121), so #122 ships a documented fallback |
-| AN6  | Player ADS pose or transition          | SHOULD | S    | shaders        | ⚠️ Armed idle only                          |
+| AN6  | Player ADS pose or transition          | SHOULD | S    | shaders        | ⚠️ Built (#124): `Idle_Gun_Pointing` on aim, `Gun_Shoot` standing / `Run_Shoot` moving, `HitRecieve` per hit. The armed idle used to BE the aim pose, which is why aiming had no body language |
 | AN7  | Enemy walk cycle                       | SHOULD | M    | shaders        | ✅ Built (#123) — distance-driven bob/lean gait |
 | AN8  | Enemy melee attack                     | MUST   | S    | shaders        | ✅ Built (#123) — recoil coil then commit lean |
 | AN9  | Enemy death                            | MUST   | S    | shaders        | ✅ Built (#123) — sink, one choice, every enemy |
 | AN10 | Enemy hit reaction                     | MUST   | —    | shaders        | ⚠️ Emissive tint only                       |
 | AN11 | Gun recoil                             | MUST   | —    | paint          | ✅ Built                                    |
-| AN12 | Gun movement bob                       | COULD  | S    | paint          | ❌ Not built                                |
+| AN12 | Gun movement bob                       | COULD  | S    | paint          | ⚠️ Built in main.js (#124) rather than `paint/`, to stay inside that issue's file list: the first-person gun sways with speed |
 
 **Acceptance for AN4:** the player's animation must change when they leave the ground and again when they land, driven by the same ground state the physics already tracks. No new physics, only a new state read.
 

@@ -6,9 +6,9 @@
 import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
-import { PAINT, ENEMY, PAINT_GRID } from '../config.js';
-import { Enemy } from '../enemies/enemy.js';
+import { PAINT, PAINT_GRID } from '../config.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
+import * as kit from './level-kit.js';
 
 /**
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
@@ -918,20 +918,9 @@ export class Level01 extends LevelBase {
    * the floor they stand on.
    */
   _lightDirection() {
-    const dir = new THREE.Vector3(
-      MOOD.sunDir[0], MOOD.sunDir[1], MOOD.sunDir[2],
-    ).normalize();
-    this.sunDir = dir;   // kept: future code (telegraphs, reactions) wants it
-
-    for (let i = 0; i < this.surfaces.length; i++) {
-      const uniform = this.surfaces[i].material.uniforms.uLightDir;
-      if (uniform) uniform.value.copy(dir);
-    }
-
-    // the decor, which is custom-shaded too and was the miss described above
-    for (const material of this.decorMaterials) {
-      material.uniforms.uLightDir.value.copy(dir);
-    }
+    // kept: future code (telegraphs, reactions) wants it. The decor is in the
+    // list because it is custom-shaded too, and was the miss described above.
+    this.sunDir = kit.aimCustomShading(this.surfaces, this.decorMaterials, MOOD.sunDir);
   }
 
   /**
@@ -1101,42 +1090,18 @@ export class Level01 extends LevelBase {
    * array, which looks exactly like "the enemies are just not there yet".
    */
   _spawnEnemies() {
-    // Declared before the try: update() reads it every frame, and a throw must
-    // not leave it undefined.
-    this.sleepers = [];
-
-    try {
-      // Only walkable surfaces — the probe treats every entry as a floor to
-      // stand on, and a wall in that list would be a floor you stand on top of.
-      const floors = this.surfaces.filter((s) => s.isFloor);
-
-      for (const spec of L1.spawns) {
-        const config = ENEMY[spec.type] ?? ENEMY.sprayer;
-        const enemy = new Enemy({
-          position: new THREE.Vector3(spec.x, spec.y, spec.z),
-          config,
-          parent: this.root,
-          floors,
-          // Cover is only cover if the AI collides with it. Gates are walls too;
-          // an opened gate is dropped to y -100, which puts it outside the wall
-          // test's vertical bounds, so it stops blocking enemies as well.
-          walls: this.surfaces.filter((s) => !s.isFloor),
-          sleeping: spec.sleeping === true,
-        });
-
-        this.enemies.push(enemy);
-
-        // Dormant until the player ENTERS that arena. Enemies walk from load, so
-        // without this every arena's fight is already standing at its lip when
-        // the player arrives — the Chargers pile up on B's edge and you jump the
-        // Gap into them.
-        if (spec.sleeping) this.sleepers.push({ enemy, wakeOn: spec.wakeOn });
-      }
-    } catch (err) {
-      console.error('[Level01] enemy spawn failed, running without enemies:', err);
-      this.enemies = [];
-      this.sleepers = [];
-    }
+    // Cover is only cover if the AI collides with it, and the kit hands every
+    // wall to the AI. Gates are walls too; an opened gate is dropped to y -100,
+    // which puts it outside the wall test's vertical bounds, so it stops
+    // blocking enemies as well.
+    //
+    // Sleepers are dormant until the player ENTERS their arena. Enemies walk
+    // from load, so without this every arena's fight is already standing at its
+    // lip when the player arrives — the Chargers pile up on B's edge and you
+    // jump the Gap into them.
+    const { enemies, sleepers } = kit.spawnEnemies(this, L1.spawns, 'Level01');
+    this.enemies = enemies;
+    this.sleepers = sleepers;
   }
 
   dispose() {
@@ -1151,14 +1116,7 @@ export class Level01 extends LevelBase {
 
   /** A flat, walkable paint surface on the XZ plane. `height` is world Z depth. */
   _floor(zMin, zMax, y = 0, width = L1.corridorHalf * 2) {
-    const s = new PaintSurface({ width, height: zMax - zMin, cells: L1.cells });
-    s.mesh.rotation.x = -Math.PI / 2;
-    s.mesh.position.set(0, y, (zMin + zMax) / 2);
-    s.mesh.receiveShadow = true;
-    s.isFloor = true;
-    this.root.add(s.mesh);
-    this.surfaces.push(s);
-    return s;
+    return kit.platform(this, { y, zMin, zMax, xMin: -width / 2, xMax: width / 2, cells: L1.cells });
   }
 
   /**
@@ -1232,25 +1190,8 @@ export class Level01 extends LevelBase {
    * Measured minimum: 0.3 m. Ours is 1 m, which is also small enough to read as a
    * moulding rather than as a floor laid on the box (Renda's original complaint).
    */
-  _pillar({ xMin, xMax, zMin, zMax, y, overhang, unpaintable = false }) {
-    // --- the three sides ------------------------------------------------------
-    // Front (normal +z), then the two sides (normals -x and +x). The side panels
-    // are the same primitive rotated a quarter turn; `_resolveWalls` reads the
-    // normal off the mesh quaternion, so a rotated panel pushes out correctly.
-    for (const spec of [{ z: zMax, xMin, xMax }]) {
-      this._face({ yBase: 0, yTop: y, z: spec.z, xMin: spec.xMin, xMax: spec.xMax, unpaintable });
-    }
-
-    for (const [x, normalX] of [[xMin, -1], [xMax, 1]]) {
-      this._face({ yBase: 0, yTop: y, x, zMin, zMax, unpaintable, normalX });
-    }
-
-    // --- the top, overhanging every side it can be climbed from --------------
-    this._platform({
-      y, zMin, zMax: zMax + overhang,
-      xMin: xMin - overhang, xMax: xMax + overhang,
-      mark: 'tower',
-    });
+  _pillar(spec) {
+    return kit.pillar(this, { ...spec, cells: L1.cells });
   }
 
   /**
@@ -1269,8 +1210,8 @@ export class Level01 extends LevelBase {
    * It reads as the Corp's material because it is the one surface in the level the
    * player can never change.
    */
-  _rock({ xMin, xMax, yBase, yTop, z }) {
-    return this._face({ yBase, yTop, z, xMin, xMax, unpaintable: true });
+  _rock(spec) {
+    return kit.rock(this, { ...spec, cells: L1.cells });
   }
 
   /**
@@ -1289,13 +1230,7 @@ export class Level01 extends LevelBase {
    * turn every barricade into a green climb and change the room's question.
    */
   _islandBShape() {
-    const d = L1.bDeck;
-    this._pillar({ ...d, unpaintable: true });
-    this._face({
-      yBase: 0, yTop: d.y, z: d.zMin,
-      xMin: d.xMin, xMax: d.xMax,
-      unpaintable: true, normalZ: -1,
-    });
+    kit.block(this, { ...L1.bDeck, unpaintable: true, cells: L1.cells });
   }
 
   /**
@@ -1303,13 +1238,7 @@ export class Level01 extends LevelBase {
    * cover and a route-shape, not a perch. See `L1.cCover`.
    */
   _islandCShape() {
-    const c = L1.cCover;
-    this._pillar({ ...c, unpaintable: true });
-    this._face({
-      yBase: 0, yTop: c.y, z: c.zMin,
-      xMin: c.xMin, xMax: c.xMax,
-      unpaintable: true, normalZ: -1,
-    });
+    kit.block(this, { ...L1.cCover, unpaintable: true, cells: L1.cells });
   }
 
   /**
@@ -1347,16 +1276,8 @@ export class Level01 extends LevelBase {
    * assumes a floor's centre line is at x = 0 (see `_decorFloors`), so getting a
    * prop onto the wrong one is a silent mid-air placement.
    */
-  _platform({ y, zMin, zMax, xMin, xMax, mark }) {
-    const s = new PaintSurface({ width: xMax - xMin, height: zMax - zMin, cells: L1.cells });
-    s.mesh.rotation.x = -Math.PI / 2;
-    s.mesh.position.set((xMin + xMax) / 2, y, (zMin + zMax) / 2);
-    s.mesh.receiveShadow = true;
-    s.isFloor = true;
-    s[mark] = true;
-    this.root.add(s.mesh);
-    this.surfaces.push(s);
-    return s;
+  _platform(spec) {
+    return kit.platform(this, { ...spec, cells: L1.cells });
   }
 
   /**
@@ -1370,29 +1291,8 @@ export class Level01 extends LevelBase {
    * faces. `_resolveWalls` reads the normal off the mesh quaternion, so a rotated
    * panel pushes the player out correctly — no special case anywhere.
    */
-  _face({ yBase, yTop, z = 0, x = 0, xMin, xMax, zMin, zMax, unpaintable = false, normalX = 0, normalZ = 0 }) {
-    const width = normalX ? zMax - zMin : xMax - xMin;
-    const s = new PaintSurface({ width, height: yTop - yBase, cells: L1.cells, unpaintable });
-
-    if (normalX) {
-      s.mesh.rotation.y = normalX * Math.PI / 2;
-      s.mesh.position.set(x, (yBase + yTop) / 2, (zMin + zMax) / 2);
-    } else if (normalZ < 0) {
-      // A face whose normal points the OTHER way along z. Needed wherever a
-      // block stands free instead of leaning on the back wall: the existing
-      // pillars get their closed side from the wall, B's cover and deck do not.
-      // `_resolveWalls` reads the normal off the quaternion, so an unrotated
-      // panel here would push the player INTO the block.
-      s.mesh.rotation.y = Math.PI;
-      s.mesh.position.set((xMin + xMax) / 2, (yBase + yTop) / 2, z);
-    } else {
-      s.mesh.position.set((xMin + xMax) / 2, (yBase + yTop) / 2, z);
-    }
-
-    s.isFloor = false;
-    this.root.add(s.mesh);
-    this.surfaces.push(s);
-    return s;
+  _face(spec) {
+    return kit.face(this, { ...spec, cells: L1.cells });
   }
 
   /**
@@ -1542,19 +1442,10 @@ export class Level01 extends LevelBase {
   _extraction() {
     const { zMin, zMax } = L1.extraction;
     const y = L1.ledge.y;
-    const min = new THREE.Vector3(-L1.corridorHalf, y - 1, zMin);
-    const max = new THREE.Vector3(L1.corridorHalf, y + 2, zMax);
-    this.extraction = new THREE.Box3(min, max);
-
-    const marker = new THREE.Mesh(
-      new THREE.BoxGeometry(max.x - min.x, max.y - min.y, max.z - min.z),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, depthWrite: false }),
+    this.extraction = kit.extractionZone(
+      this,
+      new THREE.Vector3(-L1.corridorHalf, y - 1, zMin),
+      new THREE.Vector3(L1.corridorHalf, y + 2, zMax),
     );
-    marker.position.set(
-      (min.x + max.x) / 2,
-      (min.y + max.y) / 2,
-      (min.z + max.z) / 2,
-    );
-    this.root.add(marker);
   }
 }
