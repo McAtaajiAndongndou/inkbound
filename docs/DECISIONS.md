@@ -107,3 +107,12 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Every level that is data is a `LayoutLevel`** (`src/levels/layout-level.js`): the Ascent and Last Colour share wake rules, gates and the win. Rules may now wait: `cleared:R3.2+8` latches when met and fires after the delay; a gate pulses while its rule counts down.
 - **Decisions, all at the recommended default (Renda):** two breaths (wave three waits 8 s, Big Arm's gate warns for 12 s); the Core does not lock behind you; wave three stands visible behind wave two; Big Arm's bay is built before Big Arm; the win is a placeholder (the Siphon's intake, Core clear) until #100.
 - **The design tools are shared** (`docs/levels/massing/`): `massing.html?layout=<id>` and `render-diagrams.mjs <id>` work for any layout in `src/levels/layouts/index.js`.
+
+## 2026-10-29 — The Primer, design v2
+
+- **The Primer is one course, one verb per room, on one axis**, climbing 0 → 3 → 8 m (`docs/levels/00-the-primer.md`), built from `src/levels/layouts/primer.js` as a `LayoutLevel`. All four levels now exist; `stub-level.js` is deleted.
+- **The blue gap is 6.5 m, not 8 m.** Measured with the player's own physics, a blue run-up clears 8.14 m, so 8 m cleared by 14 cm. The room is tested by simulation: grey fails, blue succeeds, and blue still succeeds jumping a metre early.
+- **Doorways between lessons** (R1→R2, R3→R4, R6→R7), so each room isolates one idea.
+- **Blue and red examples are pre-painted at load; green is not**, so the third lesson is the first you paint yourself. Paint at load is a layout feature (`prepaint`), applied by `LayoutLevel`.
+- **Nothing in the Primer kills** (#79): every wall beats its floor plus a bounce, and the blue pit is enclosed with stairs out (both tested).
+- **The default start level stays Outskirts** until the Primer's sergeant (#111/#112) and trap (#101) land.

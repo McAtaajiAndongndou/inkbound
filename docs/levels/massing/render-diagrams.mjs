@@ -120,6 +120,12 @@ function plan() {
     const [ax, az, bx, bz] = x1 - x0 >= z1 - z0 ? [x0, (z0 + z1) / 2, x1, (z0 + z1) / 2] : [(x0 + x1) / 2, z0, (x0 + x1) / 2, z1];
     b.push(`<line x1="${px(ax)}" y1="${pz(az)}" x2="${px(bx)}" y2="${pz(bz)}" stroke="#d9473c" stroke-width="4" stroke-dasharray="6 3"/>`);
   }
+  // paint on the floor at load: the Primer's teaching examples
+  const PREPAINT = { blue: '#2f7fe0', red: '#e0453a', green: '#2fae4e' };
+  for (const p of LY.prepaint ?? []) {
+    const [x0, x1, z0, z1] = p.rect;
+    b.push(`<rect x="${px(x0)}" y="${pz(z0)}" width="${(x1 - x0) * S}" height="${(z1 - z0) * S}" fill="${PREPAINT[p.colour]}" fill-opacity="0.75"/>`);
+  }
   for (const t of LY.traps ?? []) {
     const [x0, x1, , , z0, z1] = t.box;
     b.push(`<rect x="${px(x0)}" y="${pz(z0)}" width="${(x1 - x0) * S}" height="${Math.max((z1 - z0) * S, 3)}" fill="#f08c00" fill-opacity="0.35" stroke="#f08c00" stroke-dasharray="3 2"/>`);
@@ -190,6 +196,7 @@ function plan() {
   key((x, y) => `<line x1="${x}" y1="${y}" x2="${x + 16}" y2="${y}" stroke="#1d232a" stroke-width="3.5"/><line x1="${x}" y1="${y}" x2="${x + 16}" y2="${y}" stroke="#fff" stroke-width="1.8"/>`, 'Main route');
   key((x, y) => `<line x1="${x}" y1="${y}" x2="${x + 16}" y2="${y}" stroke="#d9473c" stroke-width="2.4" stroke-dasharray="5 3"/>`, 'Other route');
   if ((LY.gates ?? []).length) key((x, y) => `<line x1="${x}" y1="${y}" x2="${x + 16}" y2="${y}" stroke="#d9473c" stroke-width="4" stroke-dasharray="6 3"/>`, 'Gate field');
+  if ((LY.prepaint ?? []).length) key((x, y) => `<rect x="${x}" y="${y - 6}" width="8" height="12" fill="#2f7fe0"/><rect x="${x + 8}" y="${y - 6}" width="8" height="12" fill="#e0453a"/>`, 'Pre-painted at load');
   if ((LY.traps ?? []).length) key((x, y) => `<rect x="${x}" y="${y - 6}" width="16" height="12" fill="#f08c00" fill-opacity="0.35" stroke="#f08c00"/>`, 'Trap zone (trap pass)');
   if ((LY.targets ?? []).length) key((x, y) => `<path d="M ${x + 8} ${y - 5} L ${x + 13} ${y} L ${x + 8} ${y + 5} L ${x + 3} ${y} Z" fill="#f08c00"/>`, 'Siphon target (#100)');
   const NAMES = { wallCrawler: 'Wall-crawler', turret: 'Turret (15 m ring)', charger: 'Charger', drainer: 'Drainer', stalker: 'Stalker', bigArm: 'Big Arm' };

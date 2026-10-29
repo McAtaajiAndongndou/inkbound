@@ -197,6 +197,7 @@ export const OPTIONS = {
 };
 
 export const PAINT_GRID = {
+  level0Cells: 4,   // the Primer: the same density every level uses
   level1Cells: 4,
   level2Cells: 4,   // the Ascent: same density, so a splat is the same size on every face
   level3Cells: 4,   // Last Colour: same again — a Drainer eats the same cells everywhere
