@@ -21,4 +21,14 @@ export class Level02 extends LayoutLevel {
   }));
 
   get layout() { return ASCENT; }
+
+  update(dt, player) {
+    super.update(dt, player);
+    // #112 — the sergeant's one line on the summit (R7): no enemies, the base
+    // on the horizon (docs/levels/02-the-ascent.md).
+    if (!this._saidSummit && this.inRoom('R7', player.position)) {
+      this._saidSummit = true;
+      this.game.say?.('ascent-summit');
+    }
+  }
 }

@@ -560,3 +560,47 @@ canvas {
   font-size: clamp(12px, 1.5vh, 16px);
   color: var(--ink-dim);
 }
+
+/* Comms bar (#112): the briefing's name plate and line (#111), shrunk to a strip
+   bottom centre, clear of the health/ammo corner. Name plate and line only.
+   Transition times match COMMS.slideIn / COMMS.fadeOut in ui/comms.js. */
+#comms {
+  position: absolute;
+  left: 50%;
+  bottom: 12vh;
+  width: max-content;
+  max-width: min(720px, calc(100% - 32px));
+  padding: 1.2vh 2.2vh 1.4vh;
+  border-radius: 10px;
+  background: rgba(10, 10, 16, .82);
+  border: 1px solid rgba(255, 255, 255, .08);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 16px);
+  transition: opacity .35s ease-out, transform .35s ease-out, visibility 0s .6s;
+}
+#comms.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition: opacity .35s ease-out, transform .35s ease-out;
+}
+#comms.leaving {
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition: opacity .6s ease-in;
+}
+.comms-who {
+  font-size: clamp(11px, 1.4vh, 15px);
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #4ee08a;
+}
+.comms-line {
+  margin: .25em 0 0;
+  font-size: clamp(16px, 2.1vh, 24px);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink-fg);
+}

@@ -1075,6 +1075,16 @@ export class Level01 extends LevelBase {
     // once island C is clear. The gate is unpaintable now (#39), so it cannot be
     // climbed over, but this check stays: it is the win condition, and it should
     // not depend on a barrier's collision being correct.
+    // #112 — the sergeant's line when the player tops out onto the ledge: no
+    // enemies, no hazard, island C already won. Asked once; the bar holds the
+    // text and still waits if anything is somehow fighting.
+    const p = player.position;
+    if (!this._saidLedge && p.y >= L1.ledge.y - 0.1 && p.z >= L1.ledge.zMin && p.z <= L1.ledge.zMax
+        && this._arenaCleared(this.gateC)) {
+      this._saidLedge = true;
+      this.game.say?.('outskirts-ledge');
+    }
+
     if (!this._complete && this.extraction && this.extraction.containsPoint(player.position)
         && this._arenaCleared(this.gateC)) {
       this._complete = true;

@@ -94,6 +94,7 @@ export class Menu {
             <dt>V</dt><dd>Switch view</dd>
             <dt>R</dt><dd>Restart</dd>
             <dt>M</dt><dd>Mute</dd>
+            <dt>Enter</dt><dd>Skip sergeant</dd>
             <dt>Esc</dt><dd>Pause</dd>
           </dl>
         </section>
