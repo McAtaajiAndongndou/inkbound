@@ -50,7 +50,10 @@ export class Player {
     this.dead = false;
     this.hurtTimer = 0;         // > 0 means recently hit, cannot be hit again yet
     this.onDeath = null;        // optional callback, fired once when health hits 0
-
+    // dry out (#75). Set by main.js — only main knows the gun and the surfaces.
+    // Player holds the flag so the HUD and any other system can read it.
+    this.dry = false;
+    this.dryTimer = 0;
     // visible avatar for third-person
     const geometry = new THREE.CapsuleGeometry(
       PLAYER.radius, PLAYER.height - PLAYER.radius * 2, 4, 12,
@@ -91,6 +94,18 @@ export class Player {
       this.onDeath?.();
     }
     return true;
+  }
+  
+  /**
+   * Kill the player outside the health system — used by dry out (#75).
+   * Same end path as a death, so the existing lose screen handles it.
+   */
+  kill() {
+    if (this.dead) return;
+    this.health = 0;
+    this.dead = true;
+    this.velocity.set(0, 0, 0);
+    this.onDeath?.();
   }
 
   /**
@@ -413,6 +428,8 @@ export class Player {
     this.speedCap = PLAYER.maxSpeed;   // respawning earns nothing (#52)
     this._coyoteTimer = 0;
     this._jumpBufferTimer = 0;
+    this.dry = false;
+    this.dryTimer = 0;
   }
 
   dispose() {

@@ -538,3 +538,10 @@ export const BLUE_FREEZE = {
   shellOpacity: 0.55,
   buildupOpacity: 0.12,
 };
+
+// Dry out (#75). The player is dry when the tank is empty and no cell under
+// them is theirs. This declares the loss rather than leaving them stuck.
+export const DRY_OUT = {
+  warningBelow: 0.25,   // tank % under which the HUD pulses the ammo bar
+  graceTime: 1.0,       // seconds of continuous dry state before the run ends
+};
