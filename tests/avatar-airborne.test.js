@@ -30,9 +30,16 @@ const { Avatar } = avatarModule;
  * a rig without them — that is what the fallback rule is for.
  */
 
-/** The armed set the player actually runs with (main.js calls setArmed(true)). */
-const ARMED_IDLE = 'Idle_Gun_Pointing';
-const ARMED_RUN = 'Run_Shoot';
+/**
+ * The armed set the player actually runs with (main.js calls setArmed(true)).
+ *
+ * These were `Idle_Gun_Pointing` and `Run_Shoot` until #124: the pointing and
+ * shooting clips became the AIM and FIRE states, and the neutral hold and the
+ * plain run took over the default. The rules below are about the air state and
+ * do not care which clip is which — only that it is the one the rig is playing.
+ */
+const ARMED_IDLE = 'Idle_Gun';
+const ARMED_RUN = 'Run';
 
 function fakeAction(name) {
   const a = {
@@ -64,6 +71,13 @@ function makeAvatar(clipNames, { armed = true } = {}) {
   avatar.current = null;
   avatar.armed = armed;
   avatar.moving = false;
+  // #124's fields, so a test that pokes one of them is looking at a real avatar
+  // rather than at `undefined` that happens to be falsy.
+  avatar.aiming = false;
+  avatar._accent = false;
+  avatar._accentName = null;
+  avatar._accentLeft = 0;
+  avatar._hits = 0;
   avatar.airborne = false;
   avatar._airKind = null;
   avatar._landing = false;

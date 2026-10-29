@@ -37,6 +37,10 @@ Ideas, playtest findings and parked work. **Check triage status before building 
 - **Third platform is too easy.**
 - **TPV preferred over FPV** for aiming and painting — pending confirmation, and this is the Splatoon-vs-CoD balance decision.
 
+## Viewer findings — 29 Oct 2026 (Ascent blockout)
+
+- **Paintable and unpaintable walls look identical.** The Ascent's First Face is rock with one 3 m paintable strip, and in the viewer's `face` shot the strip cannot be told from the rock. Outskirts has the same problem (left pillar paintable, right pillar not). The player can only find the strip by shooting the whole wall. Belongs to the readability pass (#126, shaders lane) or a level-side marker such as trim around paintable strips. Decide which before the Primer, which has to teach it.
+
 ## Playtest findings — 28–29 Oct 2026 (B/C rework)
 
 - **C's block is only cover if the AI collides with it.** Enemies walked through it; walls were player-only. Fixed in `enemy.js` (walls + LOS + knockback), but it needed the fix to have any meaning.

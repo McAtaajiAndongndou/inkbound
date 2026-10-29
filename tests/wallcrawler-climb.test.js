@@ -284,10 +284,18 @@ test('killed on the wall, it does not stay stuck to it', () => {
   assert.equal(enemy.alive, false);
   assert.equal(enemy.climbing, false, 'a corpse cannot hold a face');
 
-  // Its last height is where it stays: nothing ticks a dead enemy.
+  // #123 changed the contract: a corpse now SINKS and is disposed on a timer,
+  // ticked by update() like everything else. Mid-sink it has dropped but is
+  // still in the scene; past the sink duration it is gone entirely. What it
+  // must never do is climb again.
   const y = enemy.position.y;
   run(enemy, 10);
-  assert.equal(enemy.position.y, y, 'the body should not sink or climb on its own');
+  assert.ok(enemy.position.y < y, 'the corpse sinks rather than hanging on the wall');
+  assert.ok(enemy.mesh.parent, 'still in the scene mid-sink');
+  assert.equal(enemy.climbing, false);
+
+  run(enemy, 60);
+  assert.equal(enemy.mesh.parent, null, 'disposed once the sink has run');
 });
 test('a face that is SOLID to it is still a face it can climb, and be knocked along', () => {
   // Walls are solid to enemies (#014): a level hands its walls over as `walls`,
