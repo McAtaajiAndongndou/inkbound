@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E3
 **Cost:** S
-**Depends on:** 002 — the level's whole pressure is that grey is slow, so it lands better once grey actually is
+**Depends on:** #74 — the level's whole pressure is that grey is slow, so it lands better once grey actually is
 
 ### Context
 

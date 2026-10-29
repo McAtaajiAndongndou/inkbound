@@ -35,14 +35,9 @@ export class PaintGun {
     this.colours = ["blue", "red", "green", "grey"];
     this.current = 0;
 
-    const ammo = AMMO[level];
-    this.maxAmmo = ammo.tank;
-
-    this.ammo = {
-      blue: ammo.tank,
-      red: ammo.tank,
-      green: ammo.tank,
-    };
+    const ammo = AMMO[level] ?? AMMO[1];
+    this.maxAmmo = ammo;
+    this.ammo = ammo;
 
     this.cooldown = 0;
     this.lastSplat = null;  // { point, colour, age } of the latest splat, reused
@@ -120,7 +115,7 @@ export class PaintGun {
   tryFire(camera, muzzle = null, aiming = false) {
     if (this.cooldown > 0) return false;
 
-    if (this.colour !== "grey" && this.ammo[this.colour] < PAINT_GUN.cost) {
+    if (this.colour !== "grey" && this.ammo < PAINT_GUN.cost){
       this.dryFire = true;
       return false;
     }
@@ -144,7 +139,7 @@ export class PaintGun {
       this._start.addScaledVector(this._raycaster.ray.direction, PAINT_GUN.range);
 
       if (this.colour !== "grey") {
-        this.ammo[this.colour] -= PAINT_GUN.cost;
+        this.ammo -= PAINT_GUN.cost;
       }
 
       this.cooldown = PAINT_GUN.fireDelay;
@@ -178,7 +173,9 @@ export class PaintGun {
 
     if (!hit) return false;
 
-    if (enemy && this.colour === "grey") return false;
+    if (enemy && this.colour === "grey"){
+      return false;
+    }
 
     let surface = null;
 
@@ -195,7 +192,7 @@ export class PaintGun {
     }
 
     if (this.colour !== "grey") {
-      this.ammo[this.colour] -= PAINT_GUN.cost;
+      this.ammo -= PAINT_GUN.cost;
     }
 
     this.cooldown = PAINT_GUN.fireDelay;
@@ -303,11 +300,6 @@ export class PaintGun {
       b.age = 0;
       b.active = true;
     }
-  }
-
-  refillAmmo() {
-    if (this.colour === "grey") return;
-    this.ammo[this.colour] = this.maxAmmo;
   }
 
   update(dt) {

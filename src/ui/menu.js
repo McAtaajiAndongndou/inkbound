@@ -8,9 +8,17 @@
 // Credits (brief: "accessible from within the game") open from the Credits
 // button and render straight from CREDITS in credits.js.
 //
-// Still TODO: loadout select, quality setting, level select.
+// Level select (#78) lists every level, stubs included, so a marker can jump
+// to any of them. The menu only knows ids and names, and it reads them from the
+// ONE list — `levels/index.js` (INTEGRATION.md) — never its own copy: main.js
+// passes `game.levels` in, and the registry import is only the default for
+// tests that build a Menu without deps. main.js maps an id to a level and swaps
+// it in through `onSelectLevel`.
+//
+// Still TODO: loadout select, quality setting.
 import { OPTIONS } from '../config.js';
 import { CREDITS, OURS } from './credits.js';
+import { LEVELS } from '../levels/index.js';
 
 const STORAGE_KEY = 'inkbound.options';
 
@@ -21,11 +29,20 @@ export class Menu {
    * @param {AudioManager} deps.audio
    * @param {HTMLCanvasElement} deps.canvas  what pointer lock is requested on
    * @param {() => void} deps.onRestart      reloads the level (main.js loadLevel)
+   * @param {(id: string) => void|Promise<void>} [deps.onSelectLevel]
+   *   swaps in the level with that LEVELS id; throw or reject if it fails
+   * @param {{id: string, name: string}[]} [deps.levels]
+   *   the list to render — `game.levels` from main.js, the registry default here
+   * @param {string} [deps.currentLevel]       id of the level loaded at start
    */
-  constructor(parent, { audio, canvas, onRestart }) {
+  constructor(parent, { audio, canvas, onRestart, onSelectLevel, levels = LEVELS, currentLevel = LEVELS[0].id }) {
     this.audio = audio;
     this.canvas = canvas;
     this.onRestart = onRestart;
+    this.onSelectLevel = onSelectLevel;
+    this.levels = levels;
+    this.currentLevel = currentLevel;
+    this._switching = false;
     this.sensitivity = 1;   // multiplier on PLAYER.lookSensitivity
     this.started = false;   // false until the first time play begins
     this._load();
@@ -41,6 +58,7 @@ export class Menu {
         <div class="menu-actions">
           <button id="menu-resume" class="primary" type="button">Play</button>
           <button id="menu-restart" type="button">Restart level</button>
+          <button id="menu-levels-btn" type="button">Level select</button>
           <button id="menu-credits-btn" type="button">Credits</button>
         </div>
 
@@ -77,6 +95,21 @@ export class Menu {
         </section>
         </div>
 
+        <div id="menu-levels" class="hidden">
+          <section>
+            <h2>Level select</h2>
+            <ol class="level-list">${this.levels.map((l, i) => `
+              <li><button type="button" data-level="${esc(l.id)}">
+                <span class="level-num">${i + 1}</span>${esc(l.name)}
+              </button></li>`).join('')}
+            </ol>
+            <p id="menu-levels-error" class="level-error hidden" role="alert"></p>
+          </section>
+          <div class="menu-actions">
+            <button class="levels-back" type="button">← Back</button>
+          </div>
+        </div>
+
         <div id="menu-credits" class="hidden">
           <div class="menu-actions">
             <button class="credits-back" type="button">← Back</button>
@@ -109,10 +142,18 @@ export class Menu {
     this.muteBtn = $('#opt-mute');
     this.mainView = $('#menu-main');
     this.creditsView = $('#menu-credits');
+    this.levelsView = $('#menu-levels');
+    this.levelsError = $('#menu-levels-error');
+    this.levelBtns = [...el.querySelectorAll('[data-level]')];
 
-    $('#menu-credits-btn').addEventListener('click', () => this._showCredits(true));
+    $('#menu-credits-btn').addEventListener('click', () => this._showView('credits'));
     for (const back of el.querySelectorAll('.credits-back')) {
-      back.addEventListener('click', () => this._showCredits(false));
+      back.addEventListener('click', () => this._showView('main'));
+    }
+    $('#menu-levels-btn').addEventListener('click', () => this._showView('levels'));
+    el.querySelector('.levels-back').addEventListener('click', () => this._showView('main'));
+    for (const btn of this.levelBtns) {
+      btn.addEventListener('click', () => this._selectLevel(btn.dataset.level));
     }
 
     this.resumeBtn.addEventListener('click', () => this._resume());
@@ -171,16 +212,60 @@ export class Menu {
     if (p && typeof p.catch === 'function') p.catch(() => {});
   }
 
-  _showCredits(show) {
-    this.mainView.classList.toggle('hidden', show);
-    this.creditsView.classList.toggle('hidden', !show);
+  /** Mark which level is loaded — main.js calls this if it swaps levels itself. */
+  setCurrentLevel(id) {
+    this.currentLevel = id;
+    this._syncLevels();
+  }
+
+  /** @param {'main' | 'levels' | 'credits'} view */
+  _showView(view) {
+    this.mainView.classList.toggle('hidden', view !== 'main');
+    this.levelsView.classList.toggle('hidden', view !== 'levels');
+    this.creditsView.classList.toggle('hidden', view !== 'credits');
+    if (view === 'levels') this._syncLevels();
+    this.levelsError.classList.add('hidden');
     this.el.scrollTop = 0;
+  }
+
+  // A failed load must not strand the player: the error shows in the list, the
+  // buttons come back, and Back / Resume still work.
+  async _selectLevel(id) {
+    if (this._switching) return;
+    this._switching = true;
+    this.levelsError.classList.add('hidden');
+    this._syncLevels();
+    try {
+      if (!this.onSelectLevel) throw new Error('level switching is not hooked up in main.js yet');
+      await this.onSelectLevel(id);
+      this.currentLevel = id;
+      this._switching = false;
+      this._syncLevels();
+      this._resume();
+    } catch (err) {
+      console.error(`[menu] could not load level "${id}"`, err);
+      const name = this.levels.find((l) => l.id === id)?.name ?? id;
+      this.levelsError.textContent = `Couldn't load ${name}. Pick another level or go back.`;
+      this.levelsError.classList.remove('hidden');
+      this._switching = false;
+      this._syncLevels();
+    }
+  }
+
+  _syncLevels() {
+    for (const btn of this.levelBtns) {
+      const current = btn.dataset.level === this.currentLevel;
+      btn.classList.toggle('current', current);
+      if (current) btn.setAttribute('aria-current', 'true');
+      else btn.removeAttribute('aria-current');
+      btn.disabled = this._switching;
+    }
   }
 
   _setOpen(open) {
     if (!open) {
       this.started = true;
-      this._showCredits(false); // next pause opens on the main view
+      this._showView('main'); // next pause opens on the main view; closes the level list
     }
     this.el.classList.toggle('hidden', !open);
     // first load reads as a title screen; afterwards it is a pause menu

@@ -85,7 +85,7 @@ test('firing adds nothing to the scene: projectiles and bursts are pooled', () =
 
   for (let shot = 0; shot < 40; shot++) {
     gun.cooldown = 0;
-    gun.ammo.blue = gun.maxAmmo;
+    gun.ammo = gun.maxAmmo;
     gun.tryFire(camera);
     for (let i = 0; i < 10; i++) gun.update(1 / 60);
   }

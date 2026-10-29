@@ -2,7 +2,7 @@
 **Priority:** COULD
 **PRD:** D6
 **Cost:** M
-**Depends on:** 042 for the model; behaviour can run on the box fallback
+**Depends on:** #114 for the model; behaviour can run on the box fallback
 
 ### Context
 

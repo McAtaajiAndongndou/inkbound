@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** D3
 **Cost:** M
-**Depends on:** 042 if the model is to be seen; the behaviour can be built against the box fallback
+**Depends on:** #114 if the model is to be seen; the behaviour can be built against the box fallback
 
 ### Context
 

@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** AN4, AN5
 **Cost:** M
-**Depends on:** nothing — and 010 and 050 are blocked on it
+**Depends on:** nothing — and #82 and #122 are blocked on it
 
 ### Context
 
@@ -10,7 +10,7 @@ The player model has 62 joints and 24 clips, but **none of them are jump, fall, 
 
 `docs/ASSETS.md` already lists the source: the **Quaternius Universal Animation Library**, which shares the rig family. It has never been downloaded or tested.
 
-This issue is the integration: get the library in, prove it maps onto the existing rig, and register the clips so 010 and 050 can just ask for them.
+This issue is the integration: get the library in, prove it maps onto the existing rig, and register the clips so #82 and #122 can just ask for them.
 
 ### Scope — files you may touch
 
@@ -21,7 +21,7 @@ This issue is the integration: get the library in, prove it maps onto the existi
 
 ### Out of scope — do not touch
 
-- The state machine that decides *when* to play them — that is 010 and 050
+- The state machine that decides *when* to play them — that is #82 and #122
 - Enemy animation
 - The model itself
 
@@ -40,7 +40,7 @@ Force each of the four clips to play in isolation and watch the model. If a clip
 
 ### Design note
 
-**Record what the library does not have.** If there is no climb clip, say so in this issue and let 050 fall back to a borrowed clip — that is a far better outcome than 050 silently inventing one.
+**Record what the library does not have.** If there is no climb clip, say so in this issue and let #122 fall back to a borrowed clip — that is a far better outcome than #122 silently inventing one.
 
 ### Definition of done
 

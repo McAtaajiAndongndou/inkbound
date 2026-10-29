@@ -24,6 +24,14 @@ export const CREDITS = [
     files: ['assets/soldier-charger.glb', 'assets/soldier-sprayer.glb'],
   },
   {
+    what: 'Zombie half (enemy Wall-crawler)',
+    author: 'Quaternius',
+    source: 'https://poly.pizza/m/Htcsn9OrXJ',
+    ...CC_BY_3,
+    changes: 'Texture stripped; re-shaded with our flat grey toon material; paint hits tint it.',
+    files: ['assets/wall-crawler.glb'],
+  },
+  {
     what: 'SWAT (player character)',
     author: 'Quaternius',
     source: 'https://poly.pizza/m/Btfn3G5Xv4',
@@ -36,6 +44,14 @@ export const CREDITS = [
     source: 'https://poly.pizza/bundle/Scifi-Gun-Pack-rBroUbKkqM',
     ...CC0,
     files: ['assets/pistol.glb'],
+  },
+  {
+    what: 'Universal Animation Library (player jump start, loop and land)',
+    author: 'Quaternius',
+    source: 'https://quaternius.com/packs/universalanimationlibrary.html',
+    ...CC0,
+    changes: 'Three clips retargeted from its rig onto the player rig and baked; the pack itself is not shipped.',
+    files: ['assets/player-jump.clips.json'],
   },
   {
     what: 'Stylized Nature MegaKit (Level 1 forest: trees, bushes, rocks, grass, flowers, ferns, mushrooms)',

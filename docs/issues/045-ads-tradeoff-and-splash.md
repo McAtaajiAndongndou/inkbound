@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** C6, C4
 **Cost:** S
-**Depends on:** 034 (the crit is the payoff this tradeoff exists to deliver)
+**Depends on:** #106 (the crit is the payoff this tradeoff exists to deliver)
 
 ### Context
 

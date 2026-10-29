@@ -32,18 +32,18 @@ export const PAINT = {
 //   speedScale  how much extra speed this surface grants. You keep a BOOST after
 //               you leave, and a lower value never takes a boost away (red's 1.0
 //               means "no boost", not "back to base"). See #52.
-//
-//               EXCEPTION: grey is a LIVE modifier, not an accumulator. Being on
-//               dead ground slows you now and stops the moment you step off it.
-//               Without that exception the grey penalty would evaporate the first
-//               time the player touched blue.
+//   standSlow   LIVE speed multiplier, applied only while standing on this
+//               surface. Unlike speedScale this is not sticky: it applies this
+//               frame and drops the moment you leave. This is how grey penalises
+//               you without being erased by the first blue patch you touch (#74).
+//               1.0 = no penalty.
 //   restitution > 0 makes the surface a trampoline (see PLAYER.minBounce)
 //   climbable   walls of this colour can be climbed
 export const SURFACE = {
-  grey: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: false },
-  blue: { friction: 0.4, traction: 0.5, speedScale: 1.6, restitution: 0.0, climbable: false }, // ice: slide, hard to steer
-  red: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.9, climbable: false }, // bounce
-  green: { friction: 14.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: true }, // grip + climb
+  grey: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: false, standSlow: 0.6 }, // Corrupt Corp's territory — live penalty (#74)
+  blue: { friction: 0.4, traction: 0.5, speedScale: 1.6, restitution: 0.0, climbable: false, standSlow: 1.0 }, // ice: slide, hard to steer
+  red: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.9, climbable: false, standSlow: 1.0 }, // bounce
+  green: { friction: 14.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: true, standSlow: 1.0 }, // grip + climb
 };
 
 export const PLAYER = {
@@ -73,6 +73,19 @@ export const PLAYER = {
   groundProbeRange: 6, // how far below that it looks for a floor
   groundSnap: 0.02, // within this of the floor counts as landed
   bounceClearance: 0.05, // lift off red by this so the bounce does not re-hit
+};
+
+// Avatar animation state machine (#82).
+//
+// The blends are deliberately short. The pose has to swap on the FRAME the
+// physics does, or the avatar spends the first tenth of a jump still running —
+// which is the bug this exists to fix, reintroduced as a fade. 0.1 s is the
+// ceiling the issue sets; the air blend goes under it because falling has no
+// anticipation to it.
+export const ANIM = {
+  blend: 0.1,     // ground transitions: idle <-> run
+  airBlend: 0.08, // into and out of jump / fall / land
+  riseSpeed: 0.1, // m/s of upward velocity that counts as RISING, not falling
 };
 
 // Camera rig (#34). TPV is the default; FPV is the V toggle / ADS target.
@@ -145,6 +158,7 @@ export const PAINT_GUN = {
   fireDelay: 0.14, // seconds
   hipSpread: 0.025,
   adsSpread: 0.005,
+  refillRate: 8,
 };
 
 // Starting master volume (0..1). The options menu overrides it per player.
@@ -187,11 +201,55 @@ export const ENEMY_NAV = {
   fallSpeed: 18,
 };
 
+// Awareness (#109). The shared substrate from `docs/enemies/algorithms.md`
+// § Awareness — Dormant / Alert / Search, and the numbers that separate them.
+//
+// These are DETECTION numbers, not attack numbers. `ENEMY.*.attackRange` still
+// decides when a shot is fired; this decides whether the enemy knows there is
+// anything to shoot at, which is why the radii here are larger than every
+// attack range in the game.
+//
+// Every enemy uses this. The turret is the one exception and it is declared as
+// data (`ENEMY.turret.ignoresStealth`) rather than checked by name, because a
+// machine that tracks you through a wall for a reason is a rule, and a rule
+// spelled `type === 'turret'` is a rule hidden in a conditional.
+export const AWARENESS = {
+  radius: 16,          // m, against a standing (dry or wet) player
+  submergedRadius: 7,  // m, against a submerged player — halved, not zero
+  fireAlert: 3,        // s of Alert bought by firing, regardless of submerge
+  forget: 6,           // s a last known position is remembered, then Dormant
+  arrive: 1.2,         // m: close enough to the last known position to stop
+  eyeHeight: 1.4,      // m above the feet — the height a sight line is drawn at
+};
+
+// Wall-crawler climbing (#115). From `docs/enemies/algorithms.md` § Wall-crawler.
+//
+// The two speeds are the whole feature: a wall-crawler on a face you painted
+// green is FASTER than the 4.5 m/s you climb at, and on bare grey it is slower.
+// That is the design's "your route is its route" — painting green to get up
+// somewhere is always a decision with a cost, because the thing that follows you
+// up the same face does it quicker.
+//
+// The speeds live here rather than on `ENEMY.wallCrawler` because they are read
+// off the PAINT under the crawler every frame, not off the enemy. It can start a
+// climb on grey and finish it on green: the face is the object being read, which
+// is the same rule the player's own climb follows.
+export const CLIMB = {
+  grey: 3.5,        // m/s up, down or sideways on an unpainted face
+  green: 5.0,       // m/s on green — faster than the player's PLAYER.climbSpeed
+  reach: 1.6,       // m: how far in front of itself it can grab a face
+  gap: 0.4,         // m kept between the body and the face, so it is not inside it
+  verticalGap: 1.0, // m: the player has to be this much higher/lower to be worth climbing to
+  dropRange: 2.5,   // m: close enough to the player (and above) to let go
+  gravity: 18,      // m/s² accelerating a fallen crawler — its own, not the player's
+  maxFall: 14,      // m/s cap, so a long drop cannot tunnel through a floor in one step
+};
+
 // Level 1 plentiful, level 2 starved, level 3 contested.
 export const AMMO = {
-  1: { tank: 100 },
-  2: { tank: 60 },
-  3: { tank: 80 },
+  1: 100,
+  2: 60,
+  3: 80,
 };
 
 // One enemy class, five configs. Not five systems. (Week 2.)
@@ -210,6 +268,10 @@ export const ENEMY = {
     canMove: true,
     climbsGreen: false,
     drainsPaint: false,
+    // The ground it turns grey, in metres, WHERE ITS SHOT LANDS (#107).
+    // Zero/absent means it never touches the grid — which is every other
+    // enemy here except the Drainer, whose grey comes from eating instead.
+    greyRadius: 1.5,
     contactDamage: 10,
     attackDamage: 10,   // per shot; wired to player.takeDamage in main.js
     windup: 0.6,
@@ -251,6 +313,13 @@ export const ENEMY = {
     // Melee: walk up and STOP at contact range rather than continuing through the
     // player and turning round. See the `holding` note in _tick (#39).
     stopDistance: HEALTH.contactRange + 0.2,
+    // #76: the third beat. A charge ends by arriving on the player, by a wall or
+    // ledge, by 8 m travelled or by 2 s committed (enemy.js), and then the
+    // Charger stands still and takes full damage for this long. That turns the
+    // fight into bait -> dodge -> punish. If the window feels too generous,
+    // shorten THIS before touching anything else; if it still feels unfair, the
+    // windup is too short — not the recovery.
+    recovery: 1.2,
   },
   wallCrawler: {
     hp: 45,
@@ -273,12 +342,46 @@ export const ENEMY = {
     canMove: false,
     climbsGreen: false,
     drainsPaint: false,
+    // A machine does not get fooled by paint (#109). It never searches, never
+    // goes dormant, and is not halved by submerging: it tracks you whenever you
+    // are inside its attackRange. Out of scope for the enemies lane to change —
+    // this flag is how the rule is stated, not how the turret is built.
+    ignoresStealth: true,
     contactDamage: 0,
     attackDamage: 12,   // the hardest single shot: it is the positioning tax
     windup: 0.8,
     attackRange: 15,
     attackCooldown: 3,
+    // #77 — THE MATRIX GAP (ENEMIES.md). The turret is the one enemy that paint
+    // does not solve: freeze, pin and knockback do nothing to it and the three
+    // colours are just damage. The answer is line of sight and flanking, and
+    // that only holds if the procs GENUINELY do nothing — a turret you can
+    // freeze is just another enemy with a slower answer.
+    //
+    // `canMove: false` alone was not enough. Red's knockback is applied in the
+    // windup branch too, so a red hit shoved a turret sideways mid-telegraph;
+    // the flag is what makes the promise unconditional.
+    noProcs: true,
   },
+  // THE TERRITORY EATER (#80). `drainsPaint` was a flag with no behaviour until
+  // the drain below it existed; these are the numbers behind it.
+  //
+  // WHY IT EXISTS AT ALL: paint is positive feedback — the player paints, gets
+  // faster and better armed, and the arena becomes theirs. Left alone that makes
+  // the climax trivial, so one enemy has to take it back.
+  //
+  //   drainRadius    how far it reaches. A cell outside this is a cell it is NOT
+  //                  touching, which is a rule, not an optimisation: the manual
+  //                  check is "watch the patch shrink from the enemy outward".
+  //                  1.6 m is one paint splat (PAINT_GUN.radius 1.4) plus a step.
+  //   drainRate      painted cells per second, at 4 cells/m (PAINT_GRID.level1Cells)
+  //                  that is 16 / 16 = 1 m² of painted ground per second. This is
+  //                  the difficulty dial for the whole final level: tune it LAST,
+  //                  once the waves exist, and write the number down in ENEMIES.md.
+  //   huntRadius     the player this close interrupts the feed: it stands up.
+  //   resumeRadius   ...and it only lies back down past this. The 6 m gap between
+  //                  the two is deliberate hysteresis — one threshold would flip
+  //                  the posture every other frame on the boundary.
   drainer: {
     hp: 20,
     speed: 4.0,
@@ -286,6 +389,10 @@ export const ENEMY = {
     canMove: true,
     climbsGreen: false,
     drainsPaint: true,
+    drainRadius: 1.6,   // metres it can reach into the grid
+    drainRate: 16,      // painted cells eaten per second (1 m²/s at 4 cells/m)
+    huntRadius: 8,      // player closer than this -> stands up and hunts
+    resumeRadius: 14,   // player further than this -> back down to feed
     contactDamage: 5,
     windup: 0.5,
     attackRange: 3,
@@ -293,9 +400,46 @@ export const ENEMY = {
     stopDistance: HEALTH.contactRange + 0.2,
   },
 };
+// Enemy grey conversion (#107).
+//
+// Grey is a FACTION COLOUR (ADR-0002), not the absence of paint: an enemy taking
+// ground is the gun's operation run in reverse. This block is the shape of that
+// operation for enemies that do it at RANGE. The radius is NOT here — it is per
+// enemy (`ENEMY.sprayer.greyRadius`) because a rifle and a slam should not share
+// one number, and Big Arm's slam will carry its own wider one in its own entry
+// when `boss.js` stops being a stub.
+//
+// HOW THE IMPACT IS FOUND, because that is the whole of the issue: the shot is a
+// RAY from the enemy's muzzle to the ground the player is standing on, and the
+// FIRST surface that ray reaches is the one that greys. That single "first hit
+// wins" rule is what stops the conversion passing through a wall or through a
+// raised floor — and it means an unpaintable gate in the way eats the shot
+// instead of letting it through to the ground behind it.
+//
+// RATE: there is no separate timer. The enemy already has an attack cooldown
+// (2.5 s for the Sprayer), so one attack is one splat and nothing here can
+// outpace the thing that triggers it.
+export const GREY_IMPACT = {
+  muzzleHeight: 1.2, // metres above the enemy's feet the ray starts at
+  reach: 2,          // metres past the target it keeps looking, so the target cell is tested
+};
+
 // Difficulty = new rules, not bigger health bars.
 export const DEFENCE = {
   1: { requiredColour: null, combo: [] },
   2: { requiredColour: "red", combo: [] },
   3: { requiredColour: null, combo: ["blue", "red"] },
+};
+
+export const BLUE_FREEZE = {
+  hitsToFreeze: 3,
+  buildupWindow: 2.0,
+  critWindow: 2.0,
+  armDelay: 0.25,
+  criticalMultiplier: 3,
+  buildupDamageScale: 0.4,
+  shellRadius: 0.72,
+  shellHeight: 0.95,
+  shellOpacity: 0.55,
+  buildupOpacity: 0.12,
 };

@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E2, J1
 **Cost:** M
-**Depends on:** 015, 013 (the bounce numbers the pillars reuse), 031 for the approach blade
+**Depends on:** #87, #85 (the bounce numbers the pillars reuse), #103 for the approach blade
 
 ### Context
 

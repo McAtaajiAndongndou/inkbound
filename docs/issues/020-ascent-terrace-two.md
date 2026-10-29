@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E3
 **Cost:** M
-**Depends on:** 019, 005 (turrets must have no status procs), M5 for the models
+**Depends on:** #91, #77 (turrets must have no status procs), M5 for the models
 
 ### Context
 
@@ -27,7 +27,7 @@ Design: `docs/levels/02-the-ascent.md`, room R4.
 
 - [ ] Two turrets: one overwatching the main floor, one covering the base of the climb face
 - [ ] There is exactly one safe pocket, and it is not adjacent to the best painting spot
-- [ ] No colour proc affects either turret — verified by playing it, not just by reading issue 005
+- [ ] No colour proc affects either turret — verified by playing it, not just by reading issue #77
 - [ ] A player who paints in the open runs dry; a player who paints behind cover does not
 - [ ] Both turrets are **visible before they fire**
 

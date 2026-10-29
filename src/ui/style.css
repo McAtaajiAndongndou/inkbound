@@ -172,6 +172,21 @@ canvas {
 .end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; background: rgba(15,15,22,.75); }
 .end h1 { margin: 0 0 8px; font-size: 48px; letter-spacing: .05em; }
 .end p { margin: 0; color: var(--ink-dim); }
+/* #81: which level, why you lost, and how to restart without a refresh. */
+.end .end-detail { margin-bottom: 18px; font-size: 16px; color: var(--ink-fg); }
+.end .end-detail:empty { display: none; }
+.end .end-restart { font-size: 14px; }
+.end .end-restart b {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .12);
+  color: var(--ink-fg);
+}
+#end-win h1 { color: #4ee08a; }
+#end-lose h1 { color: #ff4d5a; }
+#end-lose.dry h1 { color: #3aa7ff; }
 /* Hitmarker: four ticks around the crosshair. White on hit, red and bigger on kill. */
 #hitmarker {
   position: absolute;
@@ -359,4 +374,50 @@ canvas {
   height: 6px;
   border-radius: 50%;
   background: #4ee08a;
+}
+
+/* Level select view inside the menu card (#78). The loaded level is marked. */
+.level-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.level-list button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.level-num {
+  width: 22px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.level-list button.current {
+  background: rgba(78, 224, 138, .16);
+  box-shadow: inset 3px 0 0 #4ee08a;
+}
+
+.level-list button.current::after {
+  content: 'Playing';
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #4ee08a;
+}
+
+.level-list button:disabled { opacity: .5; cursor: wait; }
+
+.level-error {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #ff4d5a;
 }

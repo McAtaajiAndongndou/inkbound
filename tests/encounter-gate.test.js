@@ -78,7 +78,9 @@ test('the island C gate blocks the arena exit until island C is clear (#56, #39 
   // won rather than run past.
   const player = new Player(level.surfaces, new THREE.Vector3(6, 0, -21));
   player.onGround = true;
-  const furthest = walkForward(player, 120);
+  // 240, not 120: grey slows the walk (#74), and two seconds on grey stops
+  // 0.6 m short of the door — the gate would pass without being touched.
+  const furthest = walkForward(player, 240);
 
   assert.ok(furthest > gateZ(level.gateC),
     `the player got into the tower past a sealed gate: z=${furthest}`);

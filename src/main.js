@@ -13,7 +13,7 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER } from "./config.js";
+import { PLAYER, PAINT_GUN } from "./config.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -86,9 +86,27 @@ const game = {
   currentLevelId: () => currentLevelId,
   loadLevel: (id) => {
     currentLevelId = levelEntry(id).id;
-    loadLevel();
+    loadLevel().catch(reportLoadError);
   },
 };
+
+// Level select (#78). The id -> level mapping is `levels/index.js`, the ONE
+// list (INTEGRATION.md) — this file holds no second copy of it. An unknown id
+// falls back to the default inside the registry; it never throws here.
+/**
+ * Build and load a level WITHOUT touching the one being played, so a load that
+ * throws leaves the current level running and the menu usable (#78).
+ */
+async function buildLevel(id) {
+  const next = createLevel(id, game);
+  try {
+    await next.load();
+  } catch (err) {
+    next.dispose();
+    throw err;
+  }
+  return next;
+}
 
 const rig = new CameraRig(window.innerWidth / window.innerHeight);
 scene.add(rig.camera);
@@ -124,7 +142,10 @@ function setPlaceholderVisible(p, visible) {
   if (p.mesh.material) p.mesh.material.visible = visible;
 }
 
-function loadLevel() {
+/** Swap in level `id` (default: reload the current one). Rejects if it fails. */
+async function loadLevel(id = currentLevelId) {
+  const next = await buildLevel(id);
+
   if(gun){
     gun.dispose();
   }
@@ -142,8 +163,11 @@ function loadLevel() {
 
   hud.hideEnd();
 
-  level = createLevel(currentLevelId, game);
-  level.load();
+  level = next;
+  // Record the id that ACTUALLY loaded: the registry falls back to the default
+  // on an unknown id, and the menu must mark the level the player is really in.
+  currentLevelId = levelEntry(id).id;
+  menu.setCurrentLevel(currentLevelId);
   scene.add(level.root);
 
   player = new Player(level.surfaces, level.spawn);
@@ -199,17 +223,24 @@ function loadLevel() {
   gunModel = new PaintGunModel(rig.camera, player, avatar);
 }
 
-preloadEnemyModel().then(() => {
-  loadLevel();
+const reportLoadError = (err) => console.error("[main] level failed to load", err);
+
+preloadEnemyModel().then(async () => {
+  await loadLevel();
   document.getElementById("loading").remove();
   animate();
 });
 
 // Title + pause menu. Open whenever the pointer is unlocked (load, Escape).
+// The level list comes from the registry through `game` (INTEGRATION.md: the
+// ONE list — the menu must not carry its own copy).
 const menu = new Menu(document.body, {
   audio,
   canvas: renderer.domElement,
-  onRestart: loadLevel,
+  onRestart: () => loadLevel().catch(reportLoadError),
+  onSelectLevel: (id) => loadLevel(id),
+  levels: game.levels,
+  currentLevel: currentLevelId,
 });
 
 const clock = new THREE.Clock();
@@ -217,15 +248,25 @@ const clock = new THREE.Clock();
 /** One step of gameplay. Skipped entirely while the menu is open. */
 function simulate(dt, elapsed, actions, mouse) {
   if (actions.restart){
-    loadLevel();
+    loadLevel().catch(reportLoadError);
     return;
   }
   if (actions.toggleView) rig.toggle();
   if (actions.colour !== null) gun.selectColour(actions.colour);
-  if (actions.refill) gun.refillAmmo();
 
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
   player.update(dt, input, actions);
+
+ if (!player.dead && player.onGround){
+  const onPlayerPaint = level.surfaces.some((surface)=> surface.isPlayerPaintAtWorld(player.position));
+
+  if (onPlayerPaint){
+    gun.ammo = Math.min(
+      gun.maxAmmo,
+      gun.ammo + PAINT_GUN.refillRate * dt
+    );
+  }
+ }
  
 
   const p = player.mesh.position;
@@ -233,7 +274,14 @@ function simulate(dt, elapsed, actions, mouse) {
   const dz = p.z - lastPos.z;
   const speed = dt > 0 ? Math.hypot(dx, dz) / dt : 0;
   lastPos.copy(p);
-  if (!player.dead) avatar.setMoving(speed > 0.5);
+  if (!player.dead) {
+    // #82 — the ONE call this issue adds to this file (coordinated with Ozuko):
+    // the physics already knows whether we are on the floor, so the avatar is
+    // only told. It goes before setMoving because setMoving defers to the air
+    // state; the order is what stops a run cycle appearing mid-jump.
+    avatar.setAirborne(player.onGround, player.velocity.y);
+    avatar.setMoving(speed > 0.5);
+  }
   avatar.update(dt);
 
   level.update(dt, player);

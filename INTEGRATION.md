@@ -123,7 +123,7 @@ target.dead === true   // optional: the player's flag
 ## Levels: one registry, no second list
 
 `src/levels/index.js` is the only list of levels. `main.js` builds from it and the
-pause menu (#006) renders from it:
+pause menu (#78) renders from it:
 
 ```js
 game.levels          // [{ id, name, create }] — the list to render

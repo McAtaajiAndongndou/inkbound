@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** E1
 **Cost:** M
-**Depends on:** #1 and #2 for the room-two beat to land; the geometry can start before them
+**Depends on:** #73 and #74 for the room-two beat to land; the geometry can start before them
 
 ### Context
 

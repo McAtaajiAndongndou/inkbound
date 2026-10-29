@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** D8, C4
 **Cost:** M
-**Depends on:** 026, and on C4 — phase one needs a working freeze
+**Depends on:** #98, and on C4 — phase one needs a working freeze
 
 ### Context
 

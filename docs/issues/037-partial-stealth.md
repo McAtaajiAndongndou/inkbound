@@ -2,7 +2,7 @@
 **Priority:** MUST
 **PRD:** A7
 **Cost:** M
-**Depends on:** 036 (there is nothing to hide with until submerge exists)
+**Depends on:** #108 (there is nothing to hide with until submerge exists)
 
 ### Context
 
