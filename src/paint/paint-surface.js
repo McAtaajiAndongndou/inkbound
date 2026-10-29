@@ -36,7 +36,10 @@ export class PaintSurface {
     // paint cells per square -- which decouples readability from resolution.
     // They used to be the same number, and at 4 cells/unit that meant a line
     // every 25cm: 64 lines across L1's corridor, which reads as graph paper.
-    this.material = createPaintMaterial(this.map, Math.max(1, Math.round(cells)));
+    // The sealed flag goes to the material (#156): an unpaintable face is drawn
+    // as broken panels with seams and rivets, in the same grey, so it reads as
+    // "something you cannot paint" at a glance instead of only after a shot.
+    this.material = createPaintMaterial(this.map, Math.max(1, Math.round(cells)), unpaintable);
 
     const geometry = new THREE.PlaneGeometry(width, height, 1, 1);
     this.mesh = new THREE.Mesh(geometry, this.material);

@@ -173,6 +173,7 @@ The game is submittable when **all of these are true**:
 | J2  | Per-level mood — fog, light, palette                       | MUST   | S    | levels  | ⚠️ Outskirts only                                                                |
 | J3  | Readability — enemies visible from where you fight         | MUST   | S    | levels  | ⚠️ Partial (#126) — state language tested; spawn placement stays with levels     |
 | J4  | Enemies distinguishable by silhouette and telegraph colour | MUST   | S    | shaders | ✅ Built (#126) — one amber in config; distinct GLB per mover; pin holds green   |
+| J5  | Paintable vs sealed faces read before you shoot            | MUST   | S–M  | shaders | ✅ Built (#156) — sealed faces: broken grid, seams, rivets; same grey           |
 
 ---
 

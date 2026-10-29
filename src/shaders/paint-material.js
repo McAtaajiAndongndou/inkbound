@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PAINT } from '../config.js';
+import { PAINT, SEALED } from '../config.js';
 // Height fog lives in shaders/fog-height.js, shared with the toon and outline
 // materials so the maths is not written out three times.
 import { createFogHeightUniforms, FOG_HEIGHT_PARS, FOG_HEIGHT_FRAGMENT } from './fog-height.js';
@@ -55,6 +55,7 @@ const fragmentShader = /* glsl */ `
   uniform sampler2D uPaintMap;   // r channel = paint id / 255
   uniform vec2      uGridSize;   // cells across, cells down
   uniform float     uGridStep;   // paint cells per VISIBLE grid square
+  uniform float     uUnpaintable; // 1 = sealed face (#156), 0 = open ground
   uniform vec3      uColours[4]; // grey, blue, red, green
   uniform float     uTime;
   uniform vec3      uLightDir;
@@ -124,6 +125,23 @@ const fragmentShader = /* glsl */ `
     colour = mix(colour * 0.75, colour, grid);
     colour += vec3(edge) * (painted ? 0.35 : 0.12);      // bright wet rim
 
+    // --- sealed panels (#156) -------------------------------------------
+    // An unpaintable face is Corrupt Corp's SEALED panel, not open ground: the
+    // visible grid is broken up into smaller panels with a dark seam along
+    // every edge and a rivet at every corner. The difference from a paintable
+    // face is TEXTURE and only texture — same grey in, same grey out, just
+    // shaded — so it can never be mistaken for a paint colour or for amber.
+    // Paintable faces skip this entirely: with uUnpaintable = 0 the branch
+    // does nothing, so painted cells look exactly as they did before.
+    if (uUnpaintable > 0.5) {
+      vec2 panels = fract(vUv * uGridSize / uGridStep * ${SEALED.panelsPerSquare.toFixed(1)});
+      vec2 corner = min(panels, 1.0 - panels);           // distance to nearest seam axis
+      float seam  = 1.0 - smoothstep(0.0, ${SEALED.seamWidth.toFixed(3)}, min(corner.x, corner.y));
+      float rivet = 1.0 - smoothstep(${SEALED.rivetRadius.toFixed(3)}, ${(SEALED.rivetRadius * 2).toFixed(3)}, length(corner));
+      colour *= 1.0 - ${SEALED.seamDepth.toFixed(3)} * seam;
+      colour += ${SEALED.rivetLift.toFixed(3)} * rivet;
+    }
+
     gl_FragColor = vec4(colour, 1.0);
 
     // linear -> output colour space, exactly as #41 did for the toon material.
@@ -153,7 +171,7 @@ export function createPaintMap(cols, rows) {
   return { texture, data, cols, rows };
 }
 
-export function createPaintMaterial(paintMap, gridCells = 4) {
+export function createPaintMaterial(paintMap, gridCells = 4, unpaintable = false) {
   // Fog needs its own uniforms (fogColor / fogNear / fogFar / fogDensity) to
   // exist ON the material, because three.js writes into them every frame from
   // scene.fog (refreshFogUniforms). A missing one throws.
@@ -182,6 +200,9 @@ export function createPaintMaterial(paintMap, gridCells = 4) {
   };
   uniforms.uTime     = { value: 0 };
   uniforms.uLightDir = { value: new THREE.Vector3(0.5, 1.0, 0.3).normalize() };
+  // #156 — the sealed-face flag. Set at build time and never touched again:
+  // which faces are paintable is level data, not something a frame can change.
+  uniforms.uUnpaintable = { value: unpaintable ? 1 : 0 };
 
   // Height fog uniforms. These are OURS, so they are not in UniformsLib.fog and
   // have to be added by hand like the others above -- the same rule, for the
