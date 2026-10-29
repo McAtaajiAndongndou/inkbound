@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Level Viewer</title>
+    <!--
+      DEV ONLY. Not in the build (vite builds index.html alone).
+      Open at /src/levels/viewer.html?level=outskirts&shot=spawn
+
+      The base points at the project root, so the game's relative asset URLs
+      ("./assets/…") resolve the same here as they do in index.html. Without it
+      every model 404s and the level shows only its code-built fallbacks.
+    -->
+    <base href="../../" />
+    <link rel="icon" href="data:," />
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #0f0f16; font: 13px/1.4 system-ui, sans-serif; color: #e6e6ee; }
+      #panel { position: fixed; top: 10px; left: 10px; width: 220px; padding: 10px; background: rgba(20, 20, 30, 0.88); border-radius: 8px; }
+      #panel h1 { font-size: 13px; margin: 0 0 8px; letter-spacing: 0.04em; }
+      #panel select, #panel button { width: 100%; margin: 2px 0; padding: 5px 6px; background: #2a2a3a; color: inherit; border: 1px solid #3a3a4e; border-radius: 4px; font: inherit; text-align: left; cursor: pointer; }
+      #panel button.active { border-color: #4aa3ff; }
+      #panel .row { display: flex; gap: 4px; }
+      #panel .row button { text-align: center; }
+      #panel small { display: block; margin-top: 8px; color: #9a9ab0; }
+      #cam { position: fixed; bottom: 10px; left: 10px; padding: 4px 8px; background: rgba(20, 20, 30, 0.88); border-radius: 4px; font-family: ui-monospace, monospace; font-size: 12px; }
+      #status { position: fixed; top: 10px; right: 10px; padding: 4px 8px; background: rgba(20, 20, 30, 0.88); border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <div id="panel">
+      <h1>LEVEL VIEWER</h1>
+      <select id="level"></select>
+      <div id="shots"></div>
+      <div class="row">
+        <button id="helpers" type="button">Helpers</button>
+        <button id="fog" type="button">Fog</button>
+      </div>
+      <button id="copy" type="button">Copy camera as shot</button>
+      <small>Drag: orbit · Right-drag: pan · Wheel: zoom<br />H helpers · G fog · 1–9 shots</small>
+    </div>
+    <div id="cam"></div>
+    <div id="status">Loading…</div>
+    <script type="module" src="./src/levels/viewer.js"></script>
+  </body>
+</html>
