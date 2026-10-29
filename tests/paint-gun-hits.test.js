@@ -105,3 +105,16 @@ test('a second shot landing on an enemy the first one killed is not a kill', () 
   for (let i = 0; i < 60; i++) gun.update(1 / 60);
   assert.deepEqual(kinds, ['kill']);
 });
+
+test('a splat reports whether it claimed ground or repainted our own (#113)', () => {
+  const { gun, camera, wall } = setup({ alive: false });
+  let ground = 0; // grey
+  wall.paintIdAtWorld = () => ground;
+  const claims = [];
+  gun.onImpact = (kind, claimed) => claims.push([kind, claimed]);
+  gun.tryFire(camera);           // grey -> blue: claimed
+  ground = 1;                    // the wall is blue now
+  gun.cooldown = 0;
+  gun.tryFire(camera);           // blue -> blue: just a splat
+  assert.deepEqual(claims, [['splat', true], ['splat', false]]);
+});

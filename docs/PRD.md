@@ -159,9 +159,9 @@ The game is submittable when **all of these are true**:
 | ID  | Requirement                       | Pri    | Cost | Lane | Status       |
 | --- | --------------------------------- | ------ | ---- | ---- | ------------ |
 | I1  | Fire, splat, hit, kill, win, lose | MUST   | —    | ui   | ✅ Built     |
-| I2  | Gate opening                      | SHOULD | S    | ui   | ❌ Not built |
-| I3  | Enemy attack telegraph            | MUST   | S    | ui   | ⚠️ Verify    |
-| I4  | Painting has a sound              | SHOULD | S    | ui   | ❌ Not built |
+| I2  | Gate opening                      | SHOULD | S    | ui   | ✅ Built (#113) — `gate` plays when an Outskirts encounter gate clears (the only level with gates today) |
+| I3  | Enemy attack telegraph            | MUST   | S    | ui   | ✅ Built (#113) — every windup through `startTelegraph` whines; the Charger's coil (#123), which bypassed it, now plays `charge` while alert. The boss has no attack yet |
+| I4  | Painting has a sound              | SHOULD | S    | ui   | ✅ Built (#113) — a splat that takes ground plays `claim`, repainting your own plays `splat` |
 
 ---
 

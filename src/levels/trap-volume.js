@@ -1,5 +1,6 @@
 // OWNER: E (Levels)
 import * as THREE from 'three';
+import { audio } from '../audio/audio-manager.js';
 
 /**
  * A trap is a region that hurts whatever stands in it.
@@ -35,8 +36,10 @@ export class TrapVolume {
    * @param {THREE.Box3} spec.region   world-space region that hurts
    * @param {number} spec.damage       per hit
    * @param {number} [spec.cooldown]   seconds between hits on one target
+   * @param {string} [spec.sound]      audio.play name for when it fires —
+   *                                   'spike' for the pit (#113); none by default
    */
-  constructor({ region, damage, cooldown = 1 }) {
+  constructor({ region, damage, cooldown = 1, sound = null }) {
     if (!(region instanceof THREE.Box3)) {
       throw new TypeError('TrapVolume: region must be a THREE.Box3');
     }
@@ -47,6 +50,7 @@ export class TrapVolume {
     this.region = region;
     this.damage = damage;
     this.cooldown = cooldown;
+    this.sound = sound;
 
     // One timer per target, and weak so a target that dies and is dropped from
     // the level cannot be kept alive by this map. No per-frame allocation.
@@ -83,6 +87,7 @@ export class TrapVolume {
 
       target.takeDamage(this.damage);
       this._until.set(target, this.cooldown);
+      if (this.sound) audio.play(this.sound);
     }
   }
 }

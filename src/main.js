@@ -243,8 +243,9 @@ async function loadLevel(id = currentLevelId) {
   gun = new PaintGun(level.surfaces, 1, level.enemies, scene);
   // Shots land when the projectile arrives, not when fired, so the hit
   // feedback is driven from the impact rather than from tryFire().
-  gun.onImpact = (kind) => {
-    audio.play(kind);
+  gun.onImpact = (kind, claimed) => {
+    // #113: a splat that takes ground sounds different from repainting your own.
+    audio.play(kind === "splat" && claimed ? "claim" : kind);
     if (kind !== "splat") hud.showHitmarker(kind === "kill");
   };
   gunModel = new PaintGunModel(rig.camera, player, avatar);
@@ -272,6 +273,20 @@ const menu = new Menu(document.body, {
 
 const clock = new THREE.Clock();
 
+// #113 jump and land, read off the player's own state rather than hooked into
+// player.js (core lane). A jump is the vertical speed snapping up to at least
+// jumpSpeed in one step — ground, coyote, wall hop and a red bounce all count.
+// A land needs a real fall, so walking down a step stays quiet.
+const LAND_MIN_FALL = 4; // m/s
+
+function playMovementSounds(wasGrounded, fallSpeed) {
+  if (player.dead) return;
+  const vy = player.velocity.y;
+  // 0.6, not lower: a climb rises at climbSpeed (4.5) and the hop off it is a jump too.
+  if (vy >= PLAYER.jumpSpeed * 0.95 && -fallSpeed < PLAYER.jumpSpeed * 0.6) audio.play("jump");
+  else if (!wasGrounded && player.onGround && fallSpeed >= LAND_MIN_FALL) audio.play("land");
+}
+
 /** One step of gameplay. Skipped entirely while the menu is open. */
 function simulate(dt, elapsed, actions, mouse) {
   if (actions.restart){
@@ -282,7 +297,10 @@ function simulate(dt, elapsed, actions, mouse) {
   if (actions.colour !== null) gun.selectColour(actions.colour);
 
   player.look(mouse.x, mouse.y, PLAYER.lookSensitivity * menu.sensitivity);
+  const wasGrounded = player.onGround;
+  const fallSpeed = -player.velocity.y;
   player.update(dt, input, actions);
+  playMovementSounds(wasGrounded, fallSpeed);
 
    if (!player.dead && player.onGround) {
     const onPlayerPaint = level.surfaces.some((surface) => surface.isPlayerPaintAtWorld(player.position));
