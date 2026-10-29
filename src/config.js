@@ -313,11 +313,19 @@ export const STALKER = {
   fan: [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9], // rad, in preference order
 };
 
-// Level 1 plentiful, level 2 starved, level 3 contested.
+// Level tank sizes, keyed by REGISTRY ID (#155) — the same string a level uses
+// everywhere else (`primer`, `outskirts`, `ascent`, `last-colour`). A numeric
+// key is how this bug happened: `1` looked like "the default" rather than
+// "Outskirts", and every level got Outskirts' 100.
+//
+// A fifth level must add its own entry — `tests/tank-per-level.test.js` walks
+// `LEVELS` and fails if one is missing, so a new level cannot ship with an
+// accidental fallback.
 export const AMMO = {
-  1: 100,
-  2: 60,
-  3: 80,
+  primer: 100,          // tutorial: same as Outskirts, explicitly
+  outskirts: 100,       // plentiful
+  ascent: 60,           // starved — 15 shots, every room tuned against it
+  'last-colour': 80,    // contested
 };
 
 // One enemy class, five configs. Not five systems. (Week 2.)

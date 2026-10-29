@@ -250,7 +250,7 @@ async function loadLevel(id = currentLevelId) {
 
   
 
-  gun = new PaintGun(level.surfaces, 1, level.enemies, scene);
+  gun = new PaintGun(level.surfaces, currentLevelId, level.enemies, scene);
   // Shots land when the projectile arrives, not when fired, so the hit
   // feedback is driven from the impact rather than from tryFire().
   gun.onImpact = (kind) => {

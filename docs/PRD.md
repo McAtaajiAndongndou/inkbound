@@ -53,7 +53,7 @@ The game is submittable when **all of these are true**:
 
 | ID  | Requirement                                                               | Pri    | Cost | Lane    | Status                                                                                                                                                            |
 | --- | ------------------------------------------------------------------------- | ------ | ---- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1  | **One shared tank** across all colours and all uses                       | MUST   | M    | paint   | ✅ Built — all colours share one ammo reserve                                                                                                                     |
+| A1  | **One shared tank** across all colours and all uses                       | MUST   | M    | paint   | ✅ Built — one shared tank per colour, per level, keyed by registry id (#155)                                                                                       |
 | A2  | **Positional refill** — standing in your own paint refills the tank       | MUST   | S    | paint   | ✅ Built — automatic refill while grounded on player paint                                                                                                        |
 | A3  | **Pushback when dry** — firing on empty produces a dry click and no shot  | MUST   | S    | paint   | ✅ Built                                                                                                                                                          |
 | A4  | **Grey slows you** and refills nothing, as a live modifier                | MUST   | S    | core    | ✅ Built — `SURFACE.grey.standSlow` (0.6), applied live in `player.js`                                                                                            |
@@ -113,7 +113,7 @@ The game is submittable when **all of these are true**:
 | --- | ----------------------------------------------------------- | ---- | ---- | ------ | --------------------------------------------------------- |
 | E1  | **The Primer** — tutorial, ends with one Charger and a trap | MUST | M    | levels | ❌ Not built                                              |
 | E2  | **Outskirts** — island-hopping, pillars setpiece, 4 enemies | MUST | M    | levels | ⚠️ Geometry exists, traps and pacing missing              |
-| E3  | **The Ascent** — mountain, terraces and climbs, turrets     | MUST | L    | levels | ❌ Stub                                                   |
+| E3  | **The Ascent** — mountain, terraces and climbs, turrets     | MUST | L    | levels | ⚠️ Stub geometry; per-level tank (60) now correct (#155) |
 | E4  | **Last Colour** — three chambers, waves, Big Arm, Siphon    | MUST | L    | levels | ❌ Stub                                                   |
 | E5  | **Level select** — any level reachable from the pause menu  | MUST | S    | ui     | ✅ Built (#78) — pause-menu list, fed by the one registry |
 | E6  | Encounter gates — exit sealed until the arena is clear      | MUST | —    | levels | ✅ Built                                                  |
