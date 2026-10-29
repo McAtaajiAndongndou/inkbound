@@ -289,3 +289,29 @@ test('killed on the wall, it does not stay stuck to it', () => {
   run(enemy, 10);
   assert.equal(enemy.position.y, y, 'the body should not sink or climb on its own');
 });
+test('a face that is SOLID to it is still a face it can climb, and be knocked along', () => {
+  // Walls are solid to enemies (#014): a level hands its walls over as `walls`,
+  // and the body is held ENEMY_BODY.radius off them. The climb holds the body
+  // only CLIMB.gap off the face, which is inside that radius — so without the
+  // exemption every knockback mid-climb would be refused by the wall it is on.
+  const face = makeFace();
+  const enemy = new Enemy({
+    position: new THREE.Vector3(0, 0, 1),
+    config: ENEMY.wallCrawler,
+    parent: new THREE.Group(),
+    floors: [makeFloor()],
+    blockers: [face],
+    walls: [face],
+  });
+
+  run(enemy, 20);
+  assert.equal(enemy.climbing, true, 'a solid wall must still be climbable');
+
+  // Hit from the side, so the push runs ALONG the face — the direction the
+  // wall test would refuse, because the body never leaves the panel's radius.
+  const before = enemy.position.x;
+  enemy.takeColourHit(PAINT_IDS.red, 1, new THREE.Vector3(enemy.position.x - 4, enemy.position.y, enemy.position.z));
+  run(enemy, 10);
+  assert.ok(enemy.position.x > before + 0.1,
+    `red should carry it along the face, not be refused by it (x ${before} -> ${enemy.position.x})`);
+});

@@ -339,6 +339,7 @@ test('in Level 1 an enemy finds the level walls without being handed them', asyn
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
   const y = islandB.mesh.position.y;
   charger.position.set(0, y, islandB.mesh.position.z + 3);
+  charger.wake();   // island B's arena sleeps until the player lands in it (#012)
 
   tick(charger, [0, y, islandB.mesh.position.z], 5);
 

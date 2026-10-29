@@ -379,11 +379,12 @@ export class Decor {
    * @param {object} options.palette    the level's shared decor palette
    * @param {Array}  [options.hand]     hand-written placements, from the level
    */
-  constructor(parent, { kind, config, palette, hand = [] }) {
+  constructor(parent, { kind, config, palette, hand = [], avoid = [] }) {
     this.parent = parent;
     this.kind = kind;
     this.config = config;
-    this.hand = hand;
+    this.hand = hand;          // hand-placed entries (trees); filtered by `avoid`
+    this.avoid = avoid;        // world rects no prop may occupy (cover blocks, gates)
 
     // Two groups, because the upgrade has to be able to hide one and not the
     // other. `fallback` is always populated; `models` starts empty.
@@ -488,11 +489,22 @@ export class Decor {
    * obstacles, so the deliberate framing the level author chose is never
    * squeezed out by the noise that fills in around it.
    */
+  /** Is this world x/z inside a keep-out rect? */
+  _avoided(x, z) {
+    for (let i = 0; i < this.avoid.length; i++) {
+      const r = this.avoid[i];
+      if (x >= r.xMin && x <= r.xMax && z >= r.zMin && z <= r.zMax) return true;
+    }
+    return false;
+  }
+
   _spots(floors) {
     const { step, spacing, edge, inset, scale, seed } = this.config;
-    const spots = this.hand.map((entry) => ({
-      x: entry.x, y: entry.y, z: entry.z, scale: entry.scale ?? 1, rotY: 0, hand: true,
-    }));
+    const spots = this.hand
+      .filter((entry) => !this._avoided(entry.x, entry.z))
+      .map((entry) => ({
+        x: entry.x, y: entry.y, z: entry.z, scale: entry.scale ?? 1, rotY: 0, hand: true,
+      }));
 
     const random = createRandom(seed);
     const gap2 = spacing * spacing;
@@ -525,6 +537,11 @@ export class Decor {
           const jitteredZ = z + (random() - 0.5) * step;
 
           if (jitteredZ < zMin || jitteredZ > zMax) continue;
+
+          // No prop inside a keep-out rect. Cover blocks and doorways are the
+          // reason: a tree growing through a 3 m block reads as the block being
+          // dumped in the woods, and it hides the route around it.
+          if (this._avoided(x, jitteredZ)) continue;
 
           let crowded = false;
           for (let i = 0; i < spots.length; i++) {

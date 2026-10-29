@@ -29,6 +29,10 @@ async function buildLevel() {
  */
 function arena(level) {
   const [charger, sprayer] = level.enemies;
+  // Island B's arena sleeps until the player lands in it (#012); these tests
+  // place the player there by hand, so wake it the way landing would.
+  charger.wake();
+  sprayer.wake();
   const floor = level.surfaces.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
 
@@ -134,10 +138,12 @@ test('a long chase ends by distance, on open floor — not only at the lip (#76)
   const { charger, y, zMax, zMin } = arena(level);
 
   charger.position.set(0, y, zMax - 0.5);
-  // The player is just past the far lip: out of reach, so nothing but the
-  // budget can stop the charge — but still inside #109's 16 m detection radius,
-  // because since then an enemy that has never seen you does not chase at all.
-  const player = new THREE.Vector3(0, y, zMin - 1);
+  // The player is at the far end, 10.5 m away: further than the 8 m budget, so
+  // nothing but the budget can stop the charge — but still inside #109's 16 m
+  // detection radius, because an enemy that has never seen you does not chase.
+  // In front of the lip, not past it: B's back wall stands on the lip (#012)
+  // and an enemy cannot see through it.
+  const player = new THREE.Vector3(0, y, zMin + 0.5);
 
   const frames = stepUntilOpen(charger, player);
   assert.ok(frames > 0, `no window after ${frames} frames of chasing`);

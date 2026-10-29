@@ -194,6 +194,11 @@ export const PAINT_GRID = {
  */
 export const ENEMY_NAV = {
   maxStepDown: 1.0,
+  // How fast an enemy falls when it is over a floor far below its feet — i.e.
+  // something (knockback, a blue slip) carried it off a ledge. Not a physics
+  // system: enemies have no gravity, and this only runs when the ground under
+  // them is more than `maxStepDown` below, which normal walking never allows.
+  fallSpeed: 18,
 };
 
 // Awareness (#109). The shared substrate from `docs/enemies/algorithms.md`
@@ -268,6 +273,7 @@ export const ENEMY = {
     // enemy here except the Drainer, whose grey comes from eating instead.
     greyRadius: 1.5,
     contactDamage: 10,
+    attackDamage: 10,   // per shot; wired to player.takeDamage in main.js
     windup: 0.6,
     attackRange: 12,
     attackCooldown: 2.5,
@@ -323,6 +329,7 @@ export const ENEMY = {
     climbsGreen: true,
     drainsPaint: false,
     contactDamage: 10,
+    attackDamage: 10,   // same as the Sprayer: one wound-up shot
     windup: 0.6,
     attackRange: 12,
     attackCooldown: 2.5,
@@ -341,6 +348,7 @@ export const ENEMY = {
     // this flag is how the rule is stated, not how the turret is built.
     ignoresStealth: true,
     contactDamage: 0,
+    attackDamage: 12,   // the hardest single shot: it is the positioning tax
     windup: 0.8,
     attackRange: 15,
     attackCooldown: 3,

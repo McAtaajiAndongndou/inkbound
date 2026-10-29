@@ -164,6 +164,13 @@ export class Player {
     let best = null;
     let bestDist = PLAYER.groundProbeRange;
 
+    // Tolerance on the range and the edges. The local-space maths lands an exact
+    // limit at 6.000000000000001 often enough to matter: a floor exactly
+    // `groundProbeRange` away, or a sample exactly on a lip, was rejected while a
+    // raycaster hits it — and a player standing on a lip must get the floor, not
+    // fall through. Matches `SurfaceProbe.down`, which the enemies already use.
+    const EPS = 1e-6;
+
     for (const floor of this.floors) {
       // ray origin and direction (world 0,-1,0) in the floor's local space.
       // One matrix inverse per floor: the direction is just minus the
@@ -178,11 +185,12 @@ export class Player {
       if (this._dirLocal.z >= 0) continue;
 
       const dist = -this._local.z / this._dirLocal.z;   // world units along the ray
-      if (dist < 0 || dist > bestDist) continue;
+      if (dist < 0 || dist > bestDist + EPS) continue;
 
       const hx = this._local.x + this._dirLocal.x * dist;
       const hy = this._local.y + this._dirLocal.y * dist;
-      if (Math.abs(hx) > floor.width * 0.5 || Math.abs(hy) > floor.height * 0.5) continue;
+      if (Math.abs(hx) > floor.width * 0.5 + EPS
+        || Math.abs(hy) > floor.height * 0.5 + EPS) continue;
 
       best = floor;
       bestDist = dist;
