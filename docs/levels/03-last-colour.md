@@ -129,7 +129,8 @@ This is an arena level: 115 m of route and almost all of its time is fighting. *
 - **Question:** *can I fight without room to repaint?*
 - **Space:** 12 × 50 m between 10 m walls. Two pillars, T2's alcove in the west wall, T1's platform beside the Core door, and a **flanking walkway** at 4 m along the east wall.
 - **Enemies:** two turrets and one Charger, no waves (#97). The turrets deny sightlines rather than the path, and the walkway flanks both.
-- **Traps (trap pass):** a **cargo crusher** across the floor lane (cross in the gap or blue-slide under, while the walkway passes beside it) and a **3 m laser grid** across the whole corridor (red bounces over it, and the 4 m walkway passes above it). Both bypasses are tested against the numbers.
+- **Trap (built, polish pass 1):** a **cargo crusher** across the floor lane, x −6 to 2, z 22–24 (`src/levels/crusher.js`). It slams on a fixed 3.6 s rhythm (down 1.2 s, 40 damage), and its amber lamp blinks for 0.7 s before every drop. Three answers: cross in the gap, stand on **blue** and slide under it (the Primer's spike-pit rule: blue means one thing), or take the walkway beside it. Tested in `tests/last-colour-polish.test.js`.
+- **The laser grid is parked** (BACKLOG): the crusher is the trap with a rhythm, and one trap per corridor reads better than two. Its zone stays in the data, marked `planned`.
 - **What you see:** the Siphon and its beacon closing the corridor's end. The goal is never out of frame.
 
 ![The corridor from above](last-colour/frames/corridor-from-above.png)
@@ -188,12 +189,25 @@ This is an arena level: 115 m of route and almost all of its time is fighting. *
 
 ---
 
+## Polish pass 1 (29 Oct 2026)
+
+Pass question: *does it read as a Corrupt Corp facility, and does losing your paint read without words?* Shots: `docs/levels/shots/last-colour-polish-1/`.
+
+- **Mood (#125):** sickly amber haze, fill and sky from `LAST_COLOUR.mood` in `src/config.js`, applied by `src/levels/mood.js` (shared with the Primer).
+- **The Corp prop kit (#56):** procedural, grey only, instanced, no collision, data in the layout's `props` list (`src/levels/prop-kit.js`). Each room is dressed differently: the **hangar** gets crate stacks and jersey barriers (a cargo bay), the **corridor** pipe runs on both walls and a rail on the walkway (a service duct), the **Core** pipes overhead, barriers at the bay mouths and **amber lamps over every bay gate**. No ITHappy models this pass (the licence is still unchecked).
+- **The waves' tell:** the west and east bay lamps blink through wave three's 8 s breath; the north bay's blink with Big Arm's 12 s gate pulse.
+- **Keep-outs (tested):** no prop on a strip or within 1 m of a route point, none blocks a room's view of the beacon, and nothing on an arena floor is over 1.2 m.
+- **The cargo crusher (#33)**, see R2.
+
+![The Core, props and bay lamps](shots/last-colour-polish-1/core-props-overlook.jpg)
+![The crusher on the beat](shots/last-colour-polish-1/corridor-crusher-down.jpg)
+
 ## Dependencies outside the levels lane
 
 1. **#155, tank per level.** Last Colour's 80 ink isn't wired; every level gets 100.
 2. **#156, paintable surfaces readable.** The six balcony climbs and three pockets are the level's whole defence, and in the game they look like the steel around them.
 3. **#99 Big Arm** and **#100 the Siphon**: their spaces are built here, their mechanics are theirs.
-4. **The trap pass** (#101–#105) builds the crusher and laser grid in their marked zones.
+4. **The laser grid** (#33) is parked; the crusher is built (polish pass 1).
 
 ---
 
@@ -220,4 +234,4 @@ And one my own test got wrong: the breath counts from the tick that **sees** wav
 
 ## Deliberately undecided
 
-Trap behaviour, mood (sickly amber interior: #125), the military-base props (#128: they go on these walls and in these bays), turret facing, every combat paint number, Big Arm's combo, and the Siphon's phase timings.
+Turret facing, every combat paint number, Big Arm's combo, and the Siphon's phase timings.

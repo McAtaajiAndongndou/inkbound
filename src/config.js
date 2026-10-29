@@ -276,6 +276,41 @@ export const PRIMER = {
   },
 };
 
+// Last Colour (polish pass 1): the Corp facility's mood, prop kit and crusher.
+export const LAST_COLOUR = {
+  // Sickly amber interior (#125): the haze is the colour of old warning lamps.
+  mood: {
+    horizon: 0x6e5c3c,   // amber haze, dimmed: the far end of a room goes brown
+    zenith:  0x2b2721,
+    void:    0x141210,
+    fogNear: 14,         // clears the TPV camera; the hangar is 38 m deep
+    fogFar:  72,         // the Core's far wall (52 m) is hazy, never gone
+    fillColour: 0xd9a650,
+    fillIntensity: 0.5,
+  },
+  // Props are GREY ONLY: colourless machinery nobody maintains. Colour belongs
+  // to the player; the one exception is the amber warning light (DANGER.amber).
+  props: {
+    crate: 0x5d5f62,
+    barrier: 0x8a8c8f,
+    pipe: 0x46494d,
+    rail: 0x6c6f73,
+    lightOff: 0x4a4430,  // an amber lamp that is not lit
+    blinkRate: 6,        // rad/s: the warning lamps' on/off rhythm
+    maxFloorHeight: 1.2, // no prop on an arena floor hides a Drainer at 20 m
+  },
+  // The cargo crusher in the corridor (#33): a fixed rhythm, read off the lamp.
+  crusher: {
+    period: 3.6,         // seconds per cycle
+    downFor: 1.2,        // seconds of each cycle the head is down (the beat)
+    warnFor: 0.7,        // seconds before the drop the lamp blinks (the tell)
+    damage: 40,          // a hard hit, not a kill: three beats from full
+    cooldown: 1.0,
+    headHeight: 2.4,     // the head's own height; it rises to the box's top
+    hurtHeight: 2.2,     // the hurting region, from the floor up
+  },
+};
+
 export const PAINT_GUN = {
   range: 30,
   radius: 1.4,

@@ -133,3 +133,9 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **The Primer has a mood** (`PRIMER.mood`), from a shared `src/levels/mood.js`. Outskirts still uses its own copy (parked).
 - **Dressing is layout data** (`kind: 'crate' | 'board'` solids, `markings`), so the layout tests can prove it blocks nothing. Lane markings are chalk, never paint.
 - **Cut to Parked:** a fourth free-play toy, and any controls list or extra signage.
+
+## 2026-10-29 — Last Colour, polish pass 1
+
+- **The cargo crusher is built; the laser grid is cut** (BACKLOG Parked). The crusher runs a fixed rhythm with an amber lamp as its tell, and **blue on the floor slides under it**, the same rule as the Primer's spike pit, so blue means "slide past the hazard" everywhere. Numbers in `LAST_COLOUR.crusher`.
+- **Props are layout data, built procedurally, grey only, instanced and without collision** (`prop-kit.js`). Amber is the one colour, and it means warning: the lamps over the bay gates blink while a wave's breath counts down.
+- **Mood numbers live in `LAST_COLOUR.mood`**; `src/levels/mood.js` is shared with the Primer (#177); the two copies were identical at merge.

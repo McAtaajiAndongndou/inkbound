@@ -32,6 +32,9 @@ Ideas, playtest findings and parked work. **Check triage status before building 
 - **Primer: a fourth free-play toy (the gap)** — its own design doc says it comes after a playtest (polish pass 1).
 - **Primer: a controls list or extra signage** — the design teaches by room, not by text; the doc refuses them (polish pass 1).
 - **Outskirts onto `src/levels/mood.js`** — the Primer's shared mood helper repeats Outskirts' sky/fog/fill; fold Outskirts onto it once its polish branch is merged.
+- **Last Colour laser grid (#33)** — cut in polish pass 1: the crusher is the corridor's trap with a rhythm; two traps in one 50 m corridor muddy both. Zone kept in the layout as `planned`.
+- **Big Arm (#99) and the Siphon phases (#100)** — not in polish pass 1; they need their own budget. Open for Renda: fund #100, or a cheap stand-in ending (the Siphon greys out and its beacon dies as you reach it).
+- **ITHappy Military Free models for Last Colour** — not this pass: the licence is unchecked in ASSETS.md, and the procedural kit already reads as grey machinery.
 
 ---
 
