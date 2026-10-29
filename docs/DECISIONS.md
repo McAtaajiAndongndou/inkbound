@@ -139,3 +139,12 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **The cargo crusher is built; the laser grid is cut** (BACKLOG Parked). The crusher runs a fixed rhythm with an amber lamp as its tell, and **blue on the floor slides under it**, the same rule as the Primer's spike pit, so blue means "slide past the hazard" everywhere. Numbers in `LAST_COLOUR.crusher`.
 - **Props are layout data, built procedurally, grey only, instanced and without collision** (`prop-kit.js`). Amber is the one colour, and it means warning: the lamps over the bay gates blink while a wave's breath counts down.
 - **Mood numbers live in `LAST_COLOUR.mood`**; `src/levels/mood.js` is shared with the Primer (#177); the two copies were identical at merge.
+
+## 2026-10-30 — mission intros (Renda + Moses)
+
+- **Each mission opens with a mission intro** (`docs/mission-intro.md`): at most 6 s of camera over the still-grey level, one eased move from the goal to the player's spawn view, while a title card types out level, location, day and time, and objective. Any fresh key or click skips. This **narrows** the out-of-scope "cutscenes or exposition walls": the intro has no characters, no dialogue and no controls text, so the reasons for that cut still hold.
+- **Why:** the campaign had no sense of place or goal before the first step, and the marking bands reward the grey-to-colour transition. Showing the level grey before the player paints it is that transition's "before" picture.
+- **The Primer has no camera move.** Its briefing still (#111) carries the same title card instead, so the tutorial still starts moving inside 8 s.
+- **It plays on a new mission, not on a restart.** R after a loss, and restart from the pause menu, go straight to play (CoD does not replay an intro on a retry).
+- **The intro is not play time:** the scorecard clock and dry time start when control is handed over. The simulation is paused under it exactly as under the menu.
+- **Parked:** a mission outro over the level as painted, voice, and multi-shot cameras. The outro needs its own entry.

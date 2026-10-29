@@ -59,6 +59,12 @@ export class Briefing {
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', 'Briefing');
     el.innerHTML = `
+      <div class="intro-card briefing-card hidden">
+        <h1 class="intro-name"></h1>
+        <p class="intro-location"></p>
+        <p class="intro-when"></p>
+        <p class="intro-objective"></p>
+      </div>
       <figure class="briefing-frame">
         <img class="briefing-still" src="${BRIEFING_IMAGE}" alt="The sergeant briefs you before the course.">
         <figcaption class="briefing-comms">
@@ -93,6 +99,20 @@ export class Briefing {
 
   get open() {
     return !this.el.classList.contains('hidden');
+  }
+
+  /**
+   * The Primer's title card (G4). The tutorial has no mission intro, so its
+   * still carries the card every other level gets from the intro.
+   */
+  setCard(card) {
+    const el = this.el.querySelector('.briefing-card');
+    el.classList.toggle('hidden', !card);
+    if (!card) return;
+    el.querySelector('.intro-name').textContent = card.name;
+    el.querySelector('.intro-location').textContent = card.location;
+    el.querySelector('.intro-when').textContent = card.when;
+    el.querySelector('.intro-objective').textContent = card.objective;
   }
 
   show() {

@@ -18,7 +18,7 @@ Corrupt Corp learned to siphon colour and joy out of the world and sell it back 
 
 You are a new rebel carrying a prototype paint gun. Colour starves their machines. A sergeant briefs you, runs you through a training course to prove you are ready, and sends you out: the forest outskirts, up the mountain, and finally into the base where the siphon still runs.
 
-Told through the environment and the sergeant's lines — one briefing still, then one line per level. No cutscenes, no exposition walls.
+Told through the environment and the sergeant's lines — one briefing still, then one line per level. Each mission opens with a short mission intro: the camera crosses the grey level from the goal to you while a title card says where you are and why (`docs/mission-intro.md`). No cutscenes with characters, no exposition walls.
 
 ### The Call of Duty layer
 

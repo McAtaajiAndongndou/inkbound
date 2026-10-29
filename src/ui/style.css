@@ -724,3 +724,59 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
   #streak.full #streak-fill { animation: none; box-shadow: 0 0 6px 1px rgba(255, 255, 255, .7); }
 }
+
+/* Mission intro (G4, docs/mission-intro.md). The title card, bottom-left, over
+   the camera move — CoD's mission card. Above the HUD, below the pause menu
+   (15). Off-white on a dark band: never amber (danger) or telegraph yellow.
+   The fade matches MISSION_INTRO.fadeOut in config.js. */
+#mission-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+body.in-intro #hud { visibility: hidden; }
+#mission-intro .intro-card {
+  position: absolute;
+  left: max(16px, 5vw);
+  bottom: 12vh;
+  transition: opacity .4s ease-in;
+}
+#mission-intro.leaving .intro-card,
+#mission-intro.leaving .intro-hint { opacity: 0; transition: opacity .4s ease-in; }
+.intro-card {
+  max-width: calc(100% - 32px);
+  padding: 1.6vh 2.4vh 1.8vh;
+  border-left: 3px solid #4ee08a;
+  background: rgba(10, 10, 16, .72);
+  color: var(--ink-fg);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .6);
+}
+.intro-card p { margin: .3em 0 0; min-height: 1.3em; }
+.intro-name {
+  margin: 0;
+  min-height: 1.15em;
+  font-size: clamp(26px, 5vh, 56px);
+  font-weight: 800;
+  letter-spacing: .06em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+.intro-location { font-size: clamp(15px, 2.2vh, 24px); font-weight: 600; }
+.intro-when {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: clamp(12px, 1.6vh, 18px);
+  letter-spacing: .08em;
+  color: var(--ink-dim);
+}
+.intro-objective { font-size: clamp(15px, 2.2vh, 24px); font-weight: 600; }
+.intro-hint {
+  position: absolute;
+  right: max(16px, 4vw);
+  bottom: 4vh;
+  margin: 0;
+  font-size: clamp(12px, 1.5vh, 16px);
+  color: var(--ink-dim);
+}
+/* The Primer's still carries its card above the frame (no intro there). */
+.briefing-card { width: min(1100px, 100%, 140vh); box-sizing: border-box; }

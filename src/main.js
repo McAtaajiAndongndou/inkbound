@@ -14,7 +14,7 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER, PAINT_GUN, ANIM, DRY_OUT, SUBMERGE, PAINTSTREAK } from "./config.js";
+import { PLAYER, PAINT_GUN, ANIM, DRY_OUT, SUBMERGE, PAINTSTREAK, MISSION_INTRO } from "./config.js";
 import { Paintstreak } from "./paint/paintstreak.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -303,6 +303,28 @@ const menu = new Menu(document.body, {
 
 const clock = new THREE.Clock();
 
+// Mission intro (G4). The menu runs the timeline; this moves the camera. The
+// END of the move is wherever the rig just put the play camera, so the intro
+// lands on it exactly and handover has no cut. Reduced motion: no move, the
+// card plays over the play camera.
+const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+const introPos = new THREE.Vector3();
+const introTarget = new THREE.Vector3();
+const introEnd = new THREE.Vector3();
+
+function applyIntroCamera() {
+  const from = menu.intro.from;
+  if (!from || reducedMotion?.matches) return;
+  const t = menu.intro.progress;
+  const cam = rig.camera;
+  // Where the play camera looks: 12 m ahead, the rig's own look distance.
+  cam.getWorldDirection(introEnd).multiplyScalar(12).add(cam.position);
+  introTarget.fromArray(from.target).lerp(introEnd, t);
+  introPos.fromArray(from.pos).lerp(cam.position, t);
+  cam.position.copy(introPos);
+  cam.lookAt(introTarget);
+}
+
 // #113 jump and land, read off the player's own state rather than hooked into
 // player.js (core lane). A jump is the vertical speed snapping up to at least
 // jumpSpeed in one step — ground, coyote, wall hop and a red bounce all count.
@@ -419,7 +441,8 @@ function simulate(dt, elapsed, actions, mouse) {
 function animate() {
   requestAnimationFrame(animate);
 
-  const dt = Math.min(clock.getDelta(), 0.05); // clamp so a stall cannot teleport you
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.05); // clamp so a stall cannot teleport you
   const elapsed = clock.elapsedTime;
 
   // Always drain input, so keys pressed while paused do not fire on resume.
@@ -433,7 +456,16 @@ function animate() {
     simulate(dt, elapsed, actions, mouse);
   }
 
+  // The intro waits under the pause menu (it checks), like the briefing. It
+  // runs on real time, not the clamped step, so a slow machine still gets
+  // control inside MISSION_INTRO.cap; the shorter clamp only stops one long
+  // frame (the first, compiling shaders) from skipping the start.
+  menu.intro.update(Math.min(rawDt, MISSION_INTRO.frameClamp));
+  const intro = menu.intro.open;
+  document.body.classList.toggle("in-intro", intro);
+
   rig.update(player,dt);
+  if (intro) applyIntroCamera();
   player.mesh.visible = !rig.firstPerson;
 
 
@@ -455,6 +487,7 @@ function animate() {
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, w, h);
   renderer.render(scene, rig.camera);
+  if (intro) return; // no minimap under the intro: the HUD is hidden too
 
   // --- minimap, bottom-right, orthographic (Viewing rubric) ---
   // Two things have to come off for this pass, and both were needed:

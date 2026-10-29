@@ -48,7 +48,7 @@ Deliberately **not** building these. If someone proposes one, point them at the 
 - No jetpack, no vehicles, no hub level
 - No two-of-three loadout in normal play (it is the hard mode)
 - No health bars on enemies
-- No cutscenes or exposition walls
+- No cutscenes or exposition walls. The one exception is a ≤6 s, skippable mission intro with no characters (`docs/mission-intro.md`)
 
 ---
 

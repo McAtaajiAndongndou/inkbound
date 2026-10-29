@@ -780,3 +780,16 @@ export const PAINTSTREAK = {
   stunTime: 2.5,             // s an enemy in the zone stands still and cannot attack
   stunColour: DANGER.amber,  // the one danger amber (#126), not a second value
 };
+
+// ---------------------------------------------------------------------------
+// Mission intro (docs/mission-intro.md, PRD G4). One eased camera move from the
+// level's goal back to the player's own view while the title card types out.
+// The camera lands ON the play camera, so handover has no cut.
+export const MISSION_INTRO = {
+  moveTime: 5,       // s, goal → player
+  fadeOut: 0.4,      // s, the card fades as control lands (matches style.css)
+  cap: 6,            // s, never longer than this from load to control
+  typeSpeed: 40,     // characters per second
+  linePause: 0.15,   // s between title-card lines
+  frameClamp: 0.1,   // s, the longest frame the intro counts in full (real time, not the game's 0.05)
+};
