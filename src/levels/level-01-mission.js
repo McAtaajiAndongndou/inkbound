@@ -627,7 +627,8 @@ export class Level01 extends LevelBase {
     // The vent from the landing: the lane it fills and the pocket behind the block.
     { name: 'vent', label: 'Island C — the vent', position: [6, 3.7, -14], target: [12, 0.5, -21], fog: true },
     // The Ledge looking back the way you came: the frame the decor reveal is for.
-    { name: 'ledge', label: 'The Ledge — looking back', position: [0, 14.5, -38.5], target: [0, 0, -20], fog: true },
+    // Aimed low enough that gate C, closed in the tests, sits past halfway.
+    { name: 'ledge', label: 'The Ledge — looking back', position: [0, 14.5, -38.5], target: [0, 0, -24], fog: true },
   ];
 
   async load() {
