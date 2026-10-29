@@ -156,3 +156,12 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **The leak:** each phase spills a pool of its colour at the Siphon's foot. It is a refill (player paint) and a second tell, so the exam tests knowledge, not ammunition.
 - **The win moved from the intake volume to the Siphon** (`LayoutLevel.scriptedWin`). The volume stays as the objective marker.
 - **Parked:** arms that deal contact damage — it would punish standing still to aim, which is the one thing the exam asks for. Add it only if a playtest finds phase two too easy.
+
+## 2026-10-30 — Big Arm is in (#99)
+
+- **Renda: build Big Arm**, dying to **three combos, one per phase** (blue freeze → green pin → red knockdown), over the alternative of one combo with timed phases. Built in `src/enemies/boss.js` from the levels lane **with Lethabo's agreement** (#99 gives the boss behaviour to the enemy layer).
+- **Damage does not kill it.** `ENEMY.bigArm.hp` counts combos left; plain hits, traps and falls do nothing. Every step of the combo is an effect every enemy already has, so the boss teaches no new verb. A missed window breaks the chain (the frost melts, the shackles snap).
+- **The one exception to "one enemy class, many configs":** Big Arm is a subclass of `Enemy`, because its hit rules (a combo, not hp) cannot be a config. `tests/config.test.js` now names it, so any other new class or type still fails the test and needs an entry here.
+- **The slam hits only inside its radius.** `main.js` wires `onAttack` to damage the player unconditionally (right for a shot), so the boss checks its own reach before calling it. **The slam greys floor at its own height only:** the 5 m balconies are out of reach, so raised paint stays safe paint.
+- **Its two Drainers exist from load**, dormant at the back of the bay, because the paint gun takes its target list once. A `summon` wake rule nothing satisfies keeps them asleep until phase 2 (or a hit).
+- **Big Arm and its Drainers are the Core's waves 4 and 5** (room R3), so "the Core is clear", which the Siphon waits for, includes them without a new rule.
