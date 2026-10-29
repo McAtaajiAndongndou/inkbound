@@ -6,6 +6,24 @@ const HINTS = {
   Grip: 'Grip: climb walls',
 };
 
+// End screens (#81). Keyed by the level ids in ui/menu.js LEVELS, so a marker
+// is told WHICH level they finished. An unknown id falls back to the generic
+// wording rather than a blank title.
+const END_LEVELS = {
+  primer: { name: 'The Primer', win: 'PRIMER COMPLETE' },
+  outskirts: { name: 'Outskirts', win: 'OUTSKIRTS CLEARED' },
+  ascent: { name: 'The Ascent', win: 'ASCENT CLEARED' },
+  'last-colour': { name: 'Last Colour', win: 'CORE BREACHED' },
+};
+
+// The two ways to lose: health gone, or paint gone (the L2 "run dry" failure).
+const END_LOSE = {
+  dead: { title: 'DOWN', detail: (name) => `You were taken out on ${name}.` },
+  dry: { title: 'RUN DRY', detail: (name) => `Your paint tank ran empty on ${name}.` },
+};
+
+const RESTART_HINT = '<b>R</b> restart level · <b>Esc</b> menu';
+
 /**
  * HUD. DOM-based, which is cheap and does not cost us a draw call.
  * Ammo counter, current colour, and a live readout of what the player is
@@ -41,8 +59,12 @@ export class Hud {
         <div id="standing-hint"></div>
         <div id="coverage">Coverage: 0%</div>
       </div>
-      <div id="end-win" class="end hidden"><h1>EXTRACTED</h1><p>Press R to redeploy</p></div>
-      <div id="end-lose" class="end hidden"><h1>DOWN</h1><p>Press R to redeploy</p></div>
+      <div id="end-win" class="end hidden" role="status">
+        <h1>EXTRACTED</h1><p class="end-detail"></p><p class="end-restart">${RESTART_HINT}</p>
+      </div>
+      <div id="end-lose" class="end hidden" role="status">
+        <h1>DOWN</h1><p class="end-detail"></p><p class="end-restart">${RESTART_HINT}</p>
+      </div>
     `;
 
     this.ammoFill = root.querySelector('#ammo-fill');
@@ -81,7 +103,27 @@ export class Hud {
     el.classList.toggle('kill', kill);
   }
 
-  showEnd(kind) {
+  /**
+   * @param {'win' | 'lose'} kind
+   * @param {object} [opts]
+   * @param {string} [opts.level]            a LEVELS id from ui/menu.js
+   * @param {'dead' | 'dry'} [opts.reason]   why the player lost (default dead)
+   */
+  showEnd(kind, { level, reason = 'dead' } = {}) {
+    const info = END_LEVELS[level];
+    const name = info?.name ?? 'this level';
+    const el = kind === 'win' ? this.endWin : this.endLose;
+
+    if (kind === 'win') {
+      el.querySelector('h1').textContent = info?.win ?? 'EXTRACTED';
+      el.querySelector('.end-detail').textContent = info ? `${info.name} complete.` : '';
+    } else {
+      const lose = END_LOSE[reason] ?? END_LOSE.dead;
+      el.querySelector('h1').textContent = lose.title;
+      el.querySelector('.end-detail').textContent = lose.detail(name);
+    }
+    el.classList.toggle('dry', kind === 'lose' && reason === 'dry');
+
     this.endWin.classList.toggle('hidden', kind !== 'win');
     this.endLose.classList.toggle('hidden', kind !== 'lose');
   }

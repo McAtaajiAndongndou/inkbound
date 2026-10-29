@@ -172,6 +172,21 @@ canvas {
 .end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; background: rgba(15,15,22,.75); }
 .end h1 { margin: 0 0 8px; font-size: 48px; letter-spacing: .05em; }
 .end p { margin: 0; color: var(--ink-dim); }
+/* #81: which level, why you lost, and how to restart without a refresh. */
+.end .end-detail { margin-bottom: 18px; font-size: 16px; color: var(--ink-fg); }
+.end .end-detail:empty { display: none; }
+.end .end-restart { font-size: 14px; }
+.end .end-restart b {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .12);
+  color: var(--ink-fg);
+}
+#end-win h1 { color: #4ee08a; }
+#end-lose h1 { color: #ff4d5a; }
+#end-lose.dry h1 { color: #3aa7ff; }
 /* Hitmarker: four ticks around the crosshair. White on hit, red and bigger on kill. */
 #hitmarker {
   position: absolute;
