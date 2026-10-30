@@ -32,6 +32,10 @@ export class CameraRig {
     this._offset = new THREE.Vector3();
     this._target = new THREE.Vector3();
 
+    // 0 = standing, 1 = fully submerged. Eased in update(), so the submerge
+    // drop and aim dip glide instead of snapping (issue 079).
+    this.submergeBlend = 0;
+
     // Polish audit P1-2: screen shake as trauma. Events add it; see feel.js.
     this.trauma = new Trauma();
   }
@@ -70,6 +74,10 @@ export class CameraRig {
 
     const { position, yaw, pitch } = player;
 
+    const submergeTarget = player.submerged ? 1 : 0;
+    const blendStep = Math.min(1, SUBMERGE.cameraBlendSpeed * dt);
+    this.submergeBlend += (submergeTarget - this.submergeBlend) * blendStep;
+
     if (this.firstPerson) {
       this.camera.position.set(
         position.x,
@@ -97,18 +105,14 @@ export class CameraRig {
       // the paint rather than over it. Applied AFTER the height clamp: a
       // submerged player's feet are the surface, and "in the surface" means
       // below it, deliberately. The clamp is for the standing case; this is
-      // the exception that proves the rule.
-      if (player.submerged) {
-        this.camera.position.y -= SUBMERGE.cameraOffset;
-      }
+      // the exception that proves the rule. Scaled by the blend (issue 079).
+      this.camera.position.y -= SUBMERGE.cameraOffset * this.submergeBlend;
     }
 
     // #108 — while submerged, tilt the aim point down a little, so the whole
     // frame reads as "crouched". The camera does not just lower; it aims
-    // along a lower angle too.
-    const lookHeight = player.submerged
-      ? PLAYER.eyeHeight - SUBMERGE.maxAngle
-      : PLAYER.eyeHeight;
+    // along a lower angle too. Scaled by the blend (issue 079).
+    const lookHeight = PLAYER.eyeHeight - SUBMERGE.maxAngle * this.submergeBlend;
     this._target.set(
       position.x - Math.sin(yaw) * 12,
       position.y + lookHeight + Math.tan(pitch) * 12,

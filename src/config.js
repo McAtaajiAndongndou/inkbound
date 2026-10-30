@@ -1206,7 +1206,12 @@ export const SUBMERGE = {
   speedMultiplier: 1.4,      // faster than normal walking — the reward for committing
   refillMultiplier: 4,       // 4× the base PAINT_GUN.refillRate: 32/s, a full tank in 3.1 s (polish audit; was 3)
   cameraOffset: 0.9,         // metres the TPV camera drops, so you read as "in" the paint
-  maxAngle: 1.1,             // radians — how far the camera tilts down while submerged
+  maxAngle: 1.1,             // metres the aim point dips while submerged (camera-rig.js; not radians)
+  // Loop pass step 1 (issue 079): the drop and dip glide in and out instead of
+  // cutting on the frame Shift goes down. Share of the remaining gap closed per
+  // second, like CAMERA.adsTransitionSpeed: ~a quarter on the first frame at
+  // 60 fps, ~95% by 0.2 s.
+  cameraBlendSpeed: 14,
 };
 // Submerged form (polish audit, Q1; shaders/avatar.js). The body squashes into
 // the paint, a blob of its colour marks the spot, rings ripple in and out.
