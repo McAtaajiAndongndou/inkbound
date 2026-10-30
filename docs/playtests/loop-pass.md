@@ -25,8 +25,9 @@ Ordered by Renda's sharpest complaint first, then by the quality plan's root cau
 | 4a | Submerged refill 32/s → 40/s (`SUBMERGE.refillMultiplier` 4 → 5): a full tank in 2.5 s | §3.1 | config | Does a dive become your reload? | **Keep** (30 Oct) |
 | 4b | Swim speed 1.4× → 1.9× (`SUBMERGE.speedMultiplier`) | §3.4 | config | Do you swim to get places? | **Keep** (30 Oct) |
 | 5 | World grey slow 0.6 → 0.85 | §3.5 | config | Does the first minute still drag? Do you still want to paint ahead? | **Keep** (30 Oct); the slow isn't felt at all → #244 |
-| 6 | Death splat 1.8 m → 2.5 m | §3.1 | config | Do you swim into kills to refill? | |
-| 7 | Hip spread 0.025 → 0.06, ADS 0.005 → 0.004 | §3.2 | config | Does hip-fire feel like painting and aiming feel like shooting? | |
+| 6 | Death splat 1.8 m → 2.5 m | §3.1 | config | Do you swim into kills to refill? | **Keep** (30 Oct) |
+| 7 | Hip spread 0.025 → 0.06 (`PAINT_GUN.hipSpread`) | §3.2 | config | Does hip-fire feel like painting and aiming feel like shooting? | |
+| 7b | ADS spread 0.005 → 0.004: only if step 7 leaves aiming feeling loose (a 20% change to an already tight number) | §3.2 | config | | |
 | 8 | Field of view 70 → 78 | §5 | config | More of the fight on screen, or just fish-eye? | |
 | 9 | Whole-camera position damping | §5 | code (core) | Does the camera still feel stiff? | |
 
@@ -78,3 +79,12 @@ Step 4 changed two numbers (refill and swim speed). One change at a time, so it'
 - **Renda's line:** "I don't feel the difference. This entire time I didn't notice that I was slower on grey compared to on green. It felt the same."
 - **Diagnosis: feedback, not tuning.** The slow is applied (4.2 m/s on grey before this step, 7 on paint), but nothing tells you: the only cue is a tiny `sludge` footstep. A speed change you can't perceive does no design work. Filed as #244 (camera, sound, footfalls across core, ui and shaders).
 - **Verdict: keep 0.85.** The harsher number only cost pace while it can't be felt; retune once #244 lands. Recorded in `docs/DECISIONS.md` (changes #74) on the step's branch.
+
+### Step 6 — death splat 1.8 m → 2.5 m
+
+- **Branch:** `proto/death-splat-2-5` (a5f7f8c), stacked on 1–5.
+- **Verdict: keep.**
+
+### Step 7 split
+
+Step 7 changed two numbers. Hip spread is the real change (×2.4); the ADS tweak is 20% of a number that's already tight, so it's 7b, played only if step 7 makes aiming feel loose by comparison.
