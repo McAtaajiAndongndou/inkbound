@@ -18,8 +18,8 @@ Ordered by Renda's sharpest complaint first, then by the quality plan's root cau
 
 | # | Change | Plan § | Type | What to feel for | Verdict |
 |---|---|---|---|---|---|
-| 1 | **Submerge camera glides** in and out instead of snapping. Same drop as `main`, only the transition changes | §3.4 | code (core) | Does Shift still feel jarring? Can you keep an enemy on screen while you dive? | *to play* |
-| 2 | Submerge drop size: `cameraOffset` 0.9 → 0.35, aim dip `maxAngle` 1.1 → 0.1 | §3.4 | config | Only if step 1 still loses the horizon. Does it still read as "in the paint"? | |
+| 1 | **Submerge camera glides** in and out instead of snapping. Same drop as `main`, only the transition changes | §3.4 | code (core) | Does Shift still feel jarring? Can you keep an enemy on screen while you dive? | **Keep** (30 Oct) |
+| 2 | Submerge drop size: `cameraOffset` 0.9 → 0.35, aim dip `maxAngle` 1.1 → 0.1 | §3.4 | config | Only if step 1 still loses the horizon. Does it still read as "in the paint"? | **Skipped**: step 1 fixed it |
 | 3 | Shot cost 4 → 2 (tank lasts ~7 s of trigger, not ~3.5 s) | §3.1 | config | Do you finish a fight before running dry? Does the tank still matter? | |
 | 4 | Submerged refill 32/s → 40/s and swim speed 1.4× → 1.9× | §3.1, §3.4 | config | Does a dive become your reload? Do you swim to get places? | |
 | 5 | World grey slow 0.6 → 0.85 | §3.5 | config | Does the first minute still drag? Do you still want to paint ahead? | |
@@ -37,6 +37,11 @@ Ordered by Renda's sharpest complaint first, then by the quality plan's root cau
 ### Step 1 — submerge camera glides
 
 - **Change:** `SUBMERGE.cameraBlendSpeed` (new) — the rig moves the submerge drop and aim dip a share of the way each frame, the same way the ADS zoom already eases. At 14/s it covers about a quarter of the way on the first frame and ~95% by 0.2 s.
-- **Renda's line (`main`):**
-- **Renda's line (branch):**
-- **Verdict:**
+- **Branch:** `proto/submerge-camera-glide` (6af9877), cut from `main`.
+- **Renda's line:** "The camera for swimming is working … this all works, but the animation still needs work."
+- **Verdict: keep.** Core lane, so it goes to `main` through Ozuko's review of #231.
+- **Follow-up:** the body's dive animation is out of this step's scope; filed for Shaders as #239 (§6.3 A7).
+
+### Step 2: skipped
+
+It only applied if step 1 still lost the horizon, and Renda says the swimming camera now works.
