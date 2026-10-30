@@ -134,3 +134,12 @@ The builder is `src/levels/dressing.js`. Each item is a box with a kind, and eac
 - **Skyline.** The same blocks and stacks as Last Colour, placed past the tower (z −106 to −175) and wide of the axis, so the beacon is still the thing you look at. Positions are in `L1.dressing`.
 - **The billboard.** A 12 × 6 m Corp board with the pill and stripes on it, fallen back on the east forest shelf beside island C, on one held leg and one buckled one. Its pieces are rotated as one thing about the board's foot. A new `decorAvoid` rect keeps the backdrop forest from growing through it. It is out of the walk: nothing sits over a non-shelf floor (tested), and it is across 8 m of lethal lake.
 - **Budget:** +5 draw calls, and +0.3 ms at most on best-of-runs.
+
+### The Ascent's story clusters (step 5)
+
+- **R0:** the checkpoint shed stands on stilts off the trailhead's south lip, not on it, because a 2.5 m shed on the floor would break the 1.2 m rule. Beside it are a barrier arm left raised, and concrete anchors at the haul cables' feet (tested).
+- **R2:** a drill rig on the scree below Terrace One's east edge, and core-sample crates in Terrace One's corner, kept under 1.2 m.
+- **R4:** the survey mast lies across the high deck.
+- **R7:** a torn grey flag with a grey-violet stripe stands by the lift tower.
+- **A new test rule: thin things.** A post, a leg, a flagpole or a raised arm, where two of its three sizes are 0.3 m or less, cannot hide anything, so it may stand taller than 1.2 m. Tilted items are now checked by their real (world) extent.
+- **Budget:** +9 draw calls at most for the whole Ascent pass, and +0.2 to +0.6 ms on best-of-runs, measured A/B.

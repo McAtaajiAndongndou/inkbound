@@ -589,6 +589,8 @@ export const DRESSING = {
     rail:     { colour: LAST_COLOUR.props.rail, shape: 'round', look: 'toon' },
     bar:      { colour: LAST_COLOUR.props.pipe, shape: 'round', look: 'toon' },
     grate:    { colour: 0x2a2c2e, shape: 'box', look: 'toon' },
+    concrete: { colour: GATE.concrete, shape: 'box', look: 'toon' },
+    flag:     { colour: 0x7d7f82, shape: 'box', look: 'toon' },       // a Corp flag, bleached grey
   },
   // At most this many extra draw calls per level (the doc's budget).
   maxDrawCalls: 15,
