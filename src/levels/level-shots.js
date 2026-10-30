@@ -23,6 +23,7 @@
 // player height; from 30 m up the whole route renders fully fogged. Player-eye
 // shots keep it, because there the fog is part of what is being judged.
 import * as THREE from 'three';
+import { spawnAim } from './level-base.js';
 
 /** Eye height for the "what the player sees" shots. Close to the third-person rig. */
 export const EYE_HEIGHT = 1.7;
@@ -71,12 +72,17 @@ export function autoShots(level) {
   ahead.normalize();
 
   const eye = spawn.clone().setY(spawn.y + EYE_HEIGHT);
+  // The level's own first-frame aim when it has one (spawnAim, as main.js
+  // applies it), so this shot is the frame the player really starts on.
+  const look = level.spawnLook
+    ? (({ yaw, pitch }) => new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)))(spawnAim(spawn, level.spawnLook))
+    : ahead;
   const shots = [
     {
       name: 'spawn',
       label: 'Spawn — player eye',
       position: v(eye),
-      target: v(eye.clone().addScaledVector(ahead, 10)),
+      target: v(eye.clone().addScaledVector(look, 10)),
     },
   ];
 

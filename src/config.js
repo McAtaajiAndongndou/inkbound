@@ -153,6 +153,24 @@ export const HEALTH = {
   hurtCooldown: 0.8,  // seconds of invulnerability after a hit, so contact is not 60 hits/sec
   contactRange: 1.0,  // enemy centre within this (horizontal) distance of the player = touching
   contactHeight: 1.7, // ...and within this vertical distance
+  // #186 — enemies are solid, so a big body holds you at PLAYER.radius + its
+  // bodyRadius. The touch range per enemy is max(contactRange, that + this), so
+  // pressing against Big Arm (1.0 m apart) is not decided by float error.
+  contactSlack: 0.2,
+};
+
+// An enemy's body (#186, #187): a vertical cylinder. Solid to the player (the
+// player is pushed out, the enemy is not moved) and to other enemies. `chest`
+// is the height an enemy's wall test is made at. A config may override the
+// radius with `bodyRadius` (Big Arm). Was a local constant in enemy.js.
+export const ENEMY_BODY = { radius: 0.4, chest: 0.9 };
+
+// Enemies push each other apart (#187), once a frame after they have all moved,
+// so a wave reads as a crowd you can count rather than one stacked silhouette.
+// Horizontal circles of each body's radius; each takes half the overlap unless
+// the other is immovable (frozen, pinned, sleeping, Big Arm).
+export const ENEMY_SEPARATION = {
+  heightTolerance: 1.2,   // m; pairs further apart vertically don't touch
 };
 
 // #126 — ONE danger colour for the whole game (DECISIONS.md): attack
@@ -161,6 +179,34 @@ export const HEALTH = {
 // and nothing dangerous ever shares a colour with something helpful.
 export const DANGER = {
   amber: 0xffe600,
+};
+
+// "Here", never "this hurts" (DECISIONS, the Ascent 30 Oct; polish audit P0-5):
+// the cold-white Corp work light. Goal beacons, floodlights and an opened
+// gate's light all wear it, so nothing that only marks a place borrows amber
+// (danger) or a paint colour (a physics rule).
+export const MARKER = {
+  white: 0xe6eeff,
+};
+
+// The encounter gates' look, Outskirts' and the layout levels' alike (polish
+// audit P0-5). The field was PAINT.red's family: the biggest red object in
+// Outskirts, teaching "red is a wall" in a game where red is bounce. It is now
+// the Corp's grey-violet: not a paint colour, and not amber either, because a
+// field blocks you and never hurts you. Opening turns the lock bar white
+// ("the way is here"), not paint green (which means climb).
+export const GATE = {
+  field: 0x8579a8,     // Corp grey-violet: hostile, artificial, none of the paint hues
+  lock: 0x6d6290,      // the lock bar over a sealed door: the field's colour, darker, so it reads solid
+  open: MARKER.white,  // the lock bar once the arena is clear
+  concrete: 0x6b6f73,  // Outskirts' gate frames: the Corp's deader grey
+  fieldOpacity: 0.42,
+  fieldScroll: 0.55,   // texture drift per second, so a live barrier looks alive
+  fieldFade: 1.8,      // opacity per second once the arena clears
+  barSink: 1.5,        // m/s the lock bar sinks into its lintel once the field is gone
+  barDrop: 1.2,        // m it sinks: buried in the lintel, out of the Ledge's look-back frame
+  layoutOpacity: 0.35, // the layout levels' field, and the pulse round it while a breath counts down
+  layoutPulse: 0.3,
 };
 
 // #156 — how a SEALED (unpaintable) face reads before anyone shoots it.
@@ -193,6 +239,14 @@ export const TRAP = {
   amber: DANGER.amber,
   bed: 0x1c1a17,       // the dark recess, so the spikes read against the floor
 
+  // Polish audit (Traps): a trap you cannot hear does not exist for you. Every
+  // trap sound is played at the trap and fades with distance
+  // (src/levels/trap-sound.js): full inside `near`, silent past `far`.
+  hearing: { near: 6, far: 28 },
+  // Camera trauma (0..1) a heavy trap adds when it lands next to you, scaled by
+  // the same distance fade. Handed to `game.shake` (core's camera rig).
+  shake: { crusher: 0.35, catwalk: 0.25 },
+
   spike: {
     damage: 15,        // a hit, not a kill: seven of them at full health
     cooldown: 1.0,     // seconds between hits on the SAME target, not per frame
@@ -209,6 +263,15 @@ export const TRAP = {
     erupt: 1.0,        // seconds the column stands and hurts
     height: 3.0,       // the column, and the hurting region above the grate
     coverage: 0.5,     // share of the grate that must be player paint to kill it
+    // Polish audit: at rest a flat outline read as a landing pad. A raised rim,
+    // slats and a grey wisp make it a machine between eruptions.
+    rimHeight: 0.22,   // the grate's raised lip above the floor
+    rimWidth: 0.28,
+    slats: 5,          // bars across the opening, so it reads as a grate
+    wisp: 0x9a9f9c,    // Corp-grey vapour leaking at rest: live, not amber
+    wispOpacity: 0.3,
+    wispRise: 0.7,     // m/s the idle wisp drifts up before it loops
+    wispHeight: 1.6,   // how high a wisp climbs before it fades out
   },
 
   // The Primer's spike pit (R6, #101). It teaches "this place is dangerous"
@@ -222,6 +285,17 @@ export const TRAP = {
   },
 };
 
+// The spawn pad (polish audit; grey's 0.6 slow, #74, is settled and unchanged).
+// Grey is the whole level at load, so every level's first minute was spent at
+// 4.2 m/s and its first impression was "this game is slow". A square of the
+// player's paint under the spawn makes the first steps fast, so stepping off it
+// is felt as a loss. Green: it grips (blue would slide you off, red would bounce
+// you), and you can submerge in it.
+export const SPAWN_PAD = {
+  colour: 'green',
+  half: 2.5,           // metres from the spawn to the pad's edge: a 5 m square
+};
+
 // Outskirts' grey-world mood (polish pass 1). DRAINED, NOT DARK: a pale, bleached
 // overcast with low contrast, so the grey reads as colour taken away rather than
 // as a night scene. The level file explains what each band does.
@@ -230,7 +304,10 @@ export const OUTSKIRTS = {
   // the back of the extraction ledge (y 12, z −45), the same landmark the
   // Ascent's lift tower and Last Colour's Siphon carry. Behind the ledge, so it
   // is never in the walk; it has no collider.
-  beacon: { x: 0, z: -46.5, mastFrom: 0, top: 19.5, mastColour: 0x4a5058, colour: 0xffd23f },
+  beacon: { x: 0, z: -46.5, mastFrom: 0, top: 19.5, mastColour: 0x4a5058, colour: MARKER.white },
+  // Polish audit (Enemies 5): island B is the Sprayer's first appearance, so it
+  // wakes alone and B's two Chargers this many seconds later (a hit wakes one at once).
+  sprayerFirst: 3,
   mood: {
     horizon: 0x9ba1a6,   // the haze; matches the sky's horizon band and the mist
     zenith:  0x4d5560,   // overhead: washed out, not navy
@@ -246,8 +323,8 @@ export const OUTSKIRTS = {
   // (PAINT.green), so the poison out-shouted the player's paint. A sickly olive
   // reads as poison, not as paint.
   waste: {
-    colour: 0x7a7d34,
-    emissive: 0x1b1c06,  // a little self-lit, so it still reads as something not to touch
+    colour: 0x5e6431,    // polish audit: darker, less yellow, so it never reads as the vent's amber
+    emissive: 0x171a06,  // a little self-lit, so it still reads as something not to touch
   },
 
   // The Ledge reveal: reaching the extraction ledge re-reads every prop in the
@@ -278,6 +355,11 @@ export const PRIMER = {
     chalk: 0xd9cfb6,
     lineWidth: 0.15,
     crate: 0x8a6a45,     // rebel timber
+    // Polish audit: the course read as one debug texture with no focal point.
+    lamp: 0xffd2a0,      // warm tungsten: the rebels' light. Not amber (danger), not a paint colour
+    glow: 0.6,           // the soft halo round a lamp (additive), so it reads as LIT, not as a sticker
+    glowSize: 3.4,       // m across a hero lamp's halo; a lead lamp's is 1.5x
+    floorGrid: 2,        // floor grid squares are this many times a wall's: floor and wall stop being one texture
   },
 };
 
@@ -301,9 +383,10 @@ export const LAST_COLOUR = {
     pipe: 0x46494d,
     rail: 0x6c6f73,
     lightOff: 0x4a4430,  // an amber lamp that is not lit
+    rock: 0x5b6066,      // the Ascent's scree (the kit is shared): a cold rock grey, darker than its faces
     // A Corp work light: cold white, NOT amber. Amber means "this hurts"
     // across the campaign; a floodlight only says "here", so it marks a route.
-    floodlight: 0xe6eeff,
+    floodlight: MARKER.white,
     blinkRate: 6,        // rad/s: the warning lamps' on/off rhythm
     maxFloorHeight: 1.2, // no prop on an arena floor hides a Drainer at 20 m
   },
@@ -578,6 +661,9 @@ export const ENEMY = {
     burst: 3,           // shots per burst
     burstGap: 0.12,     // s between shots INSIDE a burst (a burst, not a trickle)
     reload: 1.2,        // s of opening after the burst — THE window to repaint
+    // #185 — m/s of its pellet. 12 m / 22 m/s = 0.55 s of flight: a sidestep on
+    // paint clears it, on grey only if you moved on the wind-up. See ENEMY_SHOT.
+    shotSpeed: 22,
     stopDistance: HEALTH.contactRange + 0.2,
   },
 
@@ -634,6 +720,7 @@ export const ENEMY = {
     windup: 0.6,
     attackRange: 12,
     attackCooldown: 2.5,
+    shotSpeed: 22,      // #185 — the Sprayer's pellet
     stopDistance: HEALTH.contactRange + 0.2,
   },
   turret: {
@@ -653,6 +740,9 @@ export const ENEMY = {
     windup: 0.8,
     attackRange: 15,
     attackCooldown: 3,
+    // #185 — faster than the Sprayer's: 15 m in 0.5 s, after a 0.8 s lock. Strafe
+    // or break line of sight, as its spec says.
+    shotSpeed: 30,
     // #77 — THE MATRIX GAP (ENEMIES.md). The turret is the one enemy that paint
     // does not solve: freeze, pin and knockback do nothing to it and the three
     // colours are just damage. The answer is line of sight and flanking, and
@@ -715,6 +805,9 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: false,
     contactDamage: 20,
+    // #186 — its model is 1.5× the soldiers' (2.4 m vs 1.6 m): a boss you can
+    // clip into is not a boss.
+    bodyRadius: 0.6,
     attackDamage: 30,     // a slam that lands
     windup: 1.0,          // the slam's tell (algorithms.md: 1.0 s)
     attackRange: 4.0,     // it starts a slam with you inside this
@@ -794,6 +887,30 @@ export const ENEMY = {
 export const GREY_IMPACT = {
   muzzleHeight: 1.2, // metres above the enemy's feet the ray starts at
   reach: 2,          // metres past the target it keeps looking, so the target cell is tested
+};
+
+// Enemy pellets (#185, DECISIONS 2026-10-30 "Enemy shots are pellets").
+//
+// A ranged enemy (one whose ENEMY entry has a `shotSpeed`) no longer lands its
+// shot when the wind-up ends: it FIRES a pellet that flies, can be dodged, is
+// stopped by the first surface it reaches and greys where it lands. Melee is
+// unchanged. Built in src/enemies/enemy-shots.js — one pool per level.
+//
+// The dodge maths, at the Sprayer's 12 m range and 22 m/s: 0.55 s of flight. On
+// paint (7 m/s) a sidestep covers 3.8 m; on grey (4.2 m/s) 2.3 m, enough only if
+// you react on the wind-up. Grey makes you easier to hit — painting is defence.
+export const ENEMY_SHOT = {
+  radius: 0.15,        // m; visible at 12 m without hiding the player
+  gravity: 4,          // m/s² of drop, so it reads as ink, not a bullet. The aim compensates.
+  rangeFactor: 1.5,    // it expires after flying attackRange × this
+  spentDrop: 4,        // m; a spent pellet greys the surface this far below it (none over a pit)
+  spreadDeg: 1.5,      // random cone, half-angle, per pellet
+  aimHeight: 1.0,      // m above the player's feet: the chest, where they stand AT THE SHOT
+  trailLength: 0.7,    // m of amber streak behind it
+  trailOpacity: 0.55,
+  rimScale: 1.3,       // the amber rim shell, as a multiple of `radius`
+  colour: 0x3b3b42,    // dark Corp grey; the amber (DANGER.amber) carries the "this hurts"
+  poolSize: 48,        // pellets alive at once, per level; the oldest is reused past this
 };
 
 // Difficulty = new rules, not bigger health bars.

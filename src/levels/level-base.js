@@ -1,4 +1,22 @@
 import * as THREE from 'three';
+import { CAMERA } from '../config.js';
+
+/**
+ * The yaw and pitch that look from `spawn` toward `look`, in the player's own
+ * convention (forward = (-sin yaw, 0, -cos yaw); pitch up is positive) and
+ * clamped to the camera's pitch range, so the first frame is one the player
+ * could have turned to themselves (polish audit, Level visuals: the Ascent's
+ * first frame was a grey wall because every level started facing -z, level).
+ * main.js applies it to the player; the viewer's spawn shot uses it too.
+ */
+export function spawnAim(spawn, look) {
+  const dx = look.x - spawn.x;
+  const dz = look.z - spawn.z;
+  const flat = Math.hypot(dx, dz);
+  const yaw = Math.atan2(-dx, -dz);
+  const pitch = Math.atan2(look.y - spawn.y, Math.max(flat, 1e-6));
+  return { yaw, pitch: Math.max(CAMERA.pitchMin, Math.min(CAMERA.pitchMax, pitch)) };
+}
 
 /**
  * OWNER: E (Levels)
@@ -18,6 +36,7 @@ export class LevelBase {
     this.root = new THREE.Group();
     this.surfaces = [];                     // PaintSurface[], paintable + collideable
     this.spawn = new THREE.Vector3();       // where the player starts
+    this.spawnLook = null;                  // optional Vector3 the first frame faces (see spawnAim)
     this.spawnPoints = [];                  // Vector3[], enemy spawns
     this.enemies = [];                      // Enemy[], ticked in update()
     this.extraction = null;                 // THREE.Box3 win trigger (if any)
@@ -27,6 +46,14 @@ export class LevelBase {
     // the top-down view is not washed out. Levels with no atmosphere leave it
     // null, and main.js tolerates that.
     this.atmosphere = null;
+  }
+
+  /**
+   * `{ yaw, pitch }` for the player's first frame, or null to keep the default
+   * (facing -z, level). main.js applies it when it builds the player.
+   */
+  get spawnFacing() {
+    return this.spawnLook ? spawnAim(this.spawn, this.spawnLook) : null;
   }
 
   async load() { throw new Error('implement load()'); }

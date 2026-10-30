@@ -330,7 +330,9 @@ test('inside the reload it plants, stays silent and cannot start anything (#118)
   const clock = shotClock(sprayer);
 
   assert.ok(stepUntilReload(sprayer, clock, target) > 0, 'the burst never opened a reload');
-  assert.equal(clock.shots.length, 3, `the burst fired ${clock.shots.length} shots, not 3`);
+  // Shots are pellets now (#185): `onAttack` counts the ones that LAND, and the
+  // burst's last pellet is still in the air on the frame the reload begins.
+  assert.ok(clock.shots.length >= 2, `only ${clock.shots.length} shots had landed`);
   assert.equal(sprayer.startTelegraph(), false,
     'a reloading Sprayer must not start a windup');
 
@@ -341,10 +343,11 @@ test('inside the reload it plants, stays silent and cannot start anything (#118)
   while (sprayer.reloading && held < 300) {
     clock.run(1, target);
     held += 1;
-    assert.equal(clock.shots.length, 3, 'it fired inside its own reload');
+    assert.ok(clock.shots.length <= 3, 'it fired inside its own reload');
     assert.ok(sprayer.position.distanceTo(planted) < 1e-9,
       'a reloading Sprayer must plant, not walk through the opening');
   }
+  assert.equal(clock.shots.length, 3, `the burst landed ${clock.shots.length} shots, not 3`);
 
   assert.ok(Math.abs(held * DT - ENEMY.sprayer.reload) <= 2 * DT,
     `the window lasted ${(held * DT).toFixed(3)} s, not ${ENEMY.sprayer.reload} s`);
