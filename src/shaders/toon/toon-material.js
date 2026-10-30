@@ -1,12 +1,15 @@
 import * as THREE from 'three';
 // Height fog, shared with the paint material so the maths lives in one place.
 import { createFogHeightUniforms, FOG_HEIGHT_PARS, FOG_HEIGHT_FRAGMENT } from '../fog-height.js';
+// The point-light pool (#195): the same arrays and pointLighting() as the paint.
+import { POINT_LIGHTS_PARS, addPointLightUniforms } from '../point-lights.js';
 
 const toonVertexShader = `
   // declares the fog varying behind #ifdef USE_FOG
   #include <fog_pars_vertex>
 
   varying vec3 vNormal;
+  varying vec3 vWorldNormal;   // world space, for the point lights (#195)
 
   // height fog needs to know how HIGH this pixel is, in world space
   varying vec3 vWorldPos;
@@ -38,6 +41,7 @@ const toonVertexShader = `
       localNormal = mat3(instanceMatrix) * localNormal;
     #endif
     vNormal = normalize(normalMatrix * localNormal);
+    vWorldNormal = normalize(mat3(modelMatrix) * localNormal);
 
     vWorldPos = (modelMatrix * localPosition).xyz;
 
@@ -55,8 +59,10 @@ const toonFragmentShader = `
 
   uniform vec3 uColour;
   uniform vec3 uLightDir;
+  ${POINT_LIGHTS_PARS}
 
   varying vec3 vNormal;
+  varying vec3 vWorldNormal;
   varying vec3 vWorldPos;
 
   // declares the fog uniforms plus vFogDepth behind #ifdef USE_FOG
@@ -72,7 +78,10 @@ const toonFragmentShader = `
     else if (diffuse > 0.3) band = 0.6;
     else band = 0.35;
 
-    gl_FragColor = vec4(uColour * band, 1.0);
+    // The pool's point lights (#195), added on top of the band: a wind-up's
+    // amber glow reads on the body as well as on the floor around it.
+    vec3 points = pointLighting(normalize(vWorldNormal), vWorldPos);
+    gl_FragColor = vec4(uColour * band + uColour * points, 1.0);
 
     // From #41: linear -> output colour space. This has to come BEFORE the fog,
     // which is the order three.js's own materials use (colorspace_fragment,
@@ -92,6 +101,7 @@ export function createToonMaterial(hexColour, lightDir = new THREE.Vector3(0.5, 
   const uniforms = THREE.UniformsUtils.clone(THREE.UniformsLib.fog);
   uniforms.uColour   = { value: new THREE.Color(hexColour) };
   uniforms.uLightDir = { value: lightDir.clone().normalize() };
+  addPointLightUniforms(uniforms);
   // ours rather than three.js's, so added by hand -- same rule as above
   Object.assign(uniforms, createFogHeightUniforms());
 

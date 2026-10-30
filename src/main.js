@@ -18,6 +18,7 @@ import { preloadEnemyModel } from "./enemies/enemy.js";
 import { PLAYER, ANIM, PAINTSTREAK, MISSION_INTRO, PAINT, SHAKE, DEATH_SPLAT } from "./config.js";
 import { Paintstreak, zoneSplat } from "./paint/paintstreak.js";
 import { HitStop, refillStep } from "./core/feel.js";
+import { pointLights } from "./shaders/point-lights.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -41,6 +42,9 @@ sun.shadow.camera.top = 30;
 sun.shadow.camera.bottom = -30;
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x8899bb, 0x22222a, 0.5));
+// #195 — the point-light pool's fixed lights, in the scene for the whole game:
+// the light count never changes, so three.js never recompiles mid-fight.
+pointLights.attach(scene);
 
 let level = null;
 let player = null;
@@ -551,6 +555,7 @@ function animate() {
   const h = window.innerHeight;
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, w, h);
+  pointLights.update(rig.camera, dt);   // #195: the nearest sources to this camera
   renderer.render(scene, rig.camera);
   if (intro) return; // no minimap under the intro: the HUD is hidden too
 

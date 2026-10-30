@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CAMERA } from '../config.js';
+import { pointLights } from '../shaders/point-lights.js';
 
 /**
  * The yaw and pitch that look from `spawn` toward `look`, in the player's own
@@ -67,6 +68,8 @@ export class LevelBase {
     // The probe's cube target is not under root, so the walk below cannot see it.
     this.skyProbe?.dispose();
     this.skyProbe = null;
+    // Every light source this level placed (#198); enemies hand back their own.
+    pointLights.removeOwner(this);
 
     // Traverse every object under root, freeing geometry, materials and any
     // textures held in uniforms (uPaintMap) or material.map.
