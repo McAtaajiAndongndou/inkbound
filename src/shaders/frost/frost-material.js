@@ -76,6 +76,10 @@ const frostFragmentShader = `
     // follows its strength, so a half-built shell refracts half as much.
     vec3 seen = mix(behind, uColour, ${glsl(FROST.tint)});
     float cover = clamp(uOpacity / ${glsl(FROST.fullCover)}, 0.0, 1.0) * uRefract;
+    // #223: head-on, let the real body through — the copy is half-resolution,
+    // and replacing the body with it flattened a frozen enemy into a cut-out.
+    // The bend still takes over toward the rim, which is where ice reads.
+    cover *= mix(${glsl(FROST.centreCover)}, 1.0, smoothstep(0.0, 0.6, fresnel));
 
     // Premultiplied "over": rgb is added, alpha is how much of the background
     // the shell replaces. With cover 0 this is exactly the old additive glow.

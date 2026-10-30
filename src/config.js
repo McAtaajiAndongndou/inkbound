@@ -211,6 +211,9 @@ export const FROST = {
   fullCover: 0.55,       // uOpacity at which the shell fully takes over the view (BLUE_FREEZE.shellOpacity)
   glowUnder: 0.5,        // how much the rim glow is dimmed where the refraction shows
   bodyRadius: 0.9,       // m, an enemy's half-height: kept in the copy if this close behind ice on screen
+  // #223: a frozen enemy read as a flat 2D cut-out. Two causes, two numbers:
+  centreCover: 0.3,      // how much of the view the shell takes over HEAD-ON (1 at the rim): the body shows through, lit
+  bodyTint: 0.3,         // the hit flash's strength on a frozen body (1 = flat paint blue); the shell already says "frozen"
 };
 
 // #195 — point lights the custom shaders can see (src/shaders/point-lights.js).
