@@ -15,7 +15,8 @@
 import * as THREE from 'three';
 import { LayoutLevel } from './layout-level.js';
 import { LAST_COLOUR } from './layouts/last-colour.js';
-import { LAST_COLOUR as TUNING, ENEMY, TRAP } from '../config.js';
+import { LAST_COLOUR as TUNING, ENEMY, TRAP, CURVES, PLACED_LIGHTS } from '../config.js';
+import { cables, lathe } from './curves.js';
 import { applyMood } from './mood.js';
 import { buildProps, setLamp } from './prop-kit.js';
 import { CargoCrusher } from './crusher.js';
@@ -54,6 +55,8 @@ export class Level03 extends LayoutLevel {
       },
     });
     this._bigArm();
+    this._curves();
+    this._lights();
     // The Siphon's plates are paint material built after LayoutLevel's light
     // pass: aim them too (AGENTS rule 5).
     kit.aimCustomShading(this.surfaces, [], this.sunDir.toArray());
@@ -79,6 +82,53 @@ export class Level03 extends LayoutLevel {
     this.bigArm.onSummon = () => {
       for (const r of this.roster) if (r.data.wake === 'summon') r.enemy.wake();
     };
+  }
+
+  /**
+   * Curves (#198): the Siphon's tank and the two vats are surfaces of
+   * revolution (lathes, flat-shaded: Corp machinery), the hoses and the hangar's
+   * roof cables are sagging tubes — one draw call for the hoses, one for the
+   * cables. Positions are layout data (LAST_COLOUR.curves).
+   */
+  _curves() {
+    const C = LAST_COLOUR.curves;
+    this.tank = lathe(C.tank.profile, CURVES.vatColour);
+    this.tank.position.set(...C.tank.at);
+    this.tank.name = 'siphon-tank';
+    this.vats = C.vats.at.map((at, i) => {
+      const vat = lathe(C.vats.profile, CURVES.vatColour);
+      vat.position.set(...at);
+      vat.name = `vat-${i + 1}`;
+      return vat;
+    });
+    this.root.add(this.tank, ...this.vats);
+    this.hoses = cables(this, C.hoses.map((h) => ({ ...h, radius: CURVES.hoseRadius })), CURVES.hoseColour, 'hoses');
+    this.cables = cables(this, C.cables, CURVES.colour);
+  }
+
+  /**
+   * Placed lights (#198, through the pool #195): each crusher amber while it
+   * warns and while it is down (a dim amber between), the Siphon a sickly
+   * grey-violet that pulses faster while its exam drains, and the mast beacon
+   * marker white until the Siphon dies.
+   */
+  _lights() {
+    const L = PLACED_LIGHTS;
+    for (const c of this.crushers) {
+      const at = c.group.position.clone();
+      at.y += 2;
+      kit.placeLight(this, L.trap, at, () => (c.state === 'warn' || c.state === 'down' ? 1 : L.trap.rest));
+    }
+    let clock = 0;
+    kit.placeLight(this, L.siphon, new THREE.Vector3(0, 6, -29), (dt) => {
+      const phase = this.siphon.phase;
+      if (phase === 'done') return 0;
+      const draining = phase !== 'dormant' && phase !== 'finale';
+      clock += dt * (draining ? L.siphon.drainRate : L.siphon.pulseRate);
+      return 0.6 + 0.4 * Math.sin(clock);
+    });
+    const beacon = this.root.getObjectByName('siphon-mast-beacon');
+    if (beacon) kit.placeLight(this, L.beacon, beacon.position.clone(), () => (beacon.visible ? 1 : 0));
   }
 
   /** The layout's built trap zones: each crusher in the floor it sits on. */

@@ -17,6 +17,7 @@
 // and `level.surfaces`, so the base `dispose()` frees it. `cells` is the paint
 // grid density; each level passes its own.
 import * as THREE from 'three';
+import { pointLights } from '../shaders/point-lights.js';
 import { PaintSurface } from '../paint/paint-surface.js';
 import { Enemy } from '../enemies/enemy.js';
 import { ENEMY_CLASSES } from '../enemies/boss.js';
@@ -228,3 +229,28 @@ export function paintRect(level, rect, y, colour) {
   }
 }
 
+
+/**
+ * Place a light in the point-light pool (#195, #198), owned by the level so its
+ * dispose hands it back (LevelBase.dispose → pointLights.removeOwner). `drive`,
+ * if given, is called each frame by updatePlacedLights and returns 0..1 of the
+ * spec's intensity — a trap that is only lit while armed, a pulsing Siphon.
+ */
+export function placeLight(level, spec, position, drive = null) {
+  const handle = pointLights.add({
+    position, colour: spec.colour, intensity: drive ? 0 : spec.intensity,
+    range: spec.range, owner: level,
+  });
+  (level.placedLights ??= []).push({ handle, intensity: spec.intensity, drive });
+  return handle;
+}
+
+/** Re-drive every placed light that has a `drive`. Call from the level's update(). */
+export function updatePlacedLights(level, dt) {
+  const lights = level.placedLights;
+  if (!lights) return;
+  for (let i = 0; i < lights.length; i++) {
+    const l = lights[i];
+    if (l.drive) l.handle.intensity = l.intensity * l.drive(dt);
+  }
+}

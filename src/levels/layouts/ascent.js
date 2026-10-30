@@ -312,7 +312,21 @@ const prepaint = [
  */
 const spawnLook = landmarks.find((l) => l.id === 'lift-tower').beacon;
 
+/**
+ * Curves (#198, src/levels/curves.js): the supply lift's two haul cables, from
+ * the lift tower on the summit down to anchors at the trailhead. They run up
+ * the mountain beside the climb, so from the first frame they lead the eye to
+ * the goal. Off the x = 0 plane the trailhead's look at the beacon runs in, and
+ * clear of every terrace and cover top (tested).
+ */
+const curves = {
+  cables: [-1, 1].map((side) => ({
+    points: [[side * 2.2, 54, 18], [side * 9, 0.2, 80]], sag: 4, radius: 0.1,
+  })),
+};
+
 export const ASCENT = {
   id: 'ascent', name: 'The Ascent', cells: PAINT_GRID.level2Cells, spawnLook, prepaint,
   solids, slabs, strips, kerbs, landmarks, props, enemies, routes, rooms, win, doc,
+  curves,
 };

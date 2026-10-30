@@ -1,6 +1,7 @@
 // OWNER: E (Levels)
 import * as THREE from 'three';
 import { LAST_COLOUR, DANGER } from '../config.js';
+import { flat } from './curves.js';
 
 /**
  * The Corp prop kit (#56): procedural crates, jersey barriers, pipes, rails and
@@ -62,7 +63,10 @@ export function buildProps(level, props) {
       ? new THREE.MeshBasicMaterial({ color: list[0].rule ? cfg.lightOff : DANGER.amber })
       : kind === 'floodlight'
         ? new THREE.MeshBasicMaterial({ color: cfg.floodlight })
-        : new THREE.MeshToonMaterial({ color: cfg[kind] });
+        // FLAT-shaded (#198): Corp machinery and the Ascent's scree read as
+        // hard facets — cold, manufactured, or rough rock. Smooth shading is
+        // kept for what is alive: the paint, the cables' curves.
+        : flat(new THREE.MeshToonMaterial({ color: cfg[kind] }));
     const mesh = new THREE.InstancedMesh(geo, mat, list.length);
     list.forEach((p, i) => {
       const [x0, x1, y0, y1, z0, z1] = p.box;

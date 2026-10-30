@@ -6,7 +6,8 @@
 import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
-import { PAINT_GRID, OUTSKIRTS, GATE, SPAWN_PAD } from '../config.js';
+import { PAINT_GRID, OUTSKIRTS, GATE, SPAWN_PAD, CURVES, PLACED_LIGHTS } from '../config.js';
+import { cables, flat } from './curves.js';
 import { audio } from '../audio/audio-manager.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
@@ -185,6 +186,18 @@ const L1 = {
 
   // The win zone: the back of the extraction ledge.
   extraction: { zMin: -45, zMax: -42.5 },
+
+  // #198: a sagging power line from a pole off island C's west edge (in Gap 2,
+  // outside the corridor — no collider, out of every walk) to the extraction
+  // mast. Two conductors, one draw call. It crosses the x = 0 plane only at the
+  // mast, below the beacon, so the spawn's look at the beacon is untouched.
+  powerLine: {
+    pole: { x: -16.5, z: -14.5, yBase: -6, top: 9.5 },
+    wires: [
+      { from: [-16.5, 9.3, -14.5], to: [0.3, 17.4, -46.5], sag: 2.2 },
+      { from: [-16.5, 8.7, -14.5], to: [0.3, 16.8, -46.5], sag: 2.2 },
+    ],
+  },
 
   // The extraction ledge, at the top. Its lip overhangs the last climb by 2.4 m
   // (-40 -> -37.6), which is what a climb needs: the top-out jump is pushed AWAY
@@ -978,6 +991,8 @@ export class Level01 extends LevelBase {
     this._clock = (this._clock ?? 0) + dt;
     // #197: the sky warms as the islands are painted.
     this.sky?.update(dt);
+    // #198: the lights this level placed in the pool (the vent).
+    kit.updatePlacedLights(this, dt);
     // Dormant enemies wake when the player ENTERS their arena, not on a distance
     // radius (#54 has none). Until then they hold their spawn — see `_spawnEnemies`.
     for (let i = 0; i < this.sleepers.length; i++) {
@@ -1249,6 +1264,13 @@ export class Level01 extends LevelBase {
     const floor = this.surfaces.find((s) => s.isFloor && s.mesh.position.y === 0
       && s.mesh.position.z === (c.zMin + c.zMax) / 2 && s.width === c.half * 2);
     this.vent = new PaintVent({ parent: this.root, floor, rect: r, y: 0 });
+    // #198: amber while the vent is armed — brightest as it tells and erupts,
+    // dark once it is painted dead. Danger, so amber (#126).
+    const vent = this.vent;
+    const at = vent.group.position.clone();
+    at.y += 1.5;
+    kit.placeLight(this, PLACED_LIGHTS.trap, at, () => (vent.phase === 'dormant' ? 0
+      : vent.phase === 'rest' ? PLACED_LIGHTS.trap.rest : 1));
     this._ventTargets = [];
   }
 
@@ -1502,5 +1524,23 @@ export class Level01 extends LevelBase {
     beacon.position.set(b.x, b.top + 1.2, b.z);
     beacon.name = 'extraction-beacon';
     this.root.add(mast, beacon);
+    // #198: the goal's marker-white light in the pool (#195).
+    kit.placeLight(this, PLACED_LIGHTS.beacon, beacon.position.clone());
+    this._powerLine();
+  }
+
+  /** #198: the power line (curves.js), and the pole it hangs from. */
+  _powerLine() {
+    const P = L1.powerLine;
+    const height = P.pole.top - P.pole.yBase;
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.24, height, 8),
+      // Corp hardware: flat-shaded, like the props (#198, flat versus smooth).
+      flat(new THREE.MeshToonMaterial({ color: OUTSKIRTS.beacon.mastColour })),
+    );
+    pole.position.set(P.pole.x, P.pole.yBase + height / 2, P.pole.z);
+    pole.name = 'power-pole';
+    this.root.add(pole);
+    this.powerLine = cables(this, P.wires.map((w) => ({ points: [w.from, w.to], sag: w.sag })), CURVES.colour, 'power-line');
   }
 }

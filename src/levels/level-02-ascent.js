@@ -15,7 +15,9 @@
 import * as THREE from 'three';
 import { LayoutLevel } from './layout-level.js';
 import { ASCENT } from './layouts/ascent.js';
-import { ASCENT as TUNING, TRAP } from '../config.js';
+import { ASCENT as TUNING, TRAP, CURVES, PLACED_LIGHTS } from '../config.js';
+import { cables } from './curves.js';
+import * as kit from './level-kit.js';
 import { applyMood } from './mood.js';
 import { buildProps } from './prop-kit.js';
 import { CollapsingCatwalk } from './catwalk.js';
@@ -37,6 +39,11 @@ export class Level02 extends LayoutLevel {
   async load() {
     await super.load();
     applyMood(this, TUNING.mood);
+    // #198: the supply lift's haul cables (one draw call), and the lift
+    // beacon's marker-white light in the pool.
+    this.cables = cables(this, ASCENT.curves.cables, CURVES.colour);
+    const beacon = this.root.getObjectByName('lift-tower-beacon');
+    if (beacon) kit.placeLight(this, PLACED_LIGHTS.beacon, beacon.position.clone());
     this.props = buildProps(this, ASCENT.props);
     this._silhouettes();
     this.catwalk = new CollapsingCatwalk(

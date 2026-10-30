@@ -13,7 +13,8 @@
 import * as THREE from 'three';
 import { LayoutLevel } from './layout-level.js';
 import { PRIMER } from './layouts/primer.js';
-import { PRIMER as TUNING } from '../config.js';
+import { PRIMER as TUNING, PLACED_LIGHTS } from '../config.js';
+import * as kit from './level-kit.js';
 import { applyMood } from './mood.js';
 import { SpikePit } from './spike-pit.js';
 
@@ -64,6 +65,9 @@ export class Level00 extends LayoutLevel {
       group.add(box, glow);
       this.root.add(group);
       this.lamps.push(group);
+      // #198: the lead lamps really light the way on (the pool, #195): warm
+      // tungsten on the doorway's floor and walls, not only a glow sprite.
+      if (l.role === 'lead') kit.placeLight(this, PLACED_LIGHTS.lamp, group.position.clone());
     }
   }
 

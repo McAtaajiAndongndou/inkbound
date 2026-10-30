@@ -159,6 +159,8 @@ export class LayoutLevel extends LevelBase {
     this._since ??= new Map();
     // #197: the sky warms with the territory (null on a static-sky level).
     this.sky?.update(dt);
+    // #198: the lights this level placed in the pool (traps, the Siphon).
+    kit.updatePlacedLights(this, dt);
 
     for (let i = 0; i < this.roster.length; i++) {
       const { data, enemy } = this.roster[i];
