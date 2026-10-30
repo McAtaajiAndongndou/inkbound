@@ -1212,7 +1212,7 @@ export const DRY_OUT = {
 // All numbers live here so the tuning dial is one file.
 export const SUBMERGE = {
   key: 'ShiftLeft',          // hold this key to submerge (coordinate with team)
-  speedMultiplier: 1.4,      // faster than normal walking — the reward for committing
+  speedMultiplier: 1.9,      // faster than walking — the reward for committing (loop pass step 4b; was 1.4). Splatoon's swim is roughly double the walk
   refillMultiplier: 5,       // 5× the base PAINT_GUN.refillRate: 40/s, a full tank in 2.5 s, so a dive is a reload (loop pass step 4a; was 4, polish audit; was 3)
   cameraOffset: 0.9,         // metres the TPV camera drops, so you read as "in" the paint
   maxAngle: 1.1,             // metres the aim point dips while submerged (camera-rig.js; not radians)
