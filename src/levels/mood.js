@@ -32,8 +32,10 @@ function smoothstep(edge0, edge1, x) {
 const skyVertex = /* glsl */ `
   attribute float aBand;   // 0 at the bottom pole, 1 at the top; the horizon is 0.5
   varying float vBand;
+  varying float vAzimuth;  // round the horizon, -PI..PI (the hills' x)
   void main() {
     vBand = aBand;
+    vAzimuth = atan(position.z, position.x);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
@@ -42,14 +44,42 @@ const skyVertex = /* glsl */ `
 // zenith above, the void below — now blended per pixel from three uniforms so
 // the game can move them. The haze band stays broad: the walls and gates sit
 // ~11 degrees up, inside it (see Outskirts' MOOD notes).
+//
+// THE HILLS (Renda, 30 Oct; a mood's optional `hills`): two crest lines just
+// above the horizon, each a sum of sines whose frequencies are whole numbers,
+// so the line closes on itself all the way round with no seam and no gaps.
+// Below a crest the sky is mixed toward the void: the far layer a little, the
+// near layer more. They use the band uniforms, so they warm with the sky.
+// uHills.x = 0 turns them off (every level without `hills`).
 const skyFragment = /* glsl */ `
   uniform vec3 uHorizon;
   uniform vec3 uZenith;
   uniform vec3 uVoid;
+  uniform vec4 uHills;      // x on (0/1), y mean crest height, z swell, w softness
+  uniform vec3 uHillShade;  // x far shade, y near shade, z near layer's drop
   varying float vBand;
+  varying float vAzimuth;
+  // Ridged: 1 - |sin| turns each wave into a peak, so crests read as hilltops
+  // rather than a rolling gradient. Whole-number frequencies close the loop.
+  float ridge(float x) { return 1.0 - abs(sin(x)) * 2.0; }
+  float crest(float a, float seed) {
+    return sin(a * 3.0 + seed) * 0.4
+         + ridge(a * 7.0 + seed * 2.3) * 0.3
+         + ridge(a * 17.0 + seed * 4.1) * 0.2
+         + sin(a * 41.0 + seed * 1.3) * 0.1;
+  }
   void main() {
     vec3 c = mix(uHorizon, uZenith, smoothstep(0.5, 0.8, vBand));
     c = mix(c, uVoid, 1.0 - smoothstep(0.3, 0.5, vBand));
+    if (uHills.x > 0.5) {
+      float far = 0.5 + uHills.y + uHills.z * crest(vAzimuth, 1.7);
+      float near = 0.5 + uHills.y - uHillShade.z + uHills.z * crest(vAzimuth, 5.3);
+      float inFar = 1.0 - smoothstep(far - uHills.w, far + uHills.w, vBand);
+      float inNear = 1.0 - smoothstep(near - uHills.w, near + uHills.w, vBand);
+      vec3 ground = mix(uHorizon, uVoid, uHillShade.x);
+      c = mix(c, ground, inFar * step(0.45, vBand));
+      c = mix(c, mix(uHorizon, uVoid, uHillShade.y), inNear * step(0.45, vBand));
+    }
     gl_FragColor = vec4(c, 1.0);
     #include <colorspace_fragment>
   }
@@ -74,6 +104,12 @@ export function skyDome(mood, radius = 200, colours = mood) {
       uHorizon: { value: new THREE.Color(colours.horizon) },
       uZenith: { value: new THREE.Color(colours.zenith) },
       uVoid: { value: new THREE.Color(colours.void) },
+      uHills: { value: mood.hills
+        ? new THREE.Vector4(1, mood.hills.height, mood.hills.swell, mood.hills.soft)
+        : new THREE.Vector4(0, 0, 0, 0) },
+      uHillShade: { value: mood.hills
+        ? new THREE.Vector3(mood.hills.farShade, mood.hills.nearShade, mood.hills.nearDrop)
+        : new THREE.Vector3() },
     },
     side: THREE.BackSide,
     fog: false,

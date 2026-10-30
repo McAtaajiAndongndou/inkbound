@@ -384,6 +384,18 @@ export const OUTSKIRTS = {
     fogFar:  46,
     fillColour: 0xb4bcc2,
     fillIntensity: 0.55,
+    // Far hills drawn into the sky dome itself (Renda, 30 Oct): turning round
+    // showed empty sky, and 3D peaks read as grey geometry with gaps. One
+    // continuous line all the way round, in the sky's own colours, so it warms
+    // with the sky (#197). Two layers: a far, faint one and a nearer, darker one.
+    hills: {
+      height: 0.03,      // a layer's mean crest, in dome band units above the horizon (0.5); ~3.5 degrees
+      swell: 0.02,       // how far the crests rise and dip around the mean
+      farShade: 0.26,    // the far layer: this far from the horizon colour toward the void
+      nearShade: 0.46,   // the near layer: darker, so it reads as closer
+      nearDrop: 0.008,   // the near layer's crests sit this much lower (height - swell - nearDrop must stay > 0: no gaps)
+      soft: 0.002,       // edge softness, so the crest is not a jagged pixel line
+    },
   },
 
   // The toxic waste. Muted from lime (0x86b32d) in polish pass 1: lime was the
