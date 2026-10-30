@@ -119,7 +119,33 @@ the source is confirmed, that credit is a best guess, not a record (#130).
 | Asset | Source | Licence |
 |---|---|---|
 | Forest — Stylized Nature MegaKit | https://quaternius.com/packs/stylizednaturemegakit.html (Quaternius) | CC0 — **ships**, 29 models under `assets/megakit/` |
-| Military base — Military Free | https://ithappystudios.com/free/military-free/ (ITHappy Studios) | **Not shipped.** Check the pack page's licence before it ever is |
+| Military base — Military Free | https://ithappystudios.com/free/military-free/ (ITHappy Studios) | **Rejected (30 Oct 2026).** The free licence forbids redistributing the assets "as-is", and this repo is public. Use the candidates below |
+
+### Environment candidates — 30 Oct 2026 (none downloaded yet)
+
+Licence and triangle count read off each model's poly.pizza page. CC-BY is fine for us (the enemy models already use it): credit the author in `credits.js`. Every model goes through the grey toon treatment, so its own colours do not matter. Validate ONE before downloading the rest (Pipeline rules).
+
+**Last Colour — hero props, the "this is a base" shapes:**
+
+| Use | Model | Author | Licence | Tris |
+|---|---|---|---|---|
+| Hangar centrepiece | [Military Truck](https://poly.pizza/m/3XAD5t0Djqv) | Alex Safayan | CC-BY | 2516 |
+| Hangar, parked | [Helicopter](https://poly.pizza/m/6U2H_0VSAXY) | Poly by Google | CC-BY | 2362 |
+| Hangar cover (replaces boxes, collides) | [Shipping Container](https://poly.pizza/m/83Cai5aKxa) | Davidlamic000 | CC0 | 1504 |
+| Sandbag lines at the lift landing | [Sack Trench](https://poly.pizza/m/LW3jwpPfiN) | Quaternius | CC0 | 7168 (heavy: instance it, or use the next row) |
+| Sandbags, lighter | [sand bag wall 1](https://poly.pizza/m/5JCK_lpTf4F) | Jeremy Eyring | CC-BY | 1061 |
+| Fuel store by the corridor | [Propane Tank](https://poly.pizza/m/3revwBHxDC) | Quaternius | CC0 | 402 |
+| Barrels | [Exploding Barrel](https://poly.pizza/m/1orHe0kCc1) | Quaternius | CC0 | 516 |
+| Core roofline | [Radio tower](https://poly.pizza/m/5c41ysnNFio), [Satellite dish](https://poly.pizza/m/5iVbfDhRnN7) | Poly by Google | CC-BY | 736, 2232 |
+| Road blocks | [Barricade](https://poly.pizza/m/3UZHUnkzTu), [Construction Barrier](https://poly.pizza/m/4mrO9ueiQr) | Kenney | CC0 | 122, 60 |
+
+**Not found:** a usable watchtower (searches gave lighthouses and gates). Build it in `prop-kit.js` from boxes.
+
+**The Primer — the rebels' camp, not the Corp's:** [Tent](https://poly.pizza/m/0LnXUwcQzk) (J-Toastie, CC-BY, 190), [Bedroll](https://poly.pizza/m/12PaVpBY04) (Kenney, CC0, 424), [Crate](https://poly.pizza/m/3OEFd1AWfa) (Quaternius, CC0, 784), [Barricade](https://poly.pizza/m/3UZHUnkzTu) (Kenney, CC0). These props are the rebels', so they may keep warm tints like `PRIMER.dressing.crate`; never a paint colour.
+
+**The Ascent — nothing new to download.** The MegaKit above already has pines, dead trees and rocks, and `Decor` places them. Scatter them on the slopes and at wall bases, thinning with height.
+
+**Whole packs, if more is needed** (each pack page says CC0, 30 Oct 2026; Quaternius' site-wide Asset License forbids redistribution, so **check the pack page, not the site licence**): Quaternius [Sci-Fi Essentials Kit](https://quaternius.com/packs/scifiessentialskit.html) and [Modular Sci-Fi Megakit](https://quaternius.com/packs/modularscifimegakit.html) for the Core and Siphon lab; Kenney [City Kit (Industrial)](https://kenney.nl/assets/city-kit-industrial) and [Conveyor Kit](https://kenney.nl/assets/conveyor-kit) for the facility's machinery.
 
 ## Animation
 

@@ -165,3 +165,11 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **The slam hits only inside its radius.** `main.js` wires `onAttack` to damage the player unconditionally (right for a shot), so the boss checks its own reach before calling it. **The slam greys floor at its own height only:** the 5 m balconies are out of reach, so raised paint stays safe paint.
 - **Its two Drainers exist from load**, dormant at the back of the bay, because the paint gun takes its target list once. A `summon` wake rule nothing satisfies keeps them asleep until phase 2 (or a hit).
 - **Big Arm and its Drainers are the Core's waves 4 and 5** (room R3), so "the Core is clear", which the Siphon waits for, includes them without a new rule.
+
+## 2026-10-30 — Enemy shots are pellets (draft 066)
+
+- **Renda: ranged enemies fire visible pellets, the Splatoon way.** This replaces "the shot lands when the wind-up ends", under which `onAttack` damaged the player unconditionally (noted under Big Arm above). A shot that could not be dodged or blocked made the telegraph a warning without a choice, and made the Turret's spec ("strafe, or break line of sight") false.
+- **A pellet is dark Corp grey with an amber rim and trail**, flies at 22 m/s (Sprayer, Wall-crawler) or 30 m/s (Turret), is aimed where the player stands when it fires (no leading), stops at the first surface, and greys the ground where it lands. A miss still costs ground.
+- **Grey makes you easier to hit.** On grey (4.2 m/s) a sidestep only just clears a 12 m shot; on paint (7 m/s) it clears it easily. Painting is defence.
+- **`onAttack` keeps its meaning:** "this enemy's attack hit the player". For a ranged enemy it now fires on pellet contact. `main.js` does not change.
+- **Melee is unchanged:** Charger, Stalker, Drainer, Big Arm.
