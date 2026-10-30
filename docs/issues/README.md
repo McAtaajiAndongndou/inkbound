@@ -122,6 +122,7 @@ A check of the game against the brief's rubric (`CGV Project Brief`, section 11)
 | 076 | #197 | Dynamic sky driven by territory | levels | SHOULD | S | — (refreshes #194's probe if in) |
 | 077 | #198 | Curves, flat vs smooth shading, placed lights | levels | SHOULD | S–M | #195 (lights part only) |
 | 078 | #199 | Adaptive synthesised music | ui | MUST | M | — |
+| 080 | — | Trap sounds you can hear (spike pit, crusher) | ui | SHOULD | S | — |
 
 Not drafted here, but on the brief's final checklist and still open: **play the published URL** (PRD L1), **measure frame rate on lab hardware**, **trailer and devlog**.
 
