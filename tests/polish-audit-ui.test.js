@@ -114,11 +114,19 @@ test('every sound the audit asked for has a synthesised recipe, and the cut blad
   assert.equal(SFX.blade, undefined, 'defined and never played: deleted');
 });
 
+// #215: the crusher's sounds are ALARMS, not ambience. QA could not hear them
+// under music, so they are exempt from "quieter than a splat" — a trap you
+// cannot hear does not exist for you. Their floors are pinned in
+// tests/trap-sounds.test.js. (The spike pit's sound still fits under a splat.)
+const TRAP_ALARMS = new Set(['crush', 'hiss', 'tick']);
+
 test('the new sounds stay under a splat, the footstep and refill well under', () => {
   const loud = (name) => { const a = manager(); a.play(name); return a.ctx.log.peaks.reduce((s, p) => s + p, 0); };
   const splat = loud('splat');
-  for (const name of AUDIT_SOUNDS) assert.ok(loud(name) < splat, `${name} is not quieter than a splat`);
-  for (const name of ['sludge', 'refill', 'tick']) assert.ok(loud(name) < splat * 0.25, `${name} repeats, so it must be quiet`);
+  for (const name of AUDIT_SOUNDS) {
+    if (!TRAP_ALARMS.has(name)) assert.ok(loud(name) < splat, `${name} is not quieter than a splat`);
+  }
+  for (const name of ['sludge', 'refill']) assert.ok(loud(name) < splat * 0.25, `${name} repeats, so it must be quiet`);
 });
 
 // --- the feedback cues ---------------------------------------------------------
