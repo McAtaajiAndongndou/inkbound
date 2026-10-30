@@ -345,6 +345,25 @@ export const SPAWN_PAD = {
 // Outskirts' grey-world mood (polish pass 1). DRAINED, NOT DARK: a pale, bleached
 // overcast with low contrast, so the grey reads as colour taken away rather than
 // as a night scene. The level file explains what each band does.
+// #197 — the dynamic sky (src/levels/mood.js). Each outdoor level's sky starts
+// on its mood's `drained` palette and warms to its own colours as territory
+// grows: k = smoothstep(from, to, coverage), where coverage is the HUD's number
+// (the mean of surface.coverage() over every surface).
+//
+// from/to are NOT the issue's 0.05/0.5. Measured on the built levels, painting
+// EVERY paintable floor reaches a coverage of only 0.31-0.37 (walls and sealed
+// faces count too), so 0.5 could never be reached and the sky would never
+// finish restoring. 0.02 starts the warm-up with the first island; 0.2 is most
+// of a level's floor. See docs/DECISIONS.md, "Dynamic sky thresholds".
+export const SKY = {
+  from: 0.02,
+  to: 0.2,
+  rate: 2,              // 1/s: how fast the shown sky eases toward its target (~1 s to settle)
+  scansPerSecond: 2,    // territory re-scans per second — never per frame
+  finale: 2.5,          // s: the Siphon's destruction restores the sky within this
+  refreshStep: 0.02,    // re-photograph the wet paint's sky (#194) when k moves this much
+};
+
 export const OUTSKIRTS = {
   // The goal you can see (campaign flow, 30 Oct): a mast and beacon just past
   // the back of the extraction ledge (y 12, z −45), the same landmark the
@@ -358,6 +377,9 @@ export const OUTSKIRTS = {
     horizon: 0x9ba1a6,   // the haze; matches the sky's horizon band and the mist
     zenith:  0x4d5560,   // overhead: washed out, not navy
     void:    0x1a1c21,   // below the horizon: the pits stay dark
+    // #197: where the sky starts — Corp grey, near PAINT.grey — before the
+    // islands are painted. The colours above are the RESTORED sky.
+    drained: { horizon: 0x6c706a, zenith: 0x3f433f, void: 0x191a18 },
     fogNear: 8,
     fogFar:  46,
     fillColour: 0xb4bcc2,
@@ -416,6 +438,9 @@ export const LAST_COLOUR = {
     horizon: 0x6e5c3c,   // amber haze, dimmed: the far end of a room goes brown
     zenith:  0x2b2721,
     void:    0x141210,
+    // #197: drained Corp grey; the Siphon pulls the sky back here while its
+    // exam runs, and its destruction restores the amber above.
+    drained: { horizon: 0x5a5c58, zenith: 0x262725, void: 0x121312 },
     fogNear: 14,         // clears the TPV camera; the hangar is 38 m deep
     fogFar:  72,         // the Core's far wall (52 m) is hazy, never gone
     fillColour: 0xd9a650,
@@ -477,6 +502,8 @@ export const ASCENT = {
     horizon: 0xc9c2c4,   // pale rose-grey: first light, nothing warm yet
     zenith:  0x4c5c74,   // cold slate blue overhead
     void:    0x1d2129,   // the drop below the ridges
+    // #197: drained Corp grey at the trailhead; the climb paints it back.
+    drained: { horizon: 0x7a7d78, zenith: 0x474a47, void: 0x1b1c1b },
     fogNear: 30,         // the room you are in is crisp
     fogFar:  170,        // the far side of the mountain is haze, the tower is not
     fillColour: 0x9fb4d6,

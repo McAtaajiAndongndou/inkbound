@@ -103,6 +103,11 @@ export class Level03 extends LayoutLevel {
     // The lamps over the bay gates blink while their wave's breath counts down.
     for (const lamp of this.props.lamps) setLamp(lamp, this._rule(lamp.rule, player), this._clock);
     this.siphon.update(dt, this._cleared(LAST_COLOUR.win.requires));
+    // #197: while the Siphon's exam runs it drains the sky back to Corp grey;
+    // its destruction (the finale) restores the level's amber for good.
+    const phase = this.siphon.phase;
+    if (phase === 'finale' || phase === 'done') this.sky?.restore();
+    else if (phase !== 'dormant') this.sky?.drain();
     // #112 — the sergeant's line on arrival at the base.
     if (!this._saidBase && this.inRoom('R0', player.position)) {
       this._saidBase = true;

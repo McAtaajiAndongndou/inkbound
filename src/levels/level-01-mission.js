@@ -12,7 +12,7 @@ import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
 import { PaintVent } from './paint-vent.js';
 import { separateEnemies } from '../enemies/separation.js';
-import { SkyProbe } from '../shaders/sky-probe.js';
+import { buildSky } from './mood.js';
 
 /**
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
@@ -546,7 +546,7 @@ function createWasteSurface(width, depth, amplitude) {
  */
 const TOWER = GATE;
 
-/** GLSL's smoothstep, for the sky gradient. Kept local: this is its only user. */
+/** GLSL's smoothstep, for the mist texture's edge fade. */
 function smoothstep(edge0, edge1, x) {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
@@ -712,9 +712,9 @@ export class Level01 extends LevelBase {
    *      is why `_groundFog()` exists.
    *
    * Lane note: both helpers are plain meshes owned by the level, so this stays
-   * inside `levels/`. The sky is vertex-coloured rather than a ShaderMaterial
-   * specifically to avoid adding a file under `shaders/` (Lethabo's lane). If
-   * the sky later wants a real shader, that is the handover point.
+   * inside `levels/`. The sky is a small ShaderMaterial in mood.js since #197,
+   * because the dynamic sky moves its colours; it is unlit, so it is still not
+   * a shaders-lane material (no `uLightDir`).
    */
   _mood() {
     // Everything here is "air" rather than level geometry: the sky dome and the
@@ -724,64 +724,16 @@ export class Level01 extends LevelBase {
     this.atmosphere = new THREE.Group();
     this.root.add(this.atmosphere);
 
-    this._sky();
-    this.game.scene.fog = new THREE.Fog(MOOD.horizon, MOOD.fogNear, MOOD.fogFar);
+    // The sky, its haze and the wet paint's probe come from mood.js, so
+    // Outskirts' sky is the dynamic one too (#197): it starts drained and warms
+    // as the islands are painted. The dome keeps this level's old recipe — a
+    // BROAD haze band (the wall and gates sit ~11 degrees up, inside it),
+    // fog: false (at radius 200 it would be fogged flat), depthWrite: false.
+    buildSky(this, OUTSKIRTS.mood);
     // Base clear colour only; the dome covers it. This is what shows if a
     // camera ever clips the dome — the minimap's far plane, for instance.
     this.game.scene.background = new THREE.Color(MOOD.void);
     this._groundFog();
-    // #194: the sky that wet paint mirrors, photographed once now the dome exists.
-    this.skyProbe = new SkyProbe({ atmosphere: this.atmosphere, renderer: this.game.renderer });
-  }
-
-  /**
-   * A gradient sky dome — the piece that lets fog have its own colour.
-   *
-   * Three vertex-coloured bands: dark below the horizon, haze at it, drained
-   * dark above it. Vertex colours rather than a fragment shader because 32x20
-   * segments is plenty for a gradient, and it keeps a custom shader out of
-   * `shaders/`.
-   *
-   * `fog: false` is load-bearing. The dome sits at radius 200, far past
-   * fogFar, so with fog enabled the entire sky would be 100% fogged and would
-   * collapse straight back into the flat plate we are trying to avoid.
-   *
-   * `depthWrite: false` so a 200-unit sphere can never occlude real geometry.
-   */
-  _sky() {
-    const R = 200;
-    const geo = new THREE.SphereGeometry(R, 32, 20);
-    const horizon = new THREE.Color(MOOD.horizon);
-    const zenith = new THREE.Color(MOOD.zenith);
-    const below = new THREE.Color(MOOD.void);
-    const c = new THREE.Color();
-
-    const pos = geo.attributes.position;
-    const colours = new Float32Array(pos.count * 3);
-    for (let i = 0; i < pos.count; i++) {
-      // 0 at the bottom pole, 1 at the top. The horizon sits at 0.5.
-      const ny = (pos.getY(i) / R + 1) / 2;
-      // The haze band is deliberately BROAD. The wall and the gates sit about
-      // 11 degrees above the horizon, which is ~0.6 here. A narrow band would
-      // leave them fogged to pale grey but silhouetted against dark sky — the
-      // "painted gate" artefact all over again.
-      const up = smoothstep(0.50, 0.80, ny);
-      const down = 1 - smoothstep(0.30, 0.50, ny);
-      c.copy(horizon).lerp(zenith, up).lerp(below, down);
-      colours[i * 3] = c.r;
-      colours[i * 3 + 1] = c.g;
-      colours[i * 3 + 2] = c.b;
-    }
-    geo.setAttribute('color', new THREE.BufferAttribute(colours, 3));
-
-    const sky = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-      vertexColors: true,
-      side: THREE.BackSide,
-      fog: false,
-      depthWrite: false,
-    }));
-    this.atmosphere.add(sky);
-    return sky;
   }
 
   /**
@@ -1024,6 +976,8 @@ export class Level01 extends LevelBase {
 
   update(dt, player) {
     this._clock = (this._clock ?? 0) + dt;
+    // #197: the sky warms as the islands are painted.
+    this.sky?.update(dt);
     // Dormant enemies wake when the player ENTERS their arena, not on a distance
     // radius (#54 has none). Until then they hold their spawn — see `_spawnEnemies`.
     for (let i = 0; i < this.sleepers.length; i++) {
