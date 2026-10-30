@@ -11,7 +11,7 @@ import { cables, flat } from './curves.js';
 import { audio } from '../audio/audio-manager.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
-import { buildDressing } from './dressing.js';
+import { buildDressing, skylineDetail } from './dressing.js';
 import { PaintVent } from './paint-vent.js';
 import { separateEnemies } from '../enemies/separation.js';
 import { buildSky } from './mood.js';
@@ -1182,7 +1182,11 @@ export class Level01 extends LevelBase {
       const my = py + dx * sin + dy * cos - (y0 + y1) / 2;
       return { kind, room: 'C', box: [x0 + mx, x1 + mx, y0 + my, y1 + my, z0, z1], tilt: [0, 0, lean] };
     });
-    this.dressing = buildDressing(this, [...D.skyline, ...fallen, ...broken.map((b) => ({ ...b, room: 'C' }))]);
+    this.dressing = buildDressing(
+      this,
+      [...D.skyline, ...skylineDetail(D.skyline), ...fallen, ...broken.map((b) => ({ ...b, room: 'C' }))],
+      { horizon: OUTSKIRTS.mood.drained.horizon },   // the skyline fades toward the drained sky it starts on
+    );
   }
 
   dispose() {

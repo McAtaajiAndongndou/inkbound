@@ -147,3 +147,7 @@ The builder is `src/levels/dressing.js`. Each item is a box with a kind, and eac
 ### The Primer (step 5)
 
 Rebel chalk on R0's west wall, around the sergeant's desk: a crossed-out pill, a tally of days, and an arrow on toward R1. There are no words, and it is in chalk cream (`PRIMER.dressing.chalk`), the rebels' mark. The grey-only test now allows the two sides' marks: the Corp's grey-violet and the rebels' chalk. +1 draw call, and frame time is within noise.
+
+## 30 Oct: the skyline's finish (Renda, quality-plan QA)
+
+Renda liked the idea of the skyline but not the execution: it read as black walls close by. Option A: **far blocks fade toward the level's drained horizon** (`DRESSING.skyline.haze`, the `hazed` flag on `block` and `stack`). That's atmospheric perspective, so the shapes sit back. **Lit windows** (a lifted, greyed Corp violet, never hazed) and **chimney smoke** are generated from the blocks and stacks (`skylineDetail` in `dressing.js`), on the face toward the level, so moving a block moves its detail. Outskirts and Last Colour both use it. Tested in `tests/skyline-finish.test.js`.

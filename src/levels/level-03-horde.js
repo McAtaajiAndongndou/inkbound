@@ -19,7 +19,7 @@ import { LAST_COLOUR as TUNING, ENEMY, TRAP, CURVES, PLACED_LIGHTS, DRESSING } f
 import { cables, lathe } from './curves.js';
 import { applyMood } from './mood.js';
 import { buildProps, setLamp } from './prop-kit.js';
-import { buildDressing, wallBreakup } from './dressing.js';
+import { buildDressing, wallBreakup, skylineDetail } from './dressing.js';
 import { CargoCrusher } from './crusher.js';
 import { Siphon } from './siphon.js';
 import * as kit from './level-kit.js';
@@ -118,7 +118,8 @@ export class Level03 extends LayoutLevel {
     this.dressing = buildDressing(this, [
       ...wallBreakup(LAST_COLOUR.solids, { ...DRESSING.walls, skip: D.walls.skip }),
       ...D.items,
-    ]);
+      ...skylineDetail(D.items),
+    ], { horizon: TUNING.mood.drained.horizon });   // the skyline fades toward the drained sky it starts on
   }
 
   /**
