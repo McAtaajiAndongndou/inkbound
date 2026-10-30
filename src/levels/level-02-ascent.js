@@ -15,7 +15,7 @@
 import * as THREE from 'three';
 import { LayoutLevel } from './layout-level.js';
 import { ASCENT } from './layouts/ascent.js';
-import { ASCENT as TUNING } from '../config.js';
+import { ASCENT as TUNING, TRAP } from '../config.js';
 import { applyMood } from './mood.js';
 import { buildProps } from './prop-kit.js';
 import { CollapsingCatwalk } from './catwalk.js';
@@ -44,6 +44,8 @@ export class Level02 extends LayoutLevel {
         .filter((s) => s.catwalk)
         .map((floor) => ({ floor, slab: floor.underside, data: ASCENT.slabs.find((d) => d.id === floor.layoutId) })),
     );
+    // A segment falling next to you shakes the camera (polish audit, P1-2).
+    this.catwalk.onFall = (gain) => this.game?.shake?.(TRAP.shake.catwalk * gain);
   }
 
   /** The base: unfogged, dark, a shape against the sky (config ASCENT.base). */

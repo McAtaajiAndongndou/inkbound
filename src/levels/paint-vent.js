@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { TRAP } from '../config.js';
 import { TrapVolume } from './trap-volume.js';
+import { playAt } from './trap-sound.js';
 
 /**
  * A vent in the floor that erupts on grey and goes dead on the player's paint.
@@ -18,8 +19,15 @@ import { TrapVolume } from './trap-volume.js';
  * Covered by paint, it drops straight back to rest and stays there. A Sprayer's
  * grey re-arms it, which is the point: the vent is contested ground.
  *
- * Every mesh is unlit (MeshBasicMaterial), so it needs no `uLightDir` wiring
- * (AGENTS rule 5), and it lives under `parent`, so the level's dispose walk frees it.
+ * AT REST IT MUST STILL READ AS A MACHINE (polish audit): a raised rim, slats
+ * across the opening and a thin wisp of Corp-grey vapour leaking out. A flat
+ * outline on the floor read as a landing pad. The wisp is grey, not amber:
+ * amber is kept for "about to hurt" (the tell), so the rest state never cries wolf.
+ * It hisses when it erupts, heard by distance (trap-sound.js).
+ *
+ * The rim reads scene lights (MeshToonMaterial) and everything else is unlit
+ * (MeshBasicMaterial), so none of it needs `uLightDir` wiring (AGENTS rule 5),
+ * and it all lives under `parent`, so the level's dispose walk frees it.
  */
 export class PaintVent {
   /**
@@ -76,9 +84,43 @@ export class PaintVent {
     ];
     for (const [bw, bd, x, z] of bars) {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.08, bd), this._frameMat);
-      mesh.position.set(x, 0.04, z);
+      mesh.position.set(x, cfg.rimHeight, z);
       this.group.add(mesh);
     }
+
+    // The raised rim: a dark metal lip round the opening, so the grate stands
+    // proud of the floor instead of lying on it like a decal.
+    const rimMat = new THREE.MeshToonMaterial({ color: TRAP.bed });
+    const r = cfg.rimWidth;
+    const rims = [
+      [w + 2 * r, r, 0, -(d + r) / 2], [w + 2 * r, r, 0, (d + r) / 2],
+      [r, d, -(w + r) / 2, 0], [r, d, (w + r) / 2, 0],
+    ];
+    for (const [bw, bd, x, z] of rims) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(bw, cfg.rimHeight, bd), rimMat);
+      mesh.position.set(x, cfg.rimHeight / 2, z);
+      this.group.add(mesh);
+    }
+    // Slats across the opening, a little lower than the frame: a grate, not a hole.
+    for (let i = 1; i <= cfg.slats; i++) {
+      const slat = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, 0.07), rimMat);
+      slat.position.set(0, cfg.rimHeight * 0.6, -d / 2 + (d * i) / (cfg.slats + 1));
+      this.group.add(slat);
+    }
+
+    // The idle wisp: two thin open cones of grey vapour that drift up and fade,
+    // offset by half a loop so one is always rising.
+    this.wisps = [];
+    for (let i = 0; i < 2; i++) {
+      const wisp = new THREE.Mesh(
+        new THREE.CylinderGeometry(Math.min(w, d) * 0.18, Math.min(w, d) * 0.3, 0.8, 8, 1, true),
+        new THREE.MeshBasicMaterial({ color: cfg.wisp, transparent: true, opacity: 0, depthWrite: false }),
+      );
+      wisp.userData.offset = i * 0.5;
+      this.group.add(wisp);
+      this.wisps.push(wisp);
+    }
+    this._wispT = 0;
 
     this.column = new THREE.Mesh(
       new THREE.CylinderGeometry(Math.min(w, d) * 0.35, Math.min(w, d) * 0.5, cfg.height, 10, 1, true),
@@ -100,9 +142,14 @@ export class PaintVent {
     return painted >= Math.ceil(this._samples.length * TRAP.vent.coverage);
   }
 
-  /** Advance the rhythm and hurt anything in the column. */
-  update(dt, targets) {
+  /**
+   * Advance the rhythm and hurt anything in the column.
+   * @param {object[]} targets   the player first, then enemies
+   * @param {THREE.Vector3} [listener]  where the eruption is heard from (the player)
+   */
+  update(dt, targets, listener = targets[0]?.position) {
     const cfg = TRAP.vent;
+    const before = this.phase;
 
     if (this.dormant) {
       this.phase = 'dormant';
@@ -121,6 +168,8 @@ export class PaintVent {
     // cooldown only runs then too. TRAP.vent.cooldown equals `erupt` for that
     // reason: one hit per eruption.
     this.trap.update(dt, this.phase === 'erupt' ? targets : NONE);
+    if (this.phase === 'erupt' && before !== 'erupt') playAt('vent', this.group.position, listener);
+    this._wispT += dt;
     this._paint();
   }
 
@@ -135,6 +184,17 @@ export class PaintVent {
     else if (p === 'tell') amber = 0.5 + 0.5 * Math.sin(this._t * 18);
     else if (p === 'erupt') amber = 1;
     this._frameMat.color.copy(this._idle).lerp(this._amber, amber);
+
+    // The wisp leaks while the vent is live and not erupting; a dead vent is still.
+    const cfg = TRAP.vent;
+    const leaking = p === 'rest' || p === 'tell';
+    const loop = cfg.wispHeight / cfg.wispRise;
+    for (const wisp of this.wisps) {
+      const k = ((this._wispT / loop) + wisp.userData.offset) % 1;
+      wisp.visible = leaking;
+      wisp.position.y = cfg.rimHeight + k * cfg.wispHeight;
+      wisp.material.opacity = cfg.wispOpacity * Math.sin(k * Math.PI);
+    }
   }
 }
 

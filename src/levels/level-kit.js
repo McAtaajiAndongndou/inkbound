@@ -199,7 +199,7 @@ export function spawnEnemies(level, specs, label = 'level') {
         sleeping: spec.sleeping === true,
       });
       enemies.push(enemy);
-      if (spec.sleeping) sleepers.push({ enemy, wakeOn: spec.wakeOn });
+      if (spec.sleeping) sleepers.push({ enemy, wakeOn: spec.wakeOn, wakeDelay: spec.wakeDelay ?? 0 });
     }
   } catch (err) {
     console.error(`[${label}] enemy spawn failed, running without enemies:`, err);
@@ -207,3 +207,24 @@ export function spawnEnemies(level, specs, label = 'level') {
   }
   return { enemies, sleepers };
 }
+
+/**
+ * Paint a floor rect at load: `rect` is [x0, x1, z0, z1] at floor height `y`.
+ * Splatted on a grid fitted to the rect — spacing at most 1 m — with a 0.75 m
+ * radius, just over half a cell's diagonal, so the corners are covered. (A
+ * fixed 1 m grid left the far edge of the Primer's 2.5 m red pad bare.)
+ */
+export function paintRect(level, rect, y, colour) {
+  const point = new THREE.Vector3();
+  const [x0, x1, z0, z1] = rect;
+  const nx = Math.ceil(x1 - x0);
+  const nz = Math.ceil(z1 - z0);
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < nz; j++) {
+      point.set(x0 + (x1 - x0) * (i + 0.5) / nx, y, z0 + (z1 - z0) * (j + 0.5) / nz);
+      const floor = level.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - y) < 1e-6 && s.worldToCell(point));
+      floor?.splat(point, colour, 0.75);
+    }
+  }
+}
+

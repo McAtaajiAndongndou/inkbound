@@ -15,7 +15,7 @@
 import * as THREE from 'three';
 import { LayoutLevel } from './layout-level.js';
 import { LAST_COLOUR } from './layouts/last-colour.js';
-import { LAST_COLOUR as TUNING, ENEMY } from '../config.js';
+import { LAST_COLOUR as TUNING, ENEMY, TRAP } from '../config.js';
 import { applyMood } from './mood.js';
 import { buildProps, setLamp } from './prop-kit.js';
 import { CargoCrusher } from './crusher.js';
@@ -89,7 +89,10 @@ export class Level03 extends LayoutLevel {
       const [x0, x1, y0, , z0, z1] = t.box;
       centre.set((x0 + x1) / 2, y0, (z0 + z1) / 2);
       const floor = this.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - y0) < 1e-6 && s.worldToCell(centre));
-      this.crushers.push(new CargoCrusher({ parent: this.root, floor, box: t.box }));
+      const crusher = new CargoCrusher({ parent: this.root, floor, box: t.box });
+      // A beat that lands next to you shakes the camera (polish audit, P1-2).
+      crusher.onSlam = (gain) => this.game?.shake?.(TRAP.shake.crusher * gain);
+      this.crushers.push(crusher);
     }
   }
 

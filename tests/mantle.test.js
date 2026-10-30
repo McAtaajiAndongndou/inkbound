@@ -215,3 +215,100 @@ test('mantle height and duration live in config (#157)', () => {
   assert.ok(MANTLE.duration > 0.1 && MANTLE.duration < 0.6,
     'duration should be short: 0.1 < duration < 0.6');
 });
+// ---------------------------------------------------------------------------
+// #184 — the probe must look PAST the wall, not behind the climber. The tests
+// above use a 200 × 200 m top floor that covers both sides of the wall, so a
+// probe on the wrong side still found it. Here the top is a slab that starts
+// at the wall face and runs 6 m deep on the far side only, and the ground the
+// climber starts on stops at the wall.
+// ---------------------------------------------------------------------------
+
+/** A floor rectangle spanning zMin..zMax (world), width 20 m in x. */
+function makeSlab({ y, zMin, zMax, paintId = 1 }) {
+  const depth = zMax - zMin;
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(20, depth),
+    new THREE.MeshBasicMaterial(),
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(0, y, (zMin + zMax) / 2);
+  mesh.updateMatrixWorld(true);
+  const rules = { friction: 10, traction: 1, speedScale: 1, restitution: 0, climbable: false, standSlow: 1.0 };
+  return {
+    mesh,
+    width: 20,
+    height: depth,
+    isFloor: true,
+    surfaceAtWorld: () => rules,
+    paintIdAtWorld: () => paintId,
+    isPlayerPaintAtWorld: () => paintId !== 0,
+    splat: () => {},
+  };
+}
+
+/**
+ * Wall at z = 0 (climber on -Z), top floor behind it only. Hold W from 1 m
+ * away for up to 6 s; once a mantle has finished, let go of W and settle for
+ * a second (holding on would walk the player off the far edge of the slab).
+ */
+function climbWithTopBehind(wallHeight, { lip = false } = {}) {
+  const wall = makeWall({ yBottom: 0, height: wallHeight });
+  const ground = makeSlab({ y: 0, zMin: -50, zMax: 0 });
+  const top = makeSlab({ y: wallHeight, zMin: lip ? -0.3 : 0, zMax: 6 });
+  const p = new Player([wall, ground, top], new THREE.Vector3(0, 0, -1));
+  p.yaw = Math.PI;
+  const actions = { jump: false };
+  const idle = { isDown: () => false, aiming: false };
+  let mantled = false;
+  for (let i = 0; i < 360; i++) {
+    p.update(1 / 60, climbInput(), actions);
+    if (p.mantling) mantled = true;
+    else if (mantled) break;
+  }
+  runFor(p, idle, 1);
+  return p;
+}
+
+for (const h of [3, 5, 8]) {
+  test(`a ${h} m green wall with the top floor only behind it ends on top (#184)`, () => {
+    const p = climbWithTopBehind(h);
+    assert.ok(Math.abs(p.position.y - h) < 0.05,
+      `player should end on top (y ≈ ${h}), got (${p.position.x.toFixed(2)}, ${p.position.y.toFixed(2)}, ${p.position.z.toFixed(2)})`);
+    assert.ok(p.position.z > 0, `player should be past the wall (z > 0), got z = ${p.position.z}`);
+    assert.equal(p.mantling, false);
+  });
+}
+
+test('a 3 m wall with a 0.3 m lip toward the climber also ends on top (#184)', () => {
+  const p = climbWithTopBehind(3, { lip: true });
+  assert.ok(Math.abs(p.position.y - 3) < 0.05, `got y = ${p.position.y}`);
+});
+
+test('the mantle never lands the climber back on the floor they came from (#184)', () => {
+  // Watch every frame: a mantle that ends below the top edge is the bug.
+  const wall = makeWall({ yBottom: 0, height: 3 });
+  const ground = makeSlab({ y: 0, zMin: -50, zMax: 0 });
+  const top = makeSlab({ y: 3, zMin: 0, zMax: 6 });
+  const p = new Player([wall, ground, top], new THREE.Vector3(0, 0, -1));
+  p.yaw = Math.PI;
+  const actions = { jump: false };
+  for (let i = 0; i < 360; i++) {
+    p.update(1 / 60, climbInput(), actions);
+    if (p.mantling) {
+      assert.ok(p.mantleTo.y > 2.9, `mantle target must be the top, got y = ${p.mantleTo.y}`);
+      assert.ok(p.mantleTo.z > 0, `mantle target must be past the wall, got z = ${p.mantleTo.z}`);
+    }
+  }
+});
+
+test('a wall with only the climber-side ground and nothing behind its top does not mantle (#184)', () => {
+  const wall = makeWall({ yBottom: 0, height: 3 });
+  const ground = makeSlab({ y: 0, zMin: -50, zMax: 0 });
+  const p = new Player([wall, ground], new THREE.Vector3(0, 0, -1));
+  p.yaw = Math.PI;
+  const actions = { jump: false };
+  for (let i = 0; i < 360; i++) {
+    p.update(1 / 60, climbInput(), actions);
+    assert.equal(p.mantling, false, `mantle fired at frame ${i} with nothing behind the top`);
+  }
+});

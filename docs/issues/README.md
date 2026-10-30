@@ -86,17 +86,17 @@ All 59 are **published** as `#73`–`#131`, and a second batch of three (`060`�
 
 ## Batch 2 — 29 Oct 2026
 
-Three cross-lane gaps found while blocking out the Ascent (`docs/levels/02-the-ascent.md`, "Dependencies outside the levels lane"), published as 060–062. Four more from the 30 Oct polish audit (`docs/polish-audit.md`) followed as 065–068. All are in milestone `Spec 2026-10`. **The map, read from the tracker by title** — the offset is not +72, which is exactly why the rule below exists:
+Three cross-lane gaps found while blocking out the Ascent (`docs/levels/02-the-ascent.md`, "Dependencies outside the levels lane"), published as 060–062. Four more from the 30 Oct polish audit (`docs/polish-audit.md`) followed as 069–072 (first drafted as 065–068, renumbered because the mission-intro drafts below already held 065–066). All are in milestone `Spec 2026-10`. **The map, read from the tracker by title** — the offset is not +72, which is exactly why the rule below exists:
 
 | Draft | Tracker | Issue | Lane | Pri | Cost | Depends on |
 |---|---|---|---|---|---|---|
 | 060 | #155 | Tank per level | core | MUST | S | #73 |
 | 061 | #156 | Paintable surfaces read before you shoot | shaders | MUST | S–M | — |
 | 062 | #157 | Mantle | core | COULD | M | — (coordinates with #122) |
-| 065 | #184 | Mantle probes the wrong side of the wall (regression from #157) | core | MUST | S | — |
-| 066 | #185 | Enemy pellets: ranged shots fly, can be dodged, stop at walls | shaders (enemies) | MUST | M | — |
-| 067 | #186 | Enemies are solid to the player | core | MUST | S | — (pairs with #187) |
-| 068 | #187 | Enemies push each other apart | shaders (enemies) | SHOULD | S | #186 (config move) |
+| 069 | #184 | Mantle probes the wrong side of the wall (regression from #157) | core | MUST | S | — |
+| 070 | #185 | Enemy pellets: ranged shots fly, can be dodged, stop at walls | shaders (enemies) | MUST | M | — |
+| 071 | #186 | Enemies are solid to the player | core | MUST | S | — (pairs with #187) |
+| 072 | #187 | Enemies push each other apart | shaders (enemies) | SHOULD | S | #186 (config move) |
 
 **#155 is the one that matters most:** until it lands, every level gets Outskirts' 100-ink tank, so the Ascent's rationing — its whole identity — is not in the game. One line in `main.js`.
 

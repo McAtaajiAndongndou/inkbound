@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER, HEALTH, CAMERA, SUBMERGE,MANTLE } from '../config.js';
+import { PLAYER, HEALTH, CAMERA, SUBMERGE, MANTLE, ENEMY_BODY } from '../config.js';
 
 const ID_TO_NAME = ['grey', 'blue', 'red', 'green'];
 
@@ -33,6 +33,12 @@ export class Player {
     this.pitch = 0;
 
     this.onGround = false;
+    // Polish audit P0-2: the feet touched a floor this frame — standing, or the
+    // bounce off red, which leaves `onGround` false on purpose. Refill reads it.
+    this.touchedGround = false;
+    // Fall speed of a bounce off red this frame (0 if none): the camera shakes
+    // on a hard one (polish audit P1-2).
+    this.bounceImpact = 0;
     this.climbing = false;
     this.touchingWall = null;   // { surface, point, normal, rules }
     this.currentColour = 'grey';
@@ -50,6 +56,11 @@ export class Player {
     this.dead = false;
     this.hurtTimer = 0;         // > 0 means recently hit, cannot be hit again yet
     this.onDeath = null;        // optional callback, fired once when health hits 0
+    // Polish audit P0-4: where the last hit came from, for the HUD's direction
+    // arc, and how long ago. `onHurt(n, from)` fires on every hit that lands.
+    this.lastHurtFrom = null;   // THREE.Vector3 or null (a hit with no source)
+    this.lastHurtAge = Infinity;
+    this.onHurt = null;
     // dry out (#75). Set by main.js — only main knows the gun and the surfaces.
     // Player holds the flag so the HUD and any other system can read it.
     this.dry = false;
@@ -92,12 +103,18 @@ export class Player {
   /**
    * Lose `n` health. Ignored while dead or inside the post-hit cooldown.
    * Returns true if the hit landed.
+   * @param {number} n
+   * @param {{x:number,y:number,z:number}} [from]  where the hit came from, if known
    */
-  takeDamage(n) {
+  takeDamage(n, from = null) {
     if (this.dead || this.hurtTimer > 0 || n <= 0) return false;
 
     this.health = Math.max(0, this.health - n);
     this.hurtTimer = HEALTH.hurtCooldown;
+    if (from) (this.lastHurtFrom ??= new THREE.Vector3()).set(from.x, from.y, from.z);
+    else this.lastHurtFrom = null;
+    this.lastHurtAge = 0;
+    this.onHurt?.(n, from);
 
     if (this.health === 0) {
       this.dead = true;
@@ -149,10 +166,69 @@ export class Player {
       const dx = enemy.position.x - this.position.x;
       const dz = enemy.position.z - this.position.z;
       const dy = enemy.position.y - this.position.y;
-      if (dx * dx + dz * dz > HEALTH.contactRange * HEALTH.contactRange) continue;
+      // #186 — bodies are solid, so a big one holds you further off than the
+      // contact range. Touching is "pressed against it", whatever its size.
+      const range = Math.max(HEALTH.contactRange,
+        PLAYER.radius + (enemy.config.bodyRadius ?? ENEMY_BODY.radius) + HEALTH.contactSlack);
+      if (dx * dx + dz * dz > range * range) continue;
       if (Math.abs(dy) > HEALTH.contactHeight) continue;
-      if (this.takeDamage(enemy.config.contactDamage ?? 0)) return; // one hit per frame
+      if (this.takeDamage(enemy.config.contactDamage ?? 0, enemy.position)) return; // one hit per frame
     }
+  }
+
+  /**
+   * Enemies are solid (#186). Each live enemy is a vertical cylinder of radius
+   * `bodyRadius ?? ENEMY_BODY.radius`; a player inside one is pushed straight
+   * out along the line between centres. Only the player moves: pushing enemies
+   * would let you shove them through walls or off ledges, which their nav
+   * forbids (enemy-vs-enemy is #187).
+   *
+   * Called after the level has moved its enemies this frame (main.js), so the
+   * push is out of where they are now. Then the walls run again, so an enemy
+   * cannot shove you into or through a panel; a wall that pushes you back into
+   * an enemy settles next frame.
+   *
+   * Solid: anything alive, including a sleeping guard — it is still standing
+   * there. Not solid: corpses, an enemy on a face (its body is held off the
+   * wall, and the wall already stops you), and one a storey above or below.
+   */
+  resolveEnemyBodies(enemies) {
+    if (this.dead) return;
+    let pushed = false;
+    for (let i = 0; i < enemies.length; i++) {
+      const enemy = enemies[i];
+      if (enemy.alive === false || !enemy.position) continue;
+      if (enemy.climbing === true) continue;
+      const dy = enemy.position.y - this.position.y;
+      if (Math.abs(dy) >= HEALTH.contactHeight) continue;
+
+      const reach = PLAYER.radius + (enemy.config?.bodyRadius ?? ENEMY_BODY.radius);
+      let nx = this.position.x - enemy.position.x;
+      let nz = this.position.z - enemy.position.z;
+      const d2 = nx * nx + nz * nz;
+      if (d2 >= reach * reach) continue;
+
+      const d = Math.sqrt(d2);
+      if (d > 1e-6) {
+        nx /= d;
+        nz /= d;
+      } else {
+        // Exactly on top: back out the way you came (facing, reversed).
+        nx = Math.sin(this.yaw);
+        nz = Math.cos(this.yaw);
+      }
+      this.position.x = enemy.position.x + nx * reach;
+      this.position.z = enemy.position.z + nz * reach;
+
+      // kill velocity heading into the body, as the walls do
+      const into = this.velocity.x * nx + this.velocity.z * nz;
+      if (into < 0) {
+        this.velocity.x -= nx * into;
+        this.velocity.z -= nz * into;
+      }
+      pushed = true;
+    }
+    if (pushed) this._resolveWalls();
   }
 
   look(dx, dy, aiming = false) {
@@ -346,6 +422,9 @@ export class Player {
 
   update(dt, input, actions) {
     if (this.hurtTimer > 0) this.hurtTimer -= dt;
+    this.lastHurtAge += dt;
+    this.touchedGround = false;
+    this.bounceImpact = 0;
     if (this.dead) return;     // dead: frozen in place until the level restarts
 
     // ---- mantle (#157) — locked lift; no input, no physics, no gravity ----
@@ -360,6 +439,7 @@ export class Player {
         this.mantling = false;
         this.mantleTimer = 0;
         this.onGround = true;
+        this.touchedGround = true;
       } else {
         const t = 1 - (this.mantleTimer / MANTLE.duration);
         // Ease-out: most of the motion happens early, so the visible lift
@@ -423,11 +503,13 @@ export class Player {
       if (wall && wall.topY != null) {
         const belowTop = wall.topY - this.position.y;
         if (!this.onGround && belowTop > 0 && belowTop <= MANTLE.reach) {
-          // Probe just past the wall's face, at the top edge. The inward
-          // offset uses the wall normal so a wall facing -Z gets the floor
-          // on its -Z side, and a wall facing +Z on its +Z side.
-          const probeX = this.position.x + wall.normal.x * (PLAYER.radius + MANTLE.inward);
-          const probeZ = this.position.z + wall.normal.z * (PLAYER.radius + MANTLE.inward);
+          // Probe just past the wall's top edge, on the far side. #184:
+          // `wall.normal` points out of the wall toward the climber (it is
+          // built from the side the player is on), so "past the edge" is
+          // AGAINST the normal. Adding it probed behind the climber's back
+          // and mantled them down onto the floor they climbed from.
+          const probeX = this.position.x - wall.normal.x * (PLAYER.radius + MANTLE.inward);
+          const probeZ = this.position.z - wall.normal.z * (PLAYER.radius + MANTLE.inward);
           const probeY = wall.topY + 0.1;    // just above the edge
           const topFloor = this._probeGroundAt(probeX, probeY, probeZ);
           if (topFloor) {
@@ -539,9 +621,12 @@ export class Player {
         // do NOT set onGround, or friction would eat the bounce.
         this.velocity.y = Math.max(-impact * rules.restitution, PLAYER.minBounce);
         this.position.y = feetY + PLAYER.bounceClearance;
+        this.touchedGround = true;          // P0-2: red refills like any paint
+        this.bounceImpact = Math.max(0, -impact);
       } else {
         this.velocity.y = 0;
         this.onGround = true;
+        this.touchedGround = true;
       }
     }
 
