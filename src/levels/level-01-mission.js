@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
-import { PAINT, PAINT_GRID, OUTSKIRTS } from '../config.js';
+import { PAINT_GRID, OUTSKIRTS, GATE, SPAWN_PAD } from '../config.js';
 import { audio } from '../audio/audio-manager.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
@@ -248,8 +248,12 @@ const L1 = {
     // deck instead of arriving at the lip. DORMANT until the player lands in B:
     // enemies walk from load, so without this they pile up at B's edge and the
     // player jumps the Gap into a wall of Chargers.
-    { x: -3,  y: 0,   z: -3,   type: 'charger', sleeping: true, wakeOn: 'B' },
-    { x: 2,   y: 0,   z: -4,   type: 'charger', sleeping: true, wakeOn: 'B' },
+    // The Sprayer's first appearance is framed (polish audit, Enemies 5): it
+    // wakes alone, and the Chargers `OUTSKIRTS.sprayerFirst` seconds after,
+    // so B opens as one enemy at a distance, on the deck its answer is about.
+    // A hit still wakes a Charger at once (DECISIONS 24 Oct).
+    { x: -3,  y: 0,   z: -3,   type: 'charger', sleeping: true, wakeOn: 'B', wakeDelay: OUTSKIRTS.sprayerFirst },
+    { x: 2,   y: 0,   z: -4,   type: 'charger', sleeping: true, wakeOn: 'B', wakeDelay: OUTSKIRTS.sprayerFirst },
     { x: 7,   y: 4.6, z: -4,   type: 'sprayer', sleeping: true, wakeOn: 'B' },
     // island C — three in the arena, deeper now that the room is 14 m: the
     // player lands with 10 m of floor and a block between them and contact.
@@ -530,25 +534,16 @@ function createWasteSurface(width, depth, amplitude) {
 }
 
 /**
- * The tower's look: concrete, undersides, and the drain field's colour (#39 #6,
- * #3). Numbers and colours only, so the structure can be re-tuned without
- * touching `_tower()`.
+ * The tower's look lives in config now: `GATE` (polish audit P0-5, AGENTS rule
+ * 4). The drain field was PAINT.red's family; it is the Corp's grey-violet, and
+ * an opened door's lock bar turns white ("here"), never paint green.
  *
  * The concrete is a cold, drained grey — deliberately NOT the grey-green of the
  * ground and foliage. Everything the Corrupt Corp built is a different, deader
  * material from the world it is standing on, and the tower is the first
  * structure big enough for that to read.
  */
-const TOWER = {
-  // The gate frames are the only structure left in the level — everything else is
-  // a PaintSurface. See `_gate`.
-  concrete: 0x6b6f73,
-
-  field: 0xff3b46,     // the drain field, in PAINT.red's family so it reads as hostile
-  fieldOpacity: 0.42,
-  fieldScroll: 0.55,   // texture drift per second, so a live barrier looks alive
-  fieldFade: 1.8,      // opacity per second once the arena clears
-};
+const TOWER = GATE;
 
 /** GLSL's smoothstep, for the sky gradient. Kept local: this is its only user. */
 function smoothstep(edge0, edge1, x) {
@@ -648,6 +643,7 @@ export class Level01 extends LevelBase {
     this._ascent();
     this._shoulders();
     this._extraction();
+    this._spawnPad();
     this._mood();
     this._waste();
     this._light();
@@ -1024,13 +1020,16 @@ export class Level01 extends LevelBase {
   }
 
   update(dt, player) {
+    this._clock = (this._clock ?? 0) + dt;
     // Dormant enemies wake when the player ENTERS their arena, not on a distance
     // radius (#54 has none). Until then they hold their spawn — see `_spawnEnemies`.
     for (let i = 0; i < this.sleepers.length; i++) {
       const s = this.sleepers[i];
-      if (s.enemy.sleeping && this._inIsland(s.wakeOn, player.position)) {
-        s.enemy.wake();
-      }
+      if (!s.enemy.sleeping) continue;
+      // The clock starts on the first step in and keeps running if you leave:
+      // a delayed wake is a beat, not a condition.
+      if (s.enteredAt === undefined && this._inIsland(s.wakeOn, player.position)) s.enteredAt = this._clock;
+      if (s.enteredAt !== undefined && this._clock - s.enteredAt >= s.wakeDelay) s.enemy.wake();
     }
 
     // Pass the position, not the player: Enemy.update does arithmetic on what
@@ -1098,6 +1097,10 @@ export class Level01 extends LevelBase {
         } else {
           mat.opacity = opacity;
         }
+      } else if (gate.light.position.y > gate.barRest - TOWER.barDrop) {
+        // The field is gone: the lock bar sinks into its lintel, so the Ledge's
+        // look back at your colour is not framed by a dead door (polish audit).
+        gate.light.position.y = Math.max(gate.barRest - TOWER.barDrop, gate.light.position.y - TOWER.barSink * dt);
       }
     }
 
@@ -1453,12 +1456,12 @@ export class Level01 extends LevelBase {
     // the doorway, not a signpost telling you to paint something.
     const light = new THREE.Mesh(
       new THREE.BoxGeometry(6, 0.4, 0.4),
-      new THREE.MeshBasicMaterial({ color: PAINT.red.hex }),
+      new THREE.MeshBasicMaterial({ color: TOWER.lock }),
     );
     light.position.set(0, yTop + 1.8, z);
     this.root.add(light);
 
-    return { contains, surface: s, light, curtain, frame, open: false, watch: [] };
+    return { contains, surface: s, light, curtain, frame, open: false, watch: [], barRest: light.position.y };
   }
 
   /**
@@ -1493,8 +1496,15 @@ export class Level01 extends LevelBase {
   _openGate(gate) {
     gate.open = true;
     gate.surface.mesh.position.y = -100;
-    gate.light.material.color.setHex(PAINT.green.hex);
+    gate.light.material.color.setHex(TOWER.open);   // white: "the way is here" (P0-5)
     audio.play('gate'); // #113 — the arena is won; you hear the way open
+  }
+
+  /** The spawn pad (polish audit, SPAWN_PAD): first steps at full speed, grey felt as a loss. */
+  _spawnPad() {
+    const { x, z } = L1.spawn;
+    const h = SPAWN_PAD.half;
+    kit.paintRect(this, [x - h, x + h, z - h, z + h], 0, SPAWN_PAD.colour);
   }
 
   /**
@@ -1528,7 +1538,10 @@ export class Level01 extends LevelBase {
     const mast = new THREE.Mesh(new THREE.BoxGeometry(0.6, height, 0.6), new THREE.MeshToonMaterial({ color: b.mastColour }));
     mast.position.set(b.x, b.mastFrom + height / 2, b.z);
     mast.name = 'extraction-mast';
-    const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: b.colour }));
+    // Unfogged (polish audit): fog closes at 46 m and the beacon is 67 m from
+    // spawn, so it was hidden exactly where it had to pull you forward. The
+    // Ascent's base-silhouette trick: the light ignores the fog, the mast does not.
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: b.colour, fog: false }));
     beacon.position.set(b.x, b.top + 1.2, b.z);
     beacon.name = 'extraction-beacon';
     this.root.add(mast, beacon);

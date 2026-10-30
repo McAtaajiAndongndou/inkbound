@@ -27,7 +27,8 @@
 // soft-lock guard, and the Ascent's ledge needed it (the lift never left).
 import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
-import { PAINT } from '../config.js';
+import { GATE } from '../config.js';
+import { audio } from '../audio/audio-manager.js';
 import * as kit from './level-kit.js';
 import { buildLayout, roomTest } from './layout-builder.js';
 import { separateEnemies } from '../enemies/separation.js';
@@ -54,6 +55,7 @@ export class LayoutLevel extends LevelBase {
 
     const [x, y, z] = L.routes.main[0];
     this.spawn.set(x, y + 2, z);   // lifted, so the player drops onto the floor
+    if (L.spawnLook) this.spawnLook = new THREE.Vector3(...L.spawnLook);
     this.spawnPoints = L.enemies.filter((e) => !e.planned).map((e) => new THREE.Vector3(...e.pos));
 
     const [wx0, wx1, wy0, wy1, wz0, wz1] = L.win.box;
@@ -69,25 +71,10 @@ export class LayoutLevel extends LevelBase {
 
   /**
    * Paint already on the floor at load: the layout's `prepaint` rects (the
-   * Primer's blue strip and red pad). Splatted on a grid fitted to each rect —
-   * spacing at most 1 m — with a 0.75 m radius, just over half a cell's
-   * diagonal, so the corners are covered. (A fixed 1 m grid left the far edge
-   * of the 2.5 m red pad bare; the built-level test caught it.)
+   * Primer's blue strip and red pad, every level's spawn pad). See kit.paintRect.
    */
   _prepaint() {
-    const point = new THREE.Vector3();
-    for (const p of this.layout.prepaint ?? []) {
-      const [x0, x1, z0, z1] = p.rect;
-      const nx = Math.ceil(x1 - x0);
-      const nz = Math.ceil(z1 - z0);
-      for (let i = 0; i < nx; i++) {
-        for (let j = 0; j < nz; j++) {
-          point.set(x0 + (x1 - x0) * (i + 0.5) / nx, p.y, z0 + (z1 - z0) * (j + 0.5) / nz);
-          const floor = this.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - p.y) < 1e-6 && s.worldToCell(point));
-          floor?.splat(point, p.colour, 0.75);
-        }
-      }
-    }
+    for (const p of this.layout.prepaint ?? []) kit.paintRect(this, p.rect, p.y, p.colour);
   }
 
   /** Every enemy in the data that exists in the game (`planned` ones do not yet). */
@@ -104,9 +91,10 @@ export class LayoutLevel extends LevelBase {
 
   /**
    * A gate: an invisible, unpaintable collider (the only thing that blocks) and
-   * a see-through red field in front of it (the thing the player reads). Red,
-   * like Outskirts' gate lock bar: it is the Corp's field, and it drops when the
-   * fight it guards is won.
+   * a see-through field in front of it (the thing the player reads). The Corp's
+   * grey-violet, like Outskirts' fields (`GATE`, polish audit P0-5): not red,
+   * which means bounce. It drops when the fight it guards is won, with the same
+   * `gate` sound as Outskirts' doors.
    */
   _buildGates() {
     this.gates = [];
@@ -122,7 +110,7 @@ export class LayoutLevel extends LevelBase {
 
       const field = new THREE.Mesh(
         new THREE.PlaneGeometry(alongX ? x1 - x0 : z1 - z0, y1 - y0),
-        new THREE.MeshBasicMaterial({ color: PAINT.red.hex, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }),
+        new THREE.MeshBasicMaterial({ color: GATE.field, transparent: true, opacity: GATE.layoutOpacity, side: THREE.DoubleSide, depthWrite: false }),
       );
       field.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
       if (!alongX) field.rotation.y = Math.PI / 2;
@@ -185,9 +173,10 @@ export class LayoutLevel extends LevelBase {
         gate.open = true;
         gate.collider.mesh.position.y = -100;   // below PLAYER.killY: out of every wall test
         gate.field.visible = false;
+        audio.play('gate');   // the layout levels' doors were silent (polish audit)
       } else if (state === 'pending') {
         // The warning: the field pulses while its countdown runs.
-        gate.field.material.opacity = 0.35 + 0.3 * Math.sin(this._clock * 8);
+        gate.field.material.opacity = GATE.layoutOpacity + GATE.layoutPulse * Math.sin(this._clock * 8);
       }
     }
     if (!this._complete && !this.scriptedWin && this.extraction.containsPoint(player.position) && this._cleared(this.layout.win.requires)) {

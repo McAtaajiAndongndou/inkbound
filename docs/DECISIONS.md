@@ -188,10 +188,22 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Every mission intro pins an objective marker on its goal** ("Extraction", "Supply lift", "The Siphon"), off-white, never amber. **Outskirts' extraction gets a mast and beacon** like the other two levels' goals (levels lane: Renda to keep or move).
 - **No sergeant art yet, so none is requested:** the briefing shows its plain panel and the deployment check has no 404.
 
-## 2026-10-30 — Enemy shots are pellets (draft 066)
+## 2026-10-30 — Enemy shots are pellets (draft 070, #185)
 
 - **Renda: ranged enemies fire visible pellets, the Splatoon way.** This replaces "the shot lands when the wind-up ends", under which `onAttack` damaged the player unconditionally (noted under Big Arm above). A shot that could not be dodged or blocked made the telegraph a warning without a choice, and made the Turret's spec ("strafe, or break line of sight") false.
 - **A pellet is dark Corp grey with an amber rim and trail**, flies at 22 m/s (Sprayer, Wall-crawler) or 30 m/s (Turret), is aimed where the player stands when it fires (no leading), stops at the first surface, and greys the ground where it lands. A miss still costs ground.
 - **Grey makes you easier to hit.** On grey (4.2 m/s) a sidestep only just clears a 12 m shot; on paint (7 m/s) it clears it easily. Painting is defence.
 - **`onAttack` keeps its meaning:** "this enemy's attack hit the player". For a ranged enemy it now fires on pellet contact. `main.js` does not change.
 - **Melee is unchanged:** Charger, Stalker, Drainer, Big Arm.
+
+## 2026-10-30 — polish audit, levels lane (docs/polish-audit.md)
+
+- **Furniture never wears a rule's colour (P0-5).** Encounter-gate fields, Outskirts' and the layout levels' alike, are the Corp's grey-violet (`GATE.field`), not red: red means bounce. Not amber either, because a field blocks you and never hurts you. An opened gate's lock bar turns **marker white** (`MARKER.white`, the floodlight's colour), never paint green. Goal beacons are marker white, not the yellow that sat next to danger amber. The bar then sinks into its lintel, so the Ledge's look back is not framed by a dead door.
+- **Every trap is heard, by distance** (`src/levels/trap-sound.js`, `TRAP.hearing`): vent hiss, crusher tick/clank/hiss, catwalk creak and the `collapse` SFX. A crusher beat or catwalk fall next to you adds camera trauma through `game.shake` (core wires it).
+- **Every level starts on a spawn pad of green paint** (`SPAWN_PAD`), the audit's default for grey. **Grey's `standSlow` 0.6 (#74) is unchanged**: the pad makes the first steps fast so stepping off it is felt as a loss. Green because it grips; blue would slide you off and red would bounce you.
+- **The Primer teaches submerge in R2**: a green pool on the way round the wall, and the sergeant's `primer-submerge` line ("hold Shift") while you stand in it. A level now asks for a line until the comms bar accepts it, so a line asked while another is up is no longer lost.
+- **The Primer's R6 shows blue's answer**: a blue lane over the pit's west edge, visible from R6's entry.
+- **Outskirts B frames the Sprayer's first appearance**: it wakes alone and B's Chargers `OUTSKIRTS.sprayerFirst` (3 s) later. A hit still wakes a Charger at once. The Ascent's Crawlers were already framed (two dormant at the trailhead's edges, seen before any fight), so it is unchanged.
+- **A level may name what its first frame faces** (`spawnLook`; `spawnAim` gives yaw and clamped pitch). The Ascent faces its lift beacon, at the camera's pitch limit. main.js applies it (core lane).
+- **The Primer has a focal point per lesson and leading light**: warm tungsten lamps (`PRIMER.dressing.lamp`, not amber, not a paint colour) over the sergeant's crate desk, R1's boards and R2's wall, and on the far side of each exit. Floor grid squares are twice a wall's.
+- **The Ascent's foothills have rock scree** (prop kind `rock`, no collision, under 1.3 m, off the climbing line). **Outskirts' beacon ignores fog** so it pulls you forward from spawn. The waste was darkened away from the vent's amber.

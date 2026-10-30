@@ -4,7 +4,7 @@ import * as THREE from 'three';
 
 import { Level01 } from '../src/levels/level-01-mission.js';
 import { Player } from '../src/core/player.js';
-import { PAINT, PLAYER } from '../src/config.js';
+import { GATE, PLAYER } from '../src/config.js';
 
 // Encounter gates (#37 island B, #56 island C): each arena's exit is sealed
 // until that arena is clear, so the fight has to be won rather than run past.
@@ -96,8 +96,8 @@ test('clearing island B opens gate B, and gate C is untouched (#37)', async () =
   clearArena(level, level.gateB);
 
   assert.equal(level.gateB.open, true, 'killing the arena must open the gate');
-  assert.equal(level.gateB.light.material.color.getHex(), PAINT.green.hex,
-    'the lock light should read "open"');
+  assert.equal(level.gateB.light.material.color.getHex(), GATE.open,
+    'the lock light should read "open": white, never paint green (polish audit P0-5)');
   assert.equal(sprayer.alive, true, 'island C was never part of this fight');
   assert.equal(level.gateC.open, false, 'and island C is still sealed');
 
@@ -248,7 +248,7 @@ test('the extraction only fires once island C is clear — the climb-proof check
 
   clearArena(level, level.gateC);
   assert.equal(level.gateC.open, true, 'clearing island C opens the door');
-  assert.equal(level.gateC.light.material.color.getHex(), PAINT.green.hex);
+  assert.equal(level.gateC.light.material.color.getHex(), GATE.open);
 
   level.update(1 / 60, atExtraction);
   assert.equal(wins, 1, 'once island C is clear, the extraction fires');
@@ -295,6 +295,6 @@ test('restart rebuilds both gates sealed, not left open (#37, #56, R)', async ()
     && Math.abs((s.mesh.position.z - s.height / 2) - gateZ(fresh.gateC)) < 1e-6);
   assert.ok(Math.abs(panelBottom(fresh.gateC) - arenaC.mesh.position.y) < 1e-6,
     'the island C panel must be back on the arena floor');
-  assert.equal(fresh.gateB.light.material.color.getHex(), PAINT.red.hex);
-  assert.equal(fresh.gateC.light.material.color.getHex(), PAINT.red.hex);
+  assert.equal(fresh.gateB.light.material.color.getHex(), GATE.lock);
+  assert.equal(fresh.gateC.light.material.color.getHex(), GATE.lock);
 });
