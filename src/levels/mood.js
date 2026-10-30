@@ -51,6 +51,10 @@ const skyVertex = /* glsl */ `
 // Below a crest the sky is mixed toward the void: the far layer a little, the
 // near layer more. They use the band uniforms, so they warm with the sky.
 // uHills.x = 0 turns them off (every level without `hills`).
+// An optional MIDDLE layer (`midShade` > 0) and a pull toward the zenith per
+// layer (`farTint` / `midTint` / `nearTint`) give layered ridges, each farther
+// one lighter and bluer: atmospheric perspective (the Ascent, Renda 30 Oct).
+// Without them a mood draws exactly the two plain layers above.
 const skyFragment = /* glsl */ `
   uniform vec3 uHorizon;
   uniform vec3 uZenith;
@@ -58,6 +62,8 @@ const skyFragment = /* glsl */ `
   uniform vec4 uHills;      // x on (0/1), y mean crest height, z swell, w softness
   uniform vec3 uHillShade;  // x far shade, y near shade, z near layer's drop
   uniform float uHillGround; // the band where the land under the hills reaches the void
+  uniform vec2 uHillMid;    // x the middle layer's shade (0 = no middle layer), y its drop
+  uniform vec3 uHillTint;   // far, middle, near: how far each layer is pulled toward the zenith
   varying float vBand;
   varying float vAzimuth;
   // Ridged: 1 - |sin| turns each wave into a peak, so crests read as hilltops
@@ -69,6 +75,10 @@ const skyFragment = /* glsl */ `
          + ridge(a * 17.0 + seed * 4.1) * 0.2
          + sin(a * 41.0 + seed * 1.3) * 0.1;
   }
+  // A layer's colour: its shade toward the void, then pulled toward the sky's blue.
+  vec3 hillColour(float shade, float tint) {
+    return mix(mix(uHorizon, uVoid, shade), uZenith, tint);
+  }
   void main() {
     vec3 c = mix(uHorizon, uZenith, smoothstep(0.5, 0.8, vBand));
     c = mix(c, uVoid, 1.0 - smoothstep(0.3, 0.5, vBand));
@@ -77,12 +87,17 @@ const skyFragment = /* glsl */ `
       float near = 0.5 + uHills.y - uHillShade.z + uHills.z * crest(vAzimuth, 5.3);
       float inFar = 1.0 - smoothstep(far - uHills.w, far + uHills.w, vBand);
       float inNear = 1.0 - smoothstep(near - uHills.w, near + uHills.w, vBand);
-      c = mix(c, mix(uHorizon, uVoid, uHillShade.x), inFar);
+      c = mix(c, hillColour(uHillShade.x, uHillTint.x), inFar);
+      if (uHillMid.x > 0.0) {
+        float mid = 0.5 + uHills.y - uHillMid.y + uHills.z * crest(vAzimuth, 3.1);
+        float inMid = 1.0 - smoothstep(mid - uHills.w, mid + uHills.w, vBand);
+        c = mix(c, hillColour(uHillMid.x, uHillTint.y), inMid);
+      }
       // Under the near crest is land, all the way down: the near layer's colour
       // at the horizon, darkening to the void only toward the bottom, so the
       // hills stand on ground instead of floating over a pale strip and a pit.
       float down = 1.0 - smoothstep(uHillGround, near, vBand);
-      vec3 land = mix(mix(uHorizon, uVoid, uHillShade.y), uVoid, down * down);
+      vec3 land = mix(hillColour(uHillShade.y, uHillTint.z), uVoid, down * down);
       c = mix(c, land, inNear);
     }
     gl_FragColor = vec4(c, 1.0);
@@ -116,6 +131,9 @@ export function skyDome(mood, radius = 200, colours = mood) {
         ? new THREE.Vector3(mood.hills.farShade, mood.hills.nearShade, mood.hills.nearDrop)
         : new THREE.Vector3() },
       uHillGround: { value: mood.hills ? mood.hills.groundFloor : 0 },
+      uHillMid: { value: new THREE.Vector2(mood.hills?.midShade ?? 0, mood.hills?.midDrop ?? 0) },
+      uHillTint: { value: new THREE.Vector3(
+        mood.hills?.farTint ?? 0, mood.hills?.midTint ?? 0, mood.hills?.nearTint ?? 0) },
     },
     side: THREE.BackSide,
     fog: false,

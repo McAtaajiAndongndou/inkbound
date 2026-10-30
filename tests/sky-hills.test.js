@@ -55,3 +55,38 @@ test('Outskirts\' sky is built with its hills on', async () => {
   assert.equal(dome.material.uniforms.uHills.value.x, 1);
   level.dispose();
 });
+
+// The Ascent (quality plan §8.4 item 6; Renda: the grey 3D peaks "are meant to
+// be mountains … the execution sucks"). The same sky hills, three layers deep,
+// each farther range lighter and bluer: atmospheric perspective.
+test('the Ascent\'s ridges: three layers, each farther one lighter and bluer', async () => {
+  const { ASCENT } = await import('../src/config.js');
+  const h = ASCENT.mood.hills;
+  assert.ok(h, 'the Ascent has sky ridges');
+  assert.ok(h.farShade < h.midShade && h.midShade < h.nearShade, 'farther must be lighter (less shade toward the void)');
+  assert.ok(h.farTint > h.midTint && h.midTint > h.nearTint, 'farther must be bluer (more of the zenith)');
+  assert.ok(h.midDrop > 0 && h.midDrop < h.nearDrop, 'the middle range sits between the far and near crests');
+  assert.ok(h.height - h.swell - h.nearDrop > 0, 'a crest dips below the horizon: a gap in the range');
+  assert.ok(0.5 + h.height + h.swell < 0.6, 'a crest climbs out of the haze band: a wall, not far mountains');
+  assert.ok(h.groundFloor < 0.25, 'land under the near crest, not a void');
+  const u = skyDome(ASCENT.mood).material.uniforms;
+  assert.deepEqual(u.uHillMid.value.toArray(), [h.midShade, h.midDrop]);
+  assert.deepEqual(u.uHillTint.value.toArray(), [h.farTint, h.midTint, h.nearTint]);
+});
+
+test('a mood without the middle layer or tints draws the two plain layers (Outskirts unchanged)', () => {
+  const u = skyDome(OUTSKIRTS.mood).material.uniforms;
+  assert.deepEqual(u.uHillMid.value.toArray(), [0, 0], 'no middle layer');
+  assert.deepEqual(u.uHillTint.value.toArray(), [0, 0, 0], 'no pull toward the zenith');
+});
+
+test('the Ascent\'s sky is built with its ridges on', async () => {
+  const { Level02 } = await import('../src/levels/level-02-ascent.js');
+  const level = new Level02({ scene: new THREE.Scene(), onWin: null });
+  await level.load();
+  const dome = level.atmosphere.getObjectByName('sky-dome');
+  assert.ok(dome, 'the Ascent has a sky dome');
+  assert.equal(dome.material.uniforms.uHills.value.x, 1);
+  assert.ok(dome.material.uniforms.uHillMid.value.x > 0, 'with its middle range');
+  level.dispose();
+});

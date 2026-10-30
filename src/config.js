@@ -518,6 +518,25 @@ export const ASCENT = {
     fillColour: 0x9fb4d6,
     fillIntensity: 0.6,
     skyRadius: 450,      // past the base (~245 m), so the dome is behind it
+    // Far ridges drawn into the sky dome (quality plan §8.4 item 6; Renda: the
+    // grey 3D peaks "are meant to be mountains … the execution sucks"). The
+    // Outskirts hills, made mountains: taller and three layers deep, each
+    // farther one lighter and bluer (pulled toward the zenith), so distance
+    // reads from colour alone. Land fills under the near crest, as in Outskirts.
+    hills: {
+      height: 0.06,      // mean crest, band units above the horizon (0.5); ~7 degrees
+      swell: 0.03,       // crests rise and dip this much: peaks up to ~10 degrees
+      farShade: 0.1,     // the far range: barely off the horizon colour
+      midShade: 0.28,    // the middle range
+      nearShade: 0.5,    // the near range: darkest, it reads as closest
+      midDrop: 0.011,    // the middle crests sit this much lower than the far ones
+      nearDrop: 0.022,   // and the near ones lower again (height - swell - nearDrop > 0: no gaps)
+      farTint: 0.4,      // share of the zenith's blue in the far range
+      midTint: 0.22,
+      nearTint: 0.06,
+      soft: 0.0015,
+      groundFloor: 0.1,  // the land under the near crest darkens to the void only by here
+    },
   },
   // The collapsing catwalk (#102): "can you cross before it drops?"
   catwalk: {
