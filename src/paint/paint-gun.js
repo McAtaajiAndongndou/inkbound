@@ -89,6 +89,7 @@ export class PaintGun {
         active: false,
         target: new THREE.Vector3(),
         normal: new THREE.Vector3(),
+        dir: new THREE.Vector3(),   // the shot's flight direction (#240's drip lands along it)
         colour: "blue",
         colourId: 1,
         enemy: null,
@@ -220,6 +221,7 @@ export class PaintGun {
     p.enemy = enemy;
     p.surface = surface;
     p.colourId = this.current + 1;
+    p.dir.copy(this._raycaster.ray.direction);
     if (hit.face) {
       p.normal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
     } else {
@@ -277,12 +279,15 @@ export class PaintGun {
       // false if an earlier shot killed it while this one was in flight
       if (p.enemy.takeColourHit(p.colourId, PAINT_GUN.damage, p.target)) {
         kind = p.enemy.alive ? "hit" : "kill";
+        this._hitDrip(p);
       }
     } else {
       // Read the ground BEFORE the splat overwrites it. Optional: a surface
       // that cannot report its paint just never counts as claimed.
       const before = p.surface.paintIdAtWorld?.(p.target) ?? PAINT_IDS[p.colour];
-      if (p.surface.splat(p.target, p.colour, PAINT_GUN.radius)) {
+      // Hip-fire paints wider than aiming (step 7c): the painter vs the duellist.
+      const radius = p.aiming ? PAINT_GUN.radius : (PAINT_GUN.hipRadius ?? PAINT_GUN.radius);
+      if (p.surface.splat(p.target, p.colour, radius)) {
         if (!this.lastSplat) this.lastSplat = { point: new THREE.Vector3(), colour: p.colour, age: 0 };
         this.lastSplat.point.copy(p.target);
         this.lastSplat.colour = p.colour;
@@ -304,6 +309,30 @@ export class PaintGun {
       this.lastShot = kind;
       this.onImpact?.(kind, claimed);
     }
+  }
+
+  /**
+   * #240 (loop pass step 3b): a hit drips its colour onto the floor just past
+   * the enemy along the shot, so fighting builds pools you can dive into.
+   * Past it, not under it: paint under an enemy's feet would slide, bounce or
+   * pin it on every hit and change the combo balance.
+   */
+  _hitDrip(p) {
+    if (p.colour === "grey" || !(PAINT_GUN.hitDrip > 0) || !p.enemy) return;
+    this._splashFrom.set(p.dir.x, 0, p.dir.z);
+    if (this._splashFrom.lengthSq() < 1e-6) return;
+    // From the enemy's centre, not the hit point: where a shot meets the body
+    // depends on the model, and the drip must clear the feet for every one.
+    this._splashFrom.normalize().multiplyScalar(PAINT_GUN.hitDripOffset).add(p.enemy.position ?? p.target);
+    this._splashFrom.y = p.target.y + 1;
+    this._splashDir.set(0, -1, 0);
+    this._splashRaycaster.set(this._splashFrom, this._splashDir);
+    this._splashRaycaster.far = 6;
+    this._splashHits.length = 0;
+    this._splashRaycaster.intersectObjects(this._surfacesMeshes, false, this._splashHits);
+    const ground = this._splashHits[0];
+    const surface = ground?.object.userData.paintSurface;
+    if (surface) surface.splat(ground.point, p.colour, PAINT_GUN.hitDrip);
   }
 
   _splash(p){
