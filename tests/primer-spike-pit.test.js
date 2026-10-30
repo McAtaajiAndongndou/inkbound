@@ -35,6 +35,12 @@ function runner(x, y, z, health = 100) {
 const pitBox = L.traps.find((t) => t.id === 'r6-spike-pit').box;
 const [, , PIT_Y, , PIT_Z0, PIT_Z1] = pitBox;
 
+/** The floor piece under (x, z) at the pit's height: where a shot would paint. */
+function floorAt(level, x, z) {
+  const p = new THREE.Vector3(x, PIT_Y, z);
+  return level.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - PIT_Y) < 1e-6 && s.worldToCell(p));
+}
+
 /** Walk `who` north across the pit at `speed` m/s, ticking the pit at 60 Hz. */
 function cross(pit, who, speed) {
   const dt = 1 / 60;
@@ -48,7 +54,7 @@ test('R6 has a spike pit built over its trap zone', async () => {
   const level = await loaded();
   assert.equal(level.pits.length, 1);
   const pit = level.pits[0];
-  assert.ok(pit.floor, 'the pit found no floor to sit in');
+  assert.ok(pit.floors.length > 0, 'the pit found no floor to sit in');
   assert.ok(pit.trap.contains(new THREE.Vector3(0, PIT_Y, (PIT_Z0 + PIT_Z1) / 2)));
   level.dispose();
 });
@@ -74,7 +80,7 @@ test('blue slides over it: a blue-painted pit is crossed untouched; red is not a
   const level = await loaded();
   const pit = level.pits[0];
   const paint = (colour) => {
-    for (let z = PIT_Z1 + 1; z >= PIT_Z0 - 1; z -= 0.5) pit.floor.splat(new THREE.Vector3(0, PIT_Y, z), colour, 1.2);
+    for (let z = PIT_Z1 + 1; z >= PIT_Z0 - 1; z -= 0.5) floorAt(level, 0, z).splat(new THREE.Vector3(0, PIT_Y, z), colour, 1.2);
   };
 
   paint('red');
@@ -86,6 +92,28 @@ test('blue slides over it: a blue-painted pit is crossed untouched; red is not a
   const onBlue = runner(0, PIT_Y, 0);
   cross(pit, onBlue, 4);
   assert.equal(onBlue.taken, 0, 'blue should slide over the spikes');
+  level.dispose();
+});
+
+// R6's floor is three pieces across the pit (x -7..-2, -2..2, 2..7). The pit
+// read only the middle one, so blue anywhere else, the pre-laid lane included,
+// counted as grey and still hurt (Renda's QA of B3, 30 Oct).
+test('blue counts on every floor piece: the pre-laid west lane is safe', async () => {
+  const level = await loaded();
+  const lane = L.prepaint.find((p) => p.id === 'r6-blue-lane').rect;
+  const who = runner((lane[0] + lane[1]) / 2, PIT_Y, 0);
+  cross(level.pits[0], who, 4);
+  assert.equal(who.taken, 0, 'the pre-laid blue lane should slide over the spikes');
+  level.dispose();
+});
+
+test('blue counts on every floor piece: blue on the east edge is safe', async () => {
+  const level = await loaded();
+  const x = 5.5;
+  for (let z = PIT_Z1 + 1; z >= PIT_Z0 - 1; z -= 0.5) floorAt(level, x, z).splat(new THREE.Vector3(x, PIT_Y, z), 'blue', 1.2);
+  const who = runner(x, PIT_Y, 0);
+  cross(level.pits[0], who, 4);
+  assert.equal(who.taken, 0, 'blue on the east floor piece should slide over the spikes');
   level.dispose();
 });
 
