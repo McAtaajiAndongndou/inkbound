@@ -126,6 +126,16 @@ A check of the game against the brief's rubric (`CGV Project Brief`, section 11)
 | 081 | #216 | A hit, or a level wake, alerts the enemy at any range (also fixes B6) | shaders (enemies) | MUST | S | — |
 | 082 | #217 | Primer: the sergeant warns before the spike pit | ui (+ levels trigger) | SHOULD | S | B5 branch |
 | 083 | #218 | Zombie Charger: windup tell, death and hit clips | shaders (enemies) | SHOULD | S | Charger model branch |
+| 084 | #220 | Wall-crawler shoots the player through the floor (B1) | shaders (enemies) | MUST | S | — |
+| 085 | #221 | Sergeant line stays on screen after pause → level select (B2) | ui | SHOULD | S | — |
+| 086 | #222 | Turret has no model (B8) | shaders | SHOULD | S–M | — (blocks Levels: turrets placed with models) |
+| 087 | #223 | Frozen enemies turn 2D inside the frost shell (B9) | shaders | SHOULD | S | — |
+| 088 | #224 | Black circle in the Ascent sky follows the cursor (B10) | shaders | SHOULD | S | — |
+| 089 | #225 | Camera: position damping and collision (B11, §5) | core (+ shaders fade) | SHOULD | M | — |
+| 090 | #226 | Dry out: reproduce the 'I was on paint' death (B12) | core | SHOULD | S | — |
+| 091 | #227 | UK/SA spelling pass, and the rule in AGENTS.md (B14) | ui (+ everyone) | COULD | S | — |
+| 092 | #228 | Controls screen: check Shift and Q are taught | ui | SHOULD | S | — |
+| 093 | #229 | Remove grey from the player's colours (§3.6) | paint | SHOULD | S | — |
 
 Not drafted here, but on the brief's final checklist and still open: **play the published URL** (PRD L1), **measure frame rate on lab hardware**, **trailer and devlog**.
 
