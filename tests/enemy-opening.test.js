@@ -31,7 +31,7 @@ function arena(level) {
   // By TYPE, not by index: island B fields two Chargers now, so the second
   // spawn is a Charger and `enemies[1]` would hand the Sprayer tests a melee
   // enemy that never fires.
-  const charger = level.enemies.find((e) => e.type === 'charger');
+  const charger = level.enemies.find((e) => e.config === ENEMY.charger);
   const sprayer = level.enemies.find((e) => e.type === 'sprayer');
   // Island B's arena sleeps until the player lands in it (#012); these tests
   // place the player there by hand, so wake it the way landing would.

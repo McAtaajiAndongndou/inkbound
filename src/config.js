@@ -888,6 +888,11 @@ export const ENEMY = {
   // not stop the charge — a plant that discards momentum is the wrong primitive
   // for a chaser. windup/attackCooldown are left in place for that.
   charger: {
+    // Quality plan §4.2 (Phase 2): QA said it "just kind of jumps towards me".
+    // The soldier model has no charge or melee clip; the zombie charger has
+    // Run and Run_Attack, and fits the fiction (Chargers are failed trial
+    // subjects). A GLB key from MODEL_URLS; the stats below are unchanged.
+    model: 'chargerZombie',
     hp: 30,
     speed: 5.0,
     canShoot: false,

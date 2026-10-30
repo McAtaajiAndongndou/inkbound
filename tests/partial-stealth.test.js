@@ -329,7 +329,7 @@ test('in Level 1 an enemy finds the level walls without being handed them', asyn
 
   // Island B's Charger: awake by design (#011), standing on a floor, with the
   // level's own geometry around it.
-  const charger = level.gateB.watch.find((e) => e.type === 'charger');
+  const charger = level.gateB.watch.find((e) => e.config === ENEMY.charger);
   assert.ok(charger, 'no Charger on island B to test with');
   assert.ok(charger._blockers.length > 0,
     'the level already puts its walls under root, so the enemy should have found them');
