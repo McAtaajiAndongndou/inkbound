@@ -643,7 +643,10 @@ export const PLACED_LIGHTS = {
 export const PAINT_GUN = {
   range: 30,
   radius: 1.4,
-  cost: 4,
+  // Loop pass step 3 (quality plan §3.1): was 4, so a full tank emptied in
+  // ~3.5 s of trigger and each second of firing cost ~3.5 s standing still.
+  // At 2 it lasts ~7 s. Refill rates are unchanged: submerge stays the reload.
+  cost: 2,
   fireDelay: 0.14,
   hipSpread: 0.025,
   adsSpread: 0.005,
@@ -845,7 +848,7 @@ export const STALKER = {
 export const AMMO = {
   primer: 100,          // tutorial: same as Outskirts, explicitly
   outskirts: 100,       // plentiful
-  ascent: 60,           // starved — 15 shots, every room tuned against it
+  ascent: 60,           // starved — 30 shots at cost 2 (was 15 at 4; loop pass step 3), every room tuned against it
   'last-colour': 80,    // contested
 };
 
