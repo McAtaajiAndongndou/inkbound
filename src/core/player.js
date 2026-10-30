@@ -33,6 +33,12 @@ export class Player {
     this.pitch = 0;
 
     this.onGround = false;
+    // Polish audit P0-2: the feet touched a floor this frame — standing, or the
+    // bounce off red, which leaves `onGround` false on purpose. Refill reads it.
+    this.touchedGround = false;
+    // Fall speed of a bounce off red this frame (0 if none): the camera shakes
+    // on a hard one (polish audit P1-2).
+    this.bounceImpact = 0;
     this.climbing = false;
     this.touchingWall = null;   // { surface, point, normal, rules }
     this.currentColour = 'grey';
@@ -50,6 +56,11 @@ export class Player {
     this.dead = false;
     this.hurtTimer = 0;         // > 0 means recently hit, cannot be hit again yet
     this.onDeath = null;        // optional callback, fired once when health hits 0
+    // Polish audit P0-4: where the last hit came from, for the HUD's direction
+    // arc, and how long ago. `onHurt(n, from)` fires on every hit that lands.
+    this.lastHurtFrom = null;   // THREE.Vector3 or null (a hit with no source)
+    this.lastHurtAge = Infinity;
+    this.onHurt = null;
     // dry out (#75). Set by main.js — only main knows the gun and the surfaces.
     // Player holds the flag so the HUD and any other system can read it.
     this.dry = false;
@@ -92,12 +103,18 @@ export class Player {
   /**
    * Lose `n` health. Ignored while dead or inside the post-hit cooldown.
    * Returns true if the hit landed.
+   * @param {number} n
+   * @param {{x:number,y:number,z:number}} [from]  where the hit came from, if known
    */
-  takeDamage(n) {
+  takeDamage(n, from = null) {
     if (this.dead || this.hurtTimer > 0 || n <= 0) return false;
 
     this.health = Math.max(0, this.health - n);
     this.hurtTimer = HEALTH.hurtCooldown;
+    if (from) (this.lastHurtFrom ??= new THREE.Vector3()).set(from.x, from.y, from.z);
+    else this.lastHurtFrom = null;
+    this.lastHurtAge = 0;
+    this.onHurt?.(n, from);
 
     if (this.health === 0) {
       this.dead = true;
@@ -151,7 +168,7 @@ export class Player {
       const dy = enemy.position.y - this.position.y;
       if (dx * dx + dz * dz > HEALTH.contactRange * HEALTH.contactRange) continue;
       if (Math.abs(dy) > HEALTH.contactHeight) continue;
-      if (this.takeDamage(enemy.config.contactDamage ?? 0)) return; // one hit per frame
+      if (this.takeDamage(enemy.config.contactDamage ?? 0, enemy.position)) return; // one hit per frame
     }
   }
 
@@ -346,6 +363,9 @@ export class Player {
 
   update(dt, input, actions) {
     if (this.hurtTimer > 0) this.hurtTimer -= dt;
+    this.lastHurtAge += dt;
+    this.touchedGround = false;
+    this.bounceImpact = 0;
     if (this.dead) return;     // dead: frozen in place until the level restarts
 
     // ---- mantle (#157) — locked lift; no input, no physics, no gravity ----
@@ -360,6 +380,7 @@ export class Player {
         this.mantling = false;
         this.mantleTimer = 0;
         this.onGround = true;
+        this.touchedGround = true;
       } else {
         const t = 1 - (this.mantleTimer / MANTLE.duration);
         // Ease-out: most of the motion happens early, so the visible lift
@@ -539,9 +560,12 @@ export class Player {
         // do NOT set onGround, or friction would eat the bounce.
         this.velocity.y = Math.max(-impact * rules.restitution, PLAYER.minBounce);
         this.position.y = feetY + PLAYER.bounceClearance;
+        this.touchedGround = true;          // P0-2: red refills like any paint
+        this.bounceImpact = Math.max(0, -impact);
       } else {
         this.velocity.y = 0;
         this.onGround = true;
+        this.touchedGround = true;
       }
     }
 

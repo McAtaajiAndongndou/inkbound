@@ -195,3 +195,13 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Grey makes you easier to hit.** On grey (4.2 m/s) a sidestep only just clears a 12 m shot; on paint (7 m/s) it clears it easily. Painting is defence.
 - **`onAttack` keeps its meaning:** "this enemy's attack hit the player". For a ranged enemy it now fires on pellet contact. `main.js` does not change.
 - **Melee is unchanged:** Charger, Stalker, Drainer, Big Arm.
+
+## 2026-10-30 — polish audit, core lane (Ozuko to approve)
+
+- **Tuning: submerged refill ×3 → ×4** (`SUBMERGE.refillMultiplier`). 32/s, a full tank in 3.1 s: the Splatoon number the audit measured against. Standing refill stays 8/s, so submerging stays *the* way to reload.
+- **Red refills you (P0-2).** A bounce off red never sets `onGround` (friction would eat the launch), and refill sat inside `if (onGround)`, so a third of your colours broke the pillar "standing in your own paint refills you". The player now reports `touchedGround` on any frame its feet met a floor, the bounce included, and refill and dry-out (`refillStep` in `src/core/feel.js`) use it. Not a change to red's physics.
+- **Hit-stop (P1-1)**: 40 ms on a kill, 80 ms on a freeze-shatter, 120 ms on a Big Arm combo step (`HIT_STOP`). The simulation steps by 0; rendering carries on.
+- **Screen shake is trauma (P1-2)** (`SHAKE`, `Trauma` in `feel.js`, on the camera rig): medium on a hit plus a small upward flinch, small on a hard red landing, large on Big Arm's slam by distance, and whatever a level hands `game.shake` (the crusher's beat, a catwalk falling). **Never on firing.** "Small on red knockback" was read as *your* hard landing on red: the player is never knocked back by anything else.
+- **A hit knows where it came from** (`takeDamage(n, from)`, `lastHurtFrom`, `lastHurtAge`, `onHurt`), for the HUD's damage arc. Contact damage passes the enemy; `onAttack` passes the attacker.
+- **Death returns colour (P1-4)**: main.js splats the killing colour (`DEATH_SPLAT.radius`) at the enemy's feet with the paint lane's existing `zoneSplat`. Player paint, so a kill is a refill pool. No paint-lane change was needed.
+- **The first frame faces the level's `spawnFacing`** when the level gives one (levels lane: the Ascent's lift beacon).
