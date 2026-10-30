@@ -74,13 +74,15 @@ test('no two surfaces share a plane, and no wall faces into a solid', async () =
   level.dispose();
 });
 
-test("R7: the Charger wakes as you walk in, and the gate opens when it's gone", async () => {
+test("R7: the Charger wakes 3 s after you walk in, and the gate opens when it's gone", async () => {
   const level = await loaded();
   for (const e of level.enemies) e.update = () => {};
   const charger = level.roster[0].enemy;
   level.update(0.016, { position: new THREE.Vector3(0, 8, -10) });   // R6
   assert.equal(charger.sleeping, true);
   level.update(0.016, { position: new THREE.Vector3(0, 8, -30) });   // R7
+  assert.equal(charger.sleeping, true, 'B5: the sergeant gets 3 s to finish his line first');
+  level.update(3, { position: new THREE.Vector3(0, 8, -30) });
   assert.equal(charger.sleeping, false);
   assert.equal(level.gates[0].open, false);
   charger.alive = false;

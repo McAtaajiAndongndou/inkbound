@@ -94,7 +94,7 @@ test('the Primer asks its three lines once each, room by room, R7\'s before R7',
   const level = new Level00({ scene: new THREE.Scene(), onWin: null, say: (id) => said.push(id) });
   await level.load();
   const at = (x, y, z) => ({ position: new THREE.Vector3(x, y, z), health: 100 });
-  const walk = [at(0, 0, 80), at(0, 0, 65), at(0, 0, 65), at(0, 8, 2), at(0, 8, -86)];
+  const walk = [at(0, 0, 80), at(0, 0, 65), at(0, 0, 65), at(0, 8, -15), at(0, 8, -86)];
   for (const p of walk) level.update(1 / 60, p);
   assert.deepEqual(said, ['primer-splat', 'primer-theirs', 'primer-ready']);
   for (const id of said) assert.ok(COMMS_LINES[id]?.text, `${id} has text`);

@@ -198,6 +198,9 @@ export function spawnEnemies(level, specs, label = 'level') {
         floors,
         walls,
         sleeping: spec.sleeping === true,
+        // The config may name a different body (ENEMY.charger.model, quality
+        // plan §4.2): the model changes, the stats and behaviour do not.
+        model: spec.model ?? ENEMY[spec.type]?.model,
       });
       enemies.push(enemy);
       if (spec.sleeping) sleepers.push({ enemy, wakeOn: spec.wakeOn, wakeDelay: spec.wakeDelay ?? 0 });

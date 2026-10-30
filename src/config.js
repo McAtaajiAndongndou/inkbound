@@ -325,21 +325,14 @@ export const TRAP = {
   pit: {
     spare: 1,          // health a pit hit always leaves behind
     spikeHeight: 0.3,  // how far a spike pokes through the floor
+    // How high above the floor the pit hurts (quality plan B3). It was the
+    // layout box's full 1 m, so a jump (apex ~1.4 m) still clipped it on take-off
+    // and landing. Only the spikes hurt: the tips, plus a little for the feet.
+    hurtHeight: 0.4,
     spikeRows: 4,      // across the pit's depth (z), a spike every ~1 m
     sag: 0.07,         // radians the edge boards tilt toward the pit: the tell
     bedOpacity: 0.45,  // the dark recess; see-through so blue paint still reads
   },
-};
-
-// The spawn pad (polish audit; grey's 0.6 slow, #74, is settled and unchanged).
-// Grey is the whole level at load, so every level's first minute was spent at
-// 4.2 m/s and its first impression was "this game is slow". A square of the
-// player's paint under the spawn makes the first steps fast, so stepping off it
-// is felt as a loss. Green: it grips (blue would slide you off, red would bounce
-// you), and you can submerge in it.
-export const SPAWN_PAD = {
-  colour: 'green',
-  half: 2.5,           // metres from the spawn to the pad's edge: a 5 m square
 };
 
 // Outskirts' grey-world mood (polish pass 1). DRAINED, NOT DARK: a pale, bleached
@@ -384,6 +377,22 @@ export const OUTSKIRTS = {
     fogFar:  46,
     fillColour: 0xb4bcc2,
     fillIntensity: 0.55,
+    // Far hills drawn into the sky dome itself (Renda, 30 Oct): turning round
+    // showed empty sky, and 3D peaks read as grey geometry with gaps. One
+    // continuous line all the way round, in the sky's own colours, so it warms
+    // with the sky (#197). Two layers: a far, faint one and a nearer, darker one.
+    hills: {
+      height: 0.03,      // a layer's mean crest, in dome band units above the horizon (0.5); ~3.5 degrees
+      swell: 0.02,       // how far the crests rise and dip around the mean
+      farShade: 0.26,    // the far layer: this far from the horizon colour toward the void
+      nearShade: 0.46,   // the near layer: darker, so it reads as closer
+      nearDrop: 0.008,   // the near layer's crests sit this much lower (height - swell - nearDrop must stay > 0: no gaps)
+      soft: 0.002,       // edge softness, so the crest is not a jagged pixel line
+      // Below the near crest the dome is LAND, not sky (Renda: the ground under the
+      // hills read as a void and a gap). It holds the near layer's colour at the
+      // horizon and darkens to the void only by this band (0 = straight down).
+      groundFloor: 0.1,
+    },
   },
 
   // The toxic waste. Muted from lime (0x86b32d) in polish pass 1: lime was the
@@ -551,6 +560,25 @@ export const CURVES = {
 const SILHOUETTE = 0x1a1b1d;   // darker than every drained horizon: a shape against the sky
 export const DRESSING = {
   glassOpacity: 0.22,
+  // The skyline's finish (Renda, 30 Oct, option A): it read as black walls up
+  // close, not a facility far away. Far things fade toward the sky's colour
+  // (atmospheric perspective), and a few lit windows and chimney smoke make the
+  // boxes read as buildings. Windows and smoke are generated from the blocks
+  // and stacks (dressing.js `skylineDetail`), so a moved block moves its detail.
+  skyline: {
+    haze: 0.6,           // 0..1 of the way from SILHOUETTE to the level's DRAINED horizon (the sky it starts on)
+    windowRow: 4,        // m between rows of windows
+    windowW: 1.6,        // m, one window's width
+    windowH: 0.7,        // m, one window's height
+    windowGap: 1.8,      // m between windows in a row
+    windowLit: 0.5,      // share of windows that are lit (the rest are not built)
+    windowMargin: 2,     // m kept clear at a face's edges and top
+    smokePuffs: 4,       // puffs above each stack
+    smokeRise: 9,        // m the column climbs
+    smokeGrow: 2.2,      // the top puff is this many times the stack's width
+    smokeDrift: 1.2,     // m sideways per puff: the wind
+    smokeOpacity: 0.45,
+  },
   // Wall breakup (Last Colour): a rib every `spacing` m, from `above` m over the
   // top at its foot to the wall top, and a lip along every wall top.
   walls: {
@@ -567,8 +595,10 @@ export const DRESSING = {
     tray:     { colour: 0x55585c, shape: 'box', look: 'toon' },
     pipe:     { colour: LAST_COLOUR.props.pipe, shape: 'round', look: 'toon' },
     // Skyline: the facility outside, unlit and unfogged like the Ascent's base
-    block:    { colour: SILHOUETTE, shape: 'box', look: 'silhouette' },
-    stack:    { colour: SILHOUETTE, shape: 'round', look: 'silhouette' },
+    block:    { colour: SILHOUETTE, shape: 'box', look: 'silhouette', hazed: true },
+    stack:    { colour: SILHOUETTE, shape: 'round', look: 'silhouette', hazed: true },
+    window:   { colour: 0xaaa4c2, shape: 'box', look: 'silhouette' },        // Corp lights: GATE.field's violet, lifted and greyed (the grey-only rule); never hazed
+    smoke:    { colour: 0x8d9094, shape: 'lump', look: 'haze' },
     // The Ascent's distant range: a shade lighter than its base (ASCENT.base),
     // so the nearer base still reads in front of the farther mountains.
     range:    { colour: 0x4a4f57, shape: 'lump', look: 'silhouette' },
@@ -888,6 +918,11 @@ export const ENEMY = {
   // not stop the charge — a plant that discards momentum is the wrong primitive
   // for a chaser. windup/attackCooldown are left in place for that.
   charger: {
+    // Quality plan §4.2 (Phase 2): QA said it "just kind of jumps towards me".
+    // The soldier model has no charge or melee clip; the zombie charger has
+    // Run and Run_Attack, and fits the fiction (Chargers are failed trial
+    // subjects). A GLB key from MODEL_URLS; the stats below are unchanged.
+    model: 'chargerZombie',
     hp: 30,
     speed: 5.0,
     canShoot: false,

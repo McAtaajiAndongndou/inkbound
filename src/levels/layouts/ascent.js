@@ -19,7 +19,7 @@
 // west ledge → summit.
 //
 // BOXES are [x0, x1, y0, y1, z0, z1], metres, axis-aligned.
-import { PAINT_GRID, SPAWN_PAD } from '../../config.js';
+import { PAINT_GRID } from '../../config.js';
 
 /** Solid rock. `top: true` means its top face is walkable floor. */
 const solids = [
@@ -299,8 +299,6 @@ const doc = {
 
 /** Paint on the floor at load. */
 const prepaint = [
-  // Polish audit: the spawn pad (SPAWN_PAD in config).
-  { id: 'spawn-pad', room: 'R0', colour: SPAWN_PAD.colour, y: 0, rect: [0 - SPAWN_PAD.half, 0 + SPAWN_PAD.half, 74 - SPAWN_PAD.half, 74 + SPAWN_PAD.half], note: 'First steps at full speed' },
 ];
 
 /**

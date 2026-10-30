@@ -19,7 +19,7 @@ import { LAST_COLOUR as TUNING, ENEMY, TRAP, CURVES, PLACED_LIGHTS, DRESSING } f
 import { cables, lathe } from './curves.js';
 import { applyMood } from './mood.js';
 import { buildProps, setLamp } from './prop-kit.js';
-import { buildDressing, wallBreakup } from './dressing.js';
+import { buildDressing, wallBreakup, skylineDetail } from './dressing.js';
 import { CargoCrusher } from './crusher.js';
 import { Siphon } from './siphon.js';
 import * as kit from './level-kit.js';
@@ -118,7 +118,8 @@ export class Level03 extends LayoutLevel {
     this.dressing = buildDressing(this, [
       ...wallBreakup(LAST_COLOUR.solids, { ...DRESSING.walls, skip: D.walls.skip }),
       ...D.items,
-    ]);
+      ...skylineDetail(D.items),
+    ], { horizon: TUNING.mood.drained.horizon });   // the skyline fades toward the drained sky it starts on
   }
 
   /**
@@ -146,15 +147,25 @@ export class Level03 extends LayoutLevel {
     if (beacon) kit.placeLight(this, L.beacon, beacon.position.clone(), () => (beacon.visible ? 1 : 0));
   }
 
-  /** The layout's built trap zones: each crusher in the floor it sits on. */
+  /**
+   * The layout's built trap zones: each crusher in the floors it sits on. The
+   * corridor floor is three pieces under the press, so collect every piece the
+   * box touches (sampled every half metre); one piece left blue on the others unread.
+   */
   _crushers() {
     this.crushers = [];
-    const centre = new THREE.Vector3();
+    const p = new THREE.Vector3();
     for (const t of LAST_COLOUR.traps.filter((tr) => tr.kind === 'crusher' && !tr.planned)) {
       const [x0, x1, y0, , z0, z1] = t.box;
-      centre.set((x0 + x1) / 2, y0, (z0 + z1) / 2);
-      const floor = this.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - y0) < 1e-6 && s.worldToCell(centre));
-      const crusher = new CargoCrusher({ parent: this.root, floor, box: t.box });
+      const floors = new Set();
+      for (let x = x0; x <= x1; x += 0.5) {
+        for (let z = z0; z <= z1; z += 0.5) {
+          p.set(x, y0, z);
+          const floor = this.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - y0) < 1e-6 && s.worldToCell(p));
+          if (floor) floors.add(floor);
+        }
+      }
+      const crusher = new CargoCrusher({ parent: this.root, floors: [...floors], box: t.box });
       // A beat that lands next to you shakes the camera (polish audit, P1-2).
       crusher.onSlam = (gain) => this.game?.shake?.(TRAP.shake.crusher * gain);
       this.crushers.push(crusher);

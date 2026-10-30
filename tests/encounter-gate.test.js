@@ -4,7 +4,11 @@ import * as THREE from 'three';
 
 import { Level01 } from '../src/levels/level-01-mission.js';
 import { Player } from '../src/core/player.js';
-import { GATE, PLAYER } from '../src/config.js';
+import { GATE, PLAYER, ENEMY } from '../src/config.js';
+
+// An enemy's config key ('charger', 'sprayer'): its `type` is its body, and the
+// Charger now wears the zombie body (quality plan §4.2).
+const kind = (e) => Object.keys(ENEMY).find((k) => ENEMY[k] === e.config);
 
 // Encounter gates (#37 island B, #56 island C): each arena's exit is sealed
 // until that arena is clear, so the fight has to be won rather than run past.
@@ -43,7 +47,7 @@ test('each gate watches only the enemies that belong to its own arena (#37, #56)
   const { level } = await buildLevel();
 
   assert.equal(level.gateB.open, false, 'island B starts sealed');
-  assert.deepEqual(level.gateB.watch.map((e) => e.type).sort(),
+  assert.deepEqual(level.gateB.watch.map(kind).sort(),
     ['charger', 'charger', 'sprayer'],
     'island B watches its own three — two Chargers and the deck Sprayer');
 
@@ -51,9 +55,9 @@ test('each gate watches only the enemies that belong to its own arena (#37, #56)
   // Island C's door watches the ARENA FLOOR only — the five in the arena. The two
   // shooters up the right-hand pillar are not part of it: they stand on the only
   // landing you can bounce to, so there is nothing to run past.
-  assert.deepEqual(level.gateC.watch.map((e) => e.type).sort(),
+  assert.deepEqual(level.gateC.watch.map(kind).sort(),
     ['charger', 'charger', 'sprayer', 'sprayer', 'sprayer'],
-    `island C's door watches the arena floor only, got ${level.gateC.watch.map((e) => e.type)}`);
+    `island C's door watches the arena floor only, got ${level.gateC.watch.map(kind)}`);
 });
 
 test('the island B gate blocks progress until island B is clear (#37)', async () => {

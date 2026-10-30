@@ -308,7 +308,7 @@ test('The Ascent: ten reloads free the trees and their palette', async () => {
 
 // --- Outskirts -----------------------------------------------------------------
 
-test('Outskirts: the skyline and the billboard are instanced, off every walkable floor, and clear of the beacon', async () => {
+test('Outskirts: the skyline is instanced, off every walkable floor, and clear of the beacon', async () => {
   const level = await loaded(Level01);
   const { meshes, items } = level.dressing;
   assert.ok(meshes.length <= DRESSING.maxDrawCalls);
@@ -337,9 +337,12 @@ test('Outskirts: the skyline and the billboard are instanced, off every walkable
   const beacon = [b.x, b.top + 1.2, b.z];
   assert.equal(clearSight([level.spawn.x, level.spawn.y + 1.6, level.spawn.z], beacon, meshes), null);
   for (const shot of Level01.SHOTS) assert.equal(clearSight(shot.position, beacon, meshes), null, shot.name);
-  // The billboard carries the pill, and the skyline is the Corp's silhouette.
-  assert.ok(items.some((i) => i.kind === 'sign') && items.some((i) => i.kind === 'board'));
+  // The skyline is the Corp's silhouette. Quality plan B13: the toppled billboard
+  // read as a stray object in QA and was removed, so no board pieces remain.
   assert.ok(items.filter((i) => i.kind === 'stack').length >= 2);
+  for (const kind of ['board', 'sign', 'stencil', 'panel', 'rail']) {
+    assert.ok(!items.some((i) => i.kind === kind), `a billboard ${kind} is still in Outskirts`);
+  }
   level.dispose();
 });
 

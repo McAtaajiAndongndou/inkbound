@@ -44,13 +44,37 @@ test('blue crosses under the crusher on the beat', async () => {
   const [x0, x1, , , z0, z1] = L.traps.find((t) => t.kind === 'crusher').box;
   const under = new THREE.Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2);
   for (let x = x0 + 0.5; x < x1; x += 1) for (let z = z0 + 0.25; z <= z1; z += 0.5) {
-    crusher.floor.splat(new THREE.Vector3(x, 0, z), 'blue', 1);
+    floorAt(level, x, z).splat(new THREE.Vector3(x, 0, z), 'blue', 1);
   }
   const slider = victim([under.x, 0.1, under.z]);
   crusher.update(beat, [slider]);
   assert.equal(crusher.state, 'down');
   assert.equal(slider.hits, 0, 'blue slides under the head');
   level.dispose();
+});
+
+/** The floor piece under (x, z) at ground level: where a shot would paint. */
+function floorAt(level, x, z) {
+  const p = new THREE.Vector3(x, 0, z);
+  return level.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y) < 1e-6 && s.worldToCell(p));
+}
+
+// The corridor floor is three pieces under the press, and the crusher read only
+// one, so blue at its edges counted as grey and still got crushed (found after
+// the same bug in the Primer's spike pit, 30 Oct).
+test('blue counts on every floor piece under the crusher, edge to edge', async () => {
+  const [x0, x1, , , z0, z1] = L.traps.find((t) => t.kind === 'crusher').box;
+  // West edge, the middle (which is also a seam between two pieces), east edge.
+  for (const x of [x0 + 0.25, (x0 + x1) / 2, x1 - 0.25]) {
+    const level = await loaded();
+    const [crusher] = level.crushers;
+    for (let z = z0; z <= z1; z += 0.5) floorAt(level, x, z).splat(new THREE.Vector3(x, 0, z), 'blue', 0.6);
+    const slider = victim([x, 0.1, (z0 + z1) / 2]);
+    crusher.update(beat, [slider]);
+    assert.equal(crusher.state, 'down');
+    assert.equal(slider.hits, 0, `blue at x=${x} should slide under the head`);
+    level.dispose();
+  }
 });
 
 test('the lamp is the tell: it blinks before the drop and is lit on the beat', async () => {

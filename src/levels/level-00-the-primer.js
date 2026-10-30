@@ -80,15 +80,25 @@ export class Level00 extends LayoutLevel {
     }
   }
 
-  /** The layout's trap zones, built as spike pits in the floor they sit on. */
+  /**
+   * The layout's trap zones, built as spike pits in the floors they sit on.
+   * R6's floor is three pieces across the pit, so collect every piece the box
+   * touches (sampled every half metre); one piece left blue on the others unread.
+   */
   _pits() {
     this.pits = [];
-    const centre = new THREE.Vector3();
+    const p = new THREE.Vector3();
     for (const t of PRIMER.traps) {
       const [x0, x1, y0, , z0, z1] = t.box;
-      centre.set((x0 + x1) / 2, y0, (z0 + z1) / 2);
-      const floor = this.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - y0) < 1e-6 && s.worldToCell(centre));
-      this.pits.push(new SpikePit({ parent: this.root, floor, box: t.box }));
+      const floors = new Set();
+      for (let x = x0; x <= x1; x += 0.5) {
+        for (let z = z0; z <= z1; z += 0.5) {
+          p.set(x, y0, z);
+          const floor = this.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - y0) < 1e-6 && s.worldToCell(p));
+          if (floor) floors.add(floor);
+        }
+      }
+      this.pits.push(new SpikePit({ parent: this.root, floors: [...floors], box: t.box }));
     }
   }
 
@@ -126,6 +136,11 @@ export class Level00 extends LayoutLevel {
     return p.x >= x0 && p.x <= x1 && p.z >= z0 && p.z <= z1 && Math.abs(p.y - pool.y) < 0.5;
   }
 
+  /** Is `p` beyond every spike pit's far edge? The route runs toward -z. */
+  _pastPits(p) {
+    return PRIMER.traps.every((t) => p.z < t.box[4]);
+  }
+
   update(dt, player) {
     super.update(dt, player);
     for (const pit of this.pits) pit.update(dt, [player, ...this.enemies]);
@@ -134,9 +149,11 @@ export class Level00 extends LayoutLevel {
 
   /**
    * #112 — the sergeant's lines (docs/levels/00-the-primer.md): the first
-   * splat (R2), submerge (standing in R2's pool, polish audit), the Charger (on
-   * climbing into R6 — R7's doorway wakes it, and a fight clears a line, so it
-   * needs R6's 24 m to be read), extraction (R9).
+   * splat (R2), submerge (standing in R2's pool, polish audit), the Charger
+   * (once you are past R6's spike pit — on entering R6 it played AT the trap,
+   * and a pit hit counts as combat and cut it; quality plan B5), extraction (R9).
+   * A fight clears a line, so the Charger's wake waits a few seconds after R7's
+   * doorway (layout `wake`) for the line to be read.
    *
    * Each is asked until the bar takes it: the bar refuses a line while another
    * is up (`say` returns false), and the pool line comes right after R2's first.
@@ -149,7 +166,7 @@ export class Level00 extends LayoutLevel {
     };
     ask('primer-splat', this.inRoom('R2', p));
     ask('primer-submerge', this._said.has('primer-splat') && this._inPool(p));
-    ask('primer-theirs', this.inRoom('R6', p));
+    ask('primer-theirs', this.inRoom('R6', p) && this._pastPits(p));
     ask('primer-ready', this.inRoom('R9', p));
   }
 }

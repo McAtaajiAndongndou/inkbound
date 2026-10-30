@@ -15,6 +15,11 @@
 //          silhouette unlit and unfogged: a SHAPE against the sky, like the
 //                     Ascent's base, so a skyline 100 m out is not fogged away
 //          glass      see-through, for the specimen tubes
+//          haze       see-through and unfogged, for chimney smoke on the skyline
+//
+//   hazed  (optional, on a kind) the skyline's fade: given the level's horizon
+//          colour, the instance colour moves DRESSING.skyline.haze of the way
+//          toward it, so far blocks sit back instead of reading as near walls
 //
 // Rules (the doc's, none new):
 //   - never a collider: nothing here joins `level.surfaces`
@@ -42,14 +47,18 @@ function materialFor(look) {
   if (look === 'glass') {
     return new THREE.MeshBasicMaterial({ transparent: true, opacity: DRESSING.glassOpacity, depthWrite: false });
   }
+  if (look === 'haze') {
+    return new THREE.MeshBasicMaterial({ transparent: true, opacity: DRESSING.skyline.smokeOpacity, depthWrite: false, fog: false });
+  }
   return flat(new THREE.MeshToonMaterial());
 }
 
 /**
  * Build `items` under `level.root`. Returns `{ meshes, items }`: one
  * InstancedMesh per shape and look in use, named `dressing:<shape>|<look>`.
+ * `horizon` (a hex colour) turns on the skyline's fade for `hazed` kinds.
  */
-export function buildDressing(level, items) {
+export function buildDressing(level, items, { horizon = null } = {}) {
   const groups = new Map();
   for (const item of items) {
     const spec = DRESSING.kinds[item.kind];
@@ -66,6 +75,7 @@ export function buildDressing(level, items) {
   const pos = new THREE.Vector3();
   const scale = new THREE.Vector3();
   const colour = new THREE.Color();
+  const haze = horizon === null ? null : new THREE.Color(horizon);
   const zAxisToY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
   const xAxisToY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
 
@@ -92,13 +102,71 @@ export function buildDressing(level, items) {
       }
       if (item.tilt) q.premultiply(tilt.setFromEuler(euler.set(...item.tilt)));
       mesh.setMatrixAt(i, m.compose(pos, q, scale));
-      mesh.setColorAt(i, colour.setHex(DRESSING.kinds[item.kind].colour));
+      const kind = DRESSING.kinds[item.kind];
+      colour.setHex(kind.colour);
+      if (haze && kind.hazed) colour.lerp(haze, DRESSING.skyline.haze);
+      mesh.setColorAt(i, colour);
     });
     mesh.name = `dressing:${key}`;
     level.root.add(mesh);
     meshes.push(mesh);
   }
   return { meshes, items };
+}
+
+/**
+ * The skyline's detail, generated from its `block` and `stack` items: rows of
+ * lit windows on each block's face toward the level (the face nearest the
+ * origin), and a column of smoke puffs above each stack. Only some windows are
+ * lit, picked by a fixed hash, so every load looks the same.
+ */
+export function skylineDetail(items) {
+  const S = DRESSING.skyline;
+  const out = [];
+  items.filter((it) => it.kind === 'block').forEach((b, bi) => {
+    const [x0, x1, y0, y1, z0, z1] = b.box;
+    const cx = (x0 + x1) / 2;
+    const cz = (z0 + z1) / 2;
+    const facesZ = Math.abs(cz) >= Math.abs(cx);
+    const [a0, a1] = facesZ ? [x0, x1] : [z0, z1];
+    const face = facesZ ? (cz < 0 ? z1 : z0) : (cx < 0 ? x1 : x0);
+    const out1 = facesZ ? (cz < 0 ? 0.1 : -0.1) : (cx < 0 ? 0.1 : -0.1);
+    const step = S.windowW + S.windowGap;
+    const cols = Math.floor((a1 - a0 - 2 * S.windowMargin + S.windowGap) / step);
+    const bottom = Math.max(y0, 0) + S.windowMargin;
+    const rows = Math.floor((y1 - S.windowMargin - bottom) / S.windowRow);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (hash(bi, r, c) >= S.windowLit) continue;
+        const along = a0 + S.windowMargin + c * step;
+        const y = bottom + r * S.windowRow;
+        const [f0, f1] = [face, face + out1].sort((p, q) => p - q);
+        out.push({
+          kind: 'window',
+          box: facesZ ? [along, along + S.windowW, y, y + S.windowH, f0, f1] : [f0, f1, y, y + S.windowH, along, along + S.windowW],
+        });
+      }
+    }
+  });
+  for (const s of items.filter((it) => it.kind === 'stack')) {
+    const [x0, x1, , y1, z0, z1] = s.box;
+    const w = Math.max(x1 - x0, z1 - z0);
+    for (let k = 0; k < S.smokePuffs; k++) {
+      const t = (k + 1) / S.smokePuffs;
+      const size = w * (1 + (S.smokeGrow - 1) * t);
+      const cx = (x0 + x1) / 2 + S.smokeDrift * k;
+      const cy = y1 + S.smokeRise * t;
+      const cz = (z0 + z1) / 2;
+      out.push({ kind: 'smoke', box: [cx - size / 2, cx + size / 2, cy - size / 3, cy + size / 3, cz - size / 2, cz + size / 2] });
+    }
+  }
+  return out;
+}
+
+/** A fixed 0..1 hash of three integers (which windows are lit). */
+function hash(a, b, c) {
+  const n = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453;
+  return n - Math.floor(n);
 }
 
 /**
