@@ -544,6 +544,25 @@ export const CURVES = {
 const SILHOUETTE = 0x1a1b1d;   // darker than every drained horizon: a shape against the sky
 export const DRESSING = {
   glassOpacity: 0.22,
+  // The skyline's finish (Renda, 30 Oct, option A): it read as black walls up
+  // close, not a facility far away. Far things fade toward the sky's colour
+  // (atmospheric perspective), and a few lit windows and chimney smoke make the
+  // boxes read as buildings. Windows and smoke are generated from the blocks
+  // and stacks (dressing.js `skylineDetail`), so a moved block moves its detail.
+  skyline: {
+    haze: 0.6,           // 0..1 of the way from SILHOUETTE to the level's DRAINED horizon (the sky it starts on)
+    windowRow: 4,        // m between rows of windows
+    windowW: 1.6,        // m, one window's width
+    windowH: 0.7,        // m, one window's height
+    windowGap: 1.8,      // m between windows in a row
+    windowLit: 0.5,      // share of windows that are lit (the rest are not built)
+    windowMargin: 2,     // m kept clear at a face's edges and top
+    smokePuffs: 4,       // puffs above each stack
+    smokeRise: 9,        // m the column climbs
+    smokeGrow: 2.2,      // the top puff is this many times the stack's width
+    smokeDrift: 1.2,     // m sideways per puff: the wind
+    smokeOpacity: 0.45,
+  },
   // Wall breakup (Last Colour): a rib every `spacing` m, from `above` m over the
   // top at its foot to the wall top, and a lip along every wall top.
   walls: {
@@ -560,8 +579,10 @@ export const DRESSING = {
     tray:     { colour: 0x55585c, shape: 'box', look: 'toon' },
     pipe:     { colour: LAST_COLOUR.props.pipe, shape: 'round', look: 'toon' },
     // Skyline: the facility outside, unlit and unfogged like the Ascent's base
-    block:    { colour: SILHOUETTE, shape: 'box', look: 'silhouette' },
-    stack:    { colour: SILHOUETTE, shape: 'round', look: 'silhouette' },
+    block:    { colour: SILHOUETTE, shape: 'box', look: 'silhouette', hazed: true },
+    stack:    { colour: SILHOUETTE, shape: 'round', look: 'silhouette', hazed: true },
+    window:   { colour: 0xaaa4c2, shape: 'box', look: 'silhouette' },        // Corp lights: GATE.field's violet, lifted and greyed (the grey-only rule); never hazed
+    smoke:    { colour: 0x8d9094, shape: 'lump', look: 'haze' },
     // The Ascent's distant range: a shade lighter than its base (ASCENT.base),
     // so the nearer base still reads in front of the farther mountains.
     range:    { colour: 0x4a4f57, shape: 'lump', look: 'silhouette' },

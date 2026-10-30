@@ -11,7 +11,7 @@ import { cables, flat } from './curves.js';
 import { audio } from '../audio/audio-manager.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
-import { buildDressing } from './dressing.js';
+import { buildDressing, skylineDetail } from './dressing.js';
 import { PaintVent } from './paint-vent.js';
 import { separateEnemies } from '../enemies/separation.js';
 import { buildSky } from './mood.js';
@@ -1146,7 +1146,12 @@ export class Level01 extends LevelBase {
    * nothing joins `_lightDirection()`.
    */
   _dressing() {
-    this.dressing = buildDressing(this, L1.dressing.skyline);
+    const D = L1.dressing;
+    this.dressing = buildDressing(
+      this,
+      [...D.skyline, ...skylineDetail(D.skyline)],
+      { horizon: OUTSKIRTS.mood.drained.horizon },   // the skyline fades toward the drained sky it starts on
+    );
   }
 
   dispose() {
