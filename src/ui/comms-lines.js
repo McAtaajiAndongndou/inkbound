@@ -21,6 +21,9 @@ export const COMMS_LINES = {
   // still asleep. Its wake waits 3 s after R7's doorway (`enter:R7+3`), so the
   // line is read before the fight clears the bar.
   'primer-theirs': { who: 'Sergeant', text: "One of theirs. It won't stop. Make the ground stop it instead." },
+  // The Primer, R7's second wave: the chained Big Arm (QA 30 Oct). Wording
+  // Renda's, added from the levels lane with Moses's OK.
+  'primer-combo': { who: 'Sergeant', text: "That's a Big Arm. Bullets won't do it. Blue to freeze, green to pin, red to knock it flat." },
   // The Primer, R9: extraction.
   'primer-ready': { who: 'Sergeant', text: "You're ready. Outskirts — go." },
   // Outskirts: the extraction ledge, after island C is won — the view back over
@@ -32,4 +35,8 @@ export const COMMS_LINES = {
   // Last Colour: arriving at the base, the Siphon's beacon over the hangar
   // (docs/levels/03-last-colour.md).
   'last-colour-base': { who: 'Sergeant', text: 'This is where they drain it. Shut the Siphon down and it all comes back.' },
+  // Last Colour: Big Arm leaves its bay (QA 30 Oct — the combo, said again).
+  'last-colour-big-arm': { who: 'Sergeant', text: 'Big Arm. Same drill: freeze it, pin it, knock it flat. Three times.' },
+  // Last Colour: the Siphon's first plate opens (its exam).
+  'last-colour-siphon': { who: 'Sergeant', text: "It's a machine. Paint each plate the colour it's flashing." },
 };

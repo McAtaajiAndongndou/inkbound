@@ -18,6 +18,7 @@ import * as kit from './level-kit.js';
 import { applyMood } from './mood.js';
 import { SpikePit } from './spike-pit.js';
 import { buildDressing } from './dressing.js';
+import { ComboRack } from './combo-rack.js';
 
 export class Level00 extends LayoutLevel {
   // Viewer shots: the design doc's "what you see" frames, one per room, plus
@@ -39,6 +40,9 @@ export class Level00 extends LayoutLevel {
     this._dressing();
     this._lamps();
     this._floorGrid();
+    // R7's second wave: the combo dummy and the rack that teaches it (QA 30 Oct).
+    this.comboDummy = this.roster.find((r) => r.data.id === 'r7-combo-dummy')?.enemy ?? null;
+    this.comboRack = new ComboRack(this.root, PRIMER.comboRack);
   }
 
   /**
@@ -144,6 +148,7 @@ export class Level00 extends LayoutLevel {
   update(dt, player) {
     super.update(dt, player);
     for (const pit of this.pits) pit.update(dt, [player, ...this.enemies]);
+    this.comboRack?.update(this.comboDummy);
     this._sergeant(player.position);
   }
 
@@ -172,6 +177,8 @@ export class Level00 extends LayoutLevel {
     // before the bar is free (#217).
     const charger = this.enemies[0];
     ask('primer-theirs', this._pastPits(p) && (this.inRoom('R6', p) || this.inRoom('R7', p)) && charger?.sleeping !== false);
+    // The combo: the moment its dummy wakes (the Charger is down).
+    ask('primer-combo', this.comboDummy?.sleeping === false);
     ask('primer-ready', this.inRoom('R9', p));
   }
 }

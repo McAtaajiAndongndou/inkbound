@@ -429,7 +429,28 @@ export const OUTSKIRTS = {
 // drained overcast and nudged WARM: this is the rebels' own course, so its air
 // is dusty daylight, not the Corp's bleach. Same rules as OUTSKIRTS.mood: fog
 // matches the horizon band, never the whole sky (see src/levels/mood.js).
+// The combo rack (src/levels/combo-rack.js): the Big Arm combo taught in the
+// world. A board that says it — FREEZE, PIN, KNOCK in the colours that do
+// them — and three lamps over it that light as each step lands on the Big Arm
+// it watches, and go dark when the chain breaks. QA 30 Oct: "couldn't find the
+// combo, not even a hint at it". The plan's HUD pips (§4.3) are UI's; this is
+// the level's half, and it reads in a screenshot.
+export const COMBO_RACK = {
+  width: 7,              // m, the board
+  height: 2.2,
+  lamp: 0.6,             // m, each lamp cube
+  lampGap: 0.5,          // m above the board's top edge
+  board: 0x1f2226,       // the board's face: dark, so the colours carry
+  ink: '#e8e4da',        // the header's chalk white
+  dim: 0.16,             // an unlit lamp's share of its colour: there, but off
+};
+
 export const PRIMER = {
+  // R7's second wave (quality plan §9.1, R9 "the combo"): a chained Big Arm
+  // that one combo knocks down. It never moves, slams, grabs or touches for
+  // damage — the Primer may not kill (#79). Its windows are the real boss's,
+  // so what you learn here is what Last Colour asks of you.
+  comboDummy: { hp: 1, canMove: false, attackRange: 0, contactDamage: 0, grabs: false },
   mood: {
     horizon: 0xa59f94,   // warm dust haze
     zenith:  0x56606b,
@@ -492,6 +513,16 @@ export const LAST_COLOUR = {
     cooldown: 1.0,
     headHeight: 2.4,     // the head's own height; it rises to the box's top
     hurtHeight: 2.2,     // the hurting region, from the floor up
+  },
+  // The Core's waves come AT you (QA 30 Oct: "they just stay in the corners").
+  // A Drainer only hunts inside ENEMY.drainer.huntRadius (8 m), and the bays are
+  // ~30 m from the floor's centre, so wave two's Drainers fed in the bays, wave
+  // three waited on them, and Big Arm waited on wave three. A wave Drainer's
+  // hunt reaches across the whole Core (52 m square, plus the bays). The layout
+  // gives it to the Core's Drainers as `tune` (layouts/last-colour.js).
+  waveDrainer: {
+    huntRadius: 70,      // any point of the Core, from either bay
+    resumeRadius: 80,    // never back down to feed while you are in the room
   },
   // The Siphon (#100): the final exam. Three phases, one colour each, read by
   // the share of a plate in that colour — never by damage (docs/levels/03-last-colour.md, R5).

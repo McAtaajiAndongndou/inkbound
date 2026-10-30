@@ -17,10 +17,10 @@ async function loaded(onWin = null) {
 const boxOf = (s) => new THREE.Box3().setFromObject(s.mesh);
 const normalOf = (s) => new THREE.Vector3(0, 0, 1).applyQuaternion(s.mesh.quaternion);
 
-test('the package: 30 enemies, then Big Arm and its two Drainers, four gates', async () => {
+test('the package: 34 enemies, then Big Arm and its two Drainers, four gates', async () => {
   const level = await loaded();
   assert.equal(level.enemies.length, L.enemies.filter((e) => !e.planned).length);
-  assert.equal(level.enemies.length, 33);
+  assert.equal(level.enemies.length, 37);
   assert.equal(level.bigArm?.type, 'bigArm', 'Big Arm is built by its own class');
   assert.ok(!level.roster.some((r) => r.data.planned), 'a planned enemy must not spawn as a stand-in');
   assert.equal(level.gates.length, L.gates.length);

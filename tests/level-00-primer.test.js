@@ -25,9 +25,10 @@ function groundAt(level, x, y, z) {
   return floor?.surfaceAtWorld(p);
 }
 
-test('the package: one Charger, one gate, every painted wall at its size', async () => {
+test('the package: one Charger, the combo dummy, one gate, every painted wall at its size', async () => {
   const level = await loaded();
-  assert.equal(level.enemies.length, 1);
+  assert.equal(level.enemies.length, 2);
+  assert.equal(level.comboDummy?.type, 'bigArm', 'the dummy is a real Big Arm');
   assert.equal(level.gates.length, 1);
   const paintable = level.surfaces.filter((s) => !s.isFloor && !s.unpaintable);
   for (const strip of L.strips) {
@@ -91,11 +92,14 @@ test("R7: the Charger wakes a beat after you walk in, and the gate opens when it
   assert.equal(level.gates[0].open, false);
   charger.alive = false;
   level.update(0.016, { position: new THREE.Vector3(0, 8, -30) });
+  assert.equal(level.gates[0].open, false, 'the combo dummy (wave two) still holds the gate');
+  level.comboDummy.alive = false;
+  level.update(0.016, { position: new THREE.Vector3(0, 8, -30) });
   assert.equal(level.gates[0].open, true);
   level.dispose();
 });
 
-test('the win is at extraction, once, and never while the Charger stands', async () => {
+test('the win is at extraction, once, and never while the Charger or the dummy stands', async () => {
   let wins = 0;
   const level = await loaded(() => { wins++; });
   for (const e of level.enemies) e.update = () => {};
@@ -103,6 +107,9 @@ test('the win is at extraction, once, and never while the Charger stands', async
   level.update(0.016, { position: pad });
   assert.equal(wins, 0);
   level.roster[0].enemy.alive = false;
+  level.update(0.016, { position: pad });
+  assert.equal(wins, 0, 'the combo dummy still stands');
+  level.comboDummy.alive = false;
   level.update(0.016, { position: pad });
   level.update(0.016, { position: pad });
   assert.equal(wins, 1);
