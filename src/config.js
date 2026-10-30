@@ -389,6 +389,21 @@ export const PAINT_GUN = {
 // Starting master volume (0..1). The options menu overrides it per player.
 export const AUDIO = {
   volume: 0.6,
+  pitchVariance: 0.06,   // +-6% detune on every play (polish audit P1-3): no machine-gun blips
+};
+
+// Player feedback cues (polish audit P0-4, P1-6, Q1, Q3): the layer that tells
+// the player what happened. Read by src/ui/feedback.js; drawn by the HUD.
+export const FEEDBACK = {
+  hurtFade: 0.6,         // s the hurt vignette takes to clear
+  hurtArcFade: 1.2,      // s the damage-direction arc stays (CoD's indicator)
+  hurtFromAge: 0.25,     // s a recorded hit source counts as "this hit's"
+  refillTick: 0.11,      // s between refill bubbles while the tank fills
+  refillRise: 0.9,       // the bubble's pitch rises by this much from empty to full
+  stepInterval: 0.36,    // s between grey footsteps at a walk
+  stepMinSpeed: 1.2,     // m/s you must be moving for a footstep
+  submergeTint: 0.4,     // opacity of the screen edge in your ground colour while submerged
+  greyEdge: 0.22,        // opacity of the desaturated edge while you stand on grey
 };
 
 // Options-menu ranges. Sensitivity is a multiplier on PLAYER.lookSensitivity.

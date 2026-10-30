@@ -195,3 +195,12 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Grey makes you easier to hit.** On grey (4.2 m/s) a sidestep only just clears a 12 m shot; on paint (7 m/s) it clears it easily. Painting is defence.
 - **`onAttack` keeps its meaning:** "this enemy's attack hit the player". For a ranged enemy it now fires on pellet contact. `main.js` does not change.
 - **Melee is unchanged:** Charger, Stalker, Drainer, Big Arm.
+
+## 2026-10-30 — polish audit, UI lane (Moses to approve)
+
+- **The controls list is data (`CONTROLS` in `menu.js`) and tested against the real bindings.** F = Refill is gone (there is no refill button, by design); Shift = Submerge and Q = Paintstreak are listed (P0-3).
+- **Every sound is detuned ±6% per play** (`AUDIO.pitchVariance`, P1-3), and `audio.play(name, { gain, pitch })` takes a distance gain and a pitch. Callers that pass nothing are unchanged.
+- **The HUD reads the player and gun every frame and turns changes into cues** (`src/ui/feedback.js`): a hurt thud, vignette and damage-direction arc; the low-ink warning once on the way down; Splatoon's tank-full ding; a refill bubble that rises in pitch with the tank; a splash in and out of submerge; sludge footsteps on grey. No new calls from main.js are needed for any of them.
+- **Hurt is a dark, desaturated edge, never a paint red** (red is bounce). The direction arc is danger amber, because it points at what hurt you. It reads `player.lastHurtFrom` and `player.lastHurtAge` when core sets them; without them a hit still thuds and darkens, with no arc.
+- **While submerged the screen edge takes your ground colour; on grey it is drained grey** (Q1, Q3). Grey's 0.6 slow is unchanged: this is the feedback the audit asked for, not a tuning change.
+- **The swinging blade's SFX is deleted** (the blades are cut). New recipes: vent, crush, hiss, tick, creak, hurt, submergeIn/Out, refill, tankFull, lowInk, sludge, freeze, shatter, pin, slam, siphon, solved, siphonDown. All synthesised and all quieter than a splat (tested).
