@@ -122,6 +122,10 @@ A check of the game against the brief's rubric (`CGV Project Brief`, section 11)
 | 076 | #197 | Dynamic sky driven by territory | levels | SHOULD | S | — (refreshes #194's probe if in) |
 | 077 | #198 | Curves, flat vs smooth shading, placed lights | levels | SHOULD | S–M | #195 (lights part only) |
 | 078 | #199 | Adaptive synthesised music | ui | MUST | M | — |
+| 080 | — | Trap sounds you can hear (spike pit, crusher) | ui | SHOULD | S | — |
+| 081 | — | A hit, or a level wake, alerts the enemy at any range (also fixes B6) | shaders (enemies) | MUST | S | — |
+| 082 | — | Primer: the sergeant warns before the spike pit | ui (+ levels trigger) | SHOULD | S | B5 branch |
+| 083 | — | Zombie Charger: windup tell, death and hit clips | shaders (enemies) | SHOULD | S | Charger model branch |
 
 Not drafted here, but on the brief's final checklist and still open: **play the published URL** (PRD L1), **measure frame rate on lab hardware**, **trailer and devlog**.
 
