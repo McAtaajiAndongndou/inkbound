@@ -13,8 +13,13 @@ export const COMMS_LINES = {
   'primer-splat': { who: 'Sergeant', text: "That's colour. It changes what you can do, not just what you see." },
   // The Primer, R2's pool (polish audit): the refill verb, which no room taught.
   'primer-submerge': { who: 'Sergeant', text: "That's your ammo too. Hold Shift to sink into it and refill fast." },
-  // The Primer, on climbing into R6: R7's Charger ahead, still asleep. Asked a
-  // room early, because walking into R7 wakes it and a fight clears the bar.
+  // The Primer, on climbing into R6, BEFORE the spike pit (#217): the rule
+  // before the tell before the danger — Half-Life 2 and Portal's order. R6's
+  // entry is 12 m from the pit, and nothing in R6 starts a fight.
+  'primer-trap': { who: 'Sergeant', text: 'Watch the boards — that floor bites. Blue slides over it.' },
+  // The Primer, once you are past R6's spike pit (B5): R7's Charger ahead,
+  // still asleep. Its wake waits 3 s after R7's doorway (`enter:R7+3`), so the
+  // line is read before the fight clears the bar.
   'primer-theirs': { who: 'Sergeant', text: "One of theirs. It won't stop. Make the ground stop it instead." },
   // The Primer, R9: extraction.
   'primer-ready': { who: 'Sergeant', text: "You're ready. Outskirts — go." },
