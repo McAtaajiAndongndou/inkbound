@@ -32,11 +32,8 @@ import { audio } from '../audio/audio-manager.js';
 import * as kit from './level-kit.js';
 import { buildLayout, roomTest } from './layout-builder.js';
 import { separateEnemies } from '../enemies/separation.js';
+import { DEFAULT_SUN } from './mood.js';   // main.js's sun; a layout may give its own `sunDir` (#125)
 
-// Same sun as main.js's DirectionalLight (18, 30, 12), so custom-shaded
-// surfaces are lit from the side the shadows say. Each level's mood pass
-// (#125) may give a layout its own `sunDir`.
-const DEFAULT_SUN = [18, 30, 12];
 
 export class LayoutLevel extends LevelBase {
   /** Subclasses return their layout data. */

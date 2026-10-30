@@ -541,6 +541,18 @@ export const ASCENT = {
       soft: 0.0015,
       groundFloor: 0.1,  // the land under the near crest darkens to the void only by here
     },
+    // The dawn sun (Renda, 30 Oct: "do something about the sun"): there was no
+    // sun to see. Drawn low, on the same side as the scene light (so lit faces
+    // still face it), just over the ridges so a peak can hide part of it. The
+    // Corp's grey smothers it; painting the climb lets it through (#197).
+    sun: {
+      elevation: 8,      // degrees above the horizon: among the peaks (they reach ~11)
+      size: 2.4,         // degrees, the disc's radius: big and soft, not a pin-prick
+      glow: 0.55,        // the halo's strength at the disc's edge
+      glowTight: 260,    // higher = a tighter halo (a power of the angle's cosine)
+      colour: 0xffe2bf,  // pale warm dawn: the one warm thing in a cold sky
+      drained: 0.25,     // share of the sun showing through a drained sky
+    },
   },
   // The collapsing catwalk (#102): "can you cross before it drops?"
   catwalk: {
