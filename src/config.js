@@ -395,6 +395,10 @@ export const OUTSKIRTS = {
       nearShade: 0.46,   // the near layer: darker, so it reads as closer
       nearDrop: 0.008,   // the near layer's crests sit this much lower (height - swell - nearDrop must stay > 0: no gaps)
       soft: 0.002,       // edge softness, so the crest is not a jagged pixel line
+      // Below the near crest the dome is LAND, not sky (Renda: the ground under the
+      // hills read as a void and a gap). It holds the near layer's colour at the
+      // horizon and darkens to the void only by this band (0 = straight down).
+      groundFloor: 0.1,
     },
   },
 

@@ -14,6 +14,7 @@ test('a mood with hills turns them on with its numbers; one without leaves them 
   const h = OUTSKIRTS.mood.hills;
   assert.deepEqual(on.uHills.value.toArray(), [1, h.height, h.swell, h.soft]);
   assert.deepEqual(on.uHillShade.value.toArray(), [h.farShade, h.nearShade, h.nearDrop]);
+  assert.equal(on.uHillGround.value, h.groundFloor);
   const off = skyDome(PRIMER.mood).material.uniforms;
   assert.equal(off.uHills.value.x, 0, 'the Primer is indoors: no hills');
 });
@@ -24,6 +25,17 @@ test('the hills stay a low band: crests between the horizon and the haze band\'s
   assert.ok(h.height - h.swell - h.nearDrop > 0, 'a crest dips below the horizon: a gap in the line');
   assert.ok(0.5 + h.height + h.swell < 0.6, 'a crest climbs out of the haze band: a wall, not far hills');
   assert.ok(h.nearShade > h.farShade, 'the nearer layer is darker, so the two read as depth');
+});
+
+// Renda (30 Oct): "the ground still reads like a void and gap". Under the near
+// crest the dome is land that darkens only toward straight down, so there is
+// no pale strip under the hills and no black pit at the horizon.
+test('below the hills is land: it reaches the void only well below the horizon', async () => {
+  const h = OUTSKIRTS.mood.hills;
+  assert.ok(h.groundFloor < 0.25, 'the land must run well below the horizon before it goes dark');
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/levels/mood.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /inNear \* step\(/, 'the near layer must fill all the way down, not stop at a band');
 });
 
 test('the crest wave closes on itself all the way round (whole-number frequencies)', async () => {
