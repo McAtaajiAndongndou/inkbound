@@ -174,8 +174,10 @@ test('the base reads on the horizon: unfogged, inside the camera and the sky', a
   for (const lm of L.landmarks.filter((l) => l.silhouette)) {
     const mesh = level.root.getObjectByName(lm.id);
     assert.equal(mesh.material.fog, false, `${lm.id} would dissolve into the fog`);
-    const far = box3(lm.box).distanceToPoint(new THREE.Vector3()) + box3(lm.box).getSize(new THREE.Vector3()).length();
-    assert.ok(far < TUNING.mood.skyRadius, `${lm.id} is outside the sky dome`);
+    // A box is inside the dome when its farthest corner is.
+    const [x0, x1, y0, y1, z0, z1] = lm.box;
+    const far = Math.hypot(Math.max(-x0, x1), Math.max(-y0, y1), Math.max(-z0, z1));
+    assert.ok(far < TUNING.mood.skyRadius, `${lm.id} is outside the sky dome (${far.toFixed(0)} m)`);
     assert.ok(summit.distanceTo(box3(lm.box).getCenter(new THREE.Vector3())) < 500, 'inside the camera far plane (game.js: 500)');
   }
   level.dispose();
@@ -196,4 +198,18 @@ test('ten reloads with the polish leak nothing into the scene', async () => {
     level.dispose();
   }
   assert.equal(scene.children.length, 0);
+});
+
+// Renda (30 Oct): "remove the black sun". The dome was 450 m but the game camera
+// draws only to 400 m (camera-rig.js), so the far side of the dome was clipped
+// and the void showed through as a huge black disc. The viewer's camera reaches
+// 1000 m, which is why its shots never showed it. Measured against the GAME's camera.
+test('the whole sky dome is inside the game camera\'s reach from anywhere on the climb', async () => {
+  const { CameraRig } = await import('../src/core/camera-rig.js');
+  const { CAMERA } = await import('../src/config.js');
+  const far = new CameraRig(16 / 9).camera.far;
+  const points = [...L.routes.main, ...L.rooms.filter((r) => r.eye).map((r) => r.eye.pos)];
+  const out = Math.max(...points.map((p) => Math.hypot(...p)));
+  const reach = TUNING.mood.skyRadius + out + CAMERA.tpvDistance + 4;   // + the third-person camera, + a margin
+  assert.ok(reach < far, `the dome's far side is ${reach.toFixed(0)} m away; the camera stops at ${far} m`);
 });

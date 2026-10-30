@@ -517,7 +517,11 @@ export const ASCENT = {
     fogFar:  170,        // the far side of the mountain is haze, the tower is not
     fillColour: 0x9fb4d6,
     fillIntensity: 0.6,
-    skyRadius: 450,      // past the base (~245 m), so the dome is behind it
+    // Past the base (its farthest corner is ~308 m out), so the dome is behind
+    // it, but INSIDE the game camera's reach (camera-rig.js far: 400) from
+    // anywhere on the climb (<= 76 m out). At 450 the dome was cut off past
+    // 400 m and the void showed through as a black disc (Renda: "the black sun").
+    skyRadius: 310,
     // Far ridges drawn into the sky dome (quality plan §8.4 item 6; Renda: the
     // grey 3D peaks "are meant to be mountains … the execution sucks"). The
     // Outskirts hills, made mountains: taller and three layers deep, each
