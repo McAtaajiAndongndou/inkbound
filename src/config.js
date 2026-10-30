@@ -483,6 +483,16 @@ export const LAST_COLOUR = {
     headHeight: 2.4,     // the head's own height; it rises to the box's top
     hurtHeight: 2.2,     // the hurting region, from the floor up
   },
+  // The Core's waves come AT you (QA 30 Oct: "they just stay in the corners").
+  // A Drainer only hunts inside ENEMY.drainer.huntRadius (8 m), and the bays are
+  // ~30 m from the floor's centre, so wave two's Drainers fed in the bays, wave
+  // three waited on them, and Big Arm waited on wave three. A wave Drainer's
+  // hunt reaches across the whole Core (52 m square, plus the bays). The layout
+  // gives it to the Core's Drainers as `tune` (layouts/last-colour.js).
+  waveDrainer: {
+    huntRadius: 70,      // any point of the Core, from either bay
+    resumeRadius: 80,    // never back down to feed while you are in the room
+  },
   // The Siphon (#100): the final exam. Three phases, one colour each, read by
   // the share of a plate in that colour — never by damage (docs/levels/03-last-colour.md, R5).
   siphon: {

@@ -258,3 +258,10 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **`SURFACE.grey.standSlow` is 0.85, not 0.6** (#74, ADR-0002's number). On grey the player walks at 5.95 m/s, not 4.2, and now outpaces a Charger (5). Grey is still a live penalty and still refills nothing.
 - **Why:** in the loop-pass playtest Renda never noticed the 40% slow at all ("it felt the same"), so the harsher number only cost pace. The real gap is feedback: #244 makes the grey/paint contrast felt (camera, sound, footfalls). Once it lands, the number can be retuned.
 - **Not yet:** the plan's two greys (fresh enemy grey staying at 0.6) is #235.
+
+## 2026-10-30 — the Core's waves come at you (Renda, QA)
+
+- **The Core's Drainers hunt across the room** (`LAST_COLOUR.waveDrainer`: `huntRadius` 70, `resumeRadius` 80, given per placement as the layout's `tune`). The Drainer type is unchanged (8 / 14), and so are the hangar's Drainers. **Why:** at 8 m, wave two's Drainers fed in their bays ~30 m out. Wave three waits on wave two, and Big Arm waits on wave three, so the fight stalled until the player walked into the corners. That is the QA note "they just stay in the corners".
+- **A `hunt` room's woken enemies never give up** (layout-level.js). An enemy that goes Dormant there is woken again, so it is provoked (#216). One Charger overshot past the 16 m sight radius and stalled the chain the same way.
+- **Every enemy type fights in the Core:** a Sprayer per bay in wave two, a Wall-crawler per bay in wave three (quality plan §4.3, "all the enemy types in this level"). No new types (AGENTS rule 7).
+- Tested: `tests/last-colour-waves.test.js`. A player who stands still at the Core's centre sees every wave come to them and Big Arm wake. It fails on the previous code.

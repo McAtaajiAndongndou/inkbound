@@ -193,7 +193,9 @@ export function spawnEnemies(level, specs, label = 'level') {
       const Kind = ENEMY_CLASSES[spec.type] ?? Enemy;
       const enemy = new Kind({
         position: new THREE.Vector3(spec.x, spec.y, spec.z),
-        config: ENEMY[spec.type] ?? ENEMY.sprayer,
+        // A layout may tune one placement (`tune`, e.g. LAST_COLOUR.waveDrainer):
+        // the type's numbers with a few overridden, never a new type (AGENTS rule 7).
+        config: spec.tune ? { ...(ENEMY[spec.type] ?? ENEMY.sprayer), ...spec.tune } : (ENEMY[spec.type] ?? ENEMY.sprayer),
         parent: level.root,
         floors,
         walls,
