@@ -1266,7 +1266,9 @@ export const SHAKE = {
 // Death returns colour (polish audit P1-4): a killed enemy bursts into a splat
 // of the colour that killed it, as player paint — a kill becomes a refill pool.
 export const DEATH_SPLAT = {
-  radius: 1.8,
+  // Loop pass step 6 (quality plan §3.1): 1.8 -> 2.5 m, so a kill leaves a
+  // pool you can actually dive into (and swim, now 1.9x) rather than a puddle.
+  radius: 2.5,
 };
 
 // Mantle (#157). A green climb ends by pulling the player onto the top
