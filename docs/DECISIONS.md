@@ -196,6 +196,13 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **`onAttack` keeps its meaning:** "this enemy's attack hit the player". For a ranged enemy it now fires on pellet contact. `main.js` does not change.
 - **Melee is unchanged:** Charger, Stalker, Drainer, Big Arm.
 
+## 2026-10-30 — Closing the 3D Effects gap (drafts 073–078, #194–#199)
+
+- **Renda: the rubric's named techniques go where the theme already is,** not into new set pieces. Height-mapped, reflective paint (073), a sky that warms with territory (076), and ice that refracts (075).
+- **Grey stays matte; only paint is wet.** Gloss and reflection are applied to painted cells only, so dead and alive differ in sheen as well as colour. Reflection is capped so a paint colour never reads as sky.
+- **Point lights go through a fixed pool of four** that the custom shaders read as uniforms (074). The scene light count never changes, so built-in materials never recompile mid-fight. Amber light keeps meaning danger.
+- **Music is synthesised in-game, not downloaded** (078): a Corp drone, a colour layer that follows territory, and a combat layer. No licence, all team-made.
+
 ## 2026-10-30 — polish audit, shaders + enemies lane (Lethabo to approve)
 
 - **Attack tokens (Enemies 2).** A ranged enemy (an `attackRange` over `ENEMY_ATTACK.meleeReach`, not a lunger) must hold one of `ENEMY_ATTACK.tokens` (2) to wind up. The pool is per level (on the level root's `userData`), handed back when the attack or burst ends, or on a freeze, stun or death. Melee never queues: reaching you is its own limit. Doom (2016) and Halo's rule: a crowd is dangerous without five shots landing on one frame.
