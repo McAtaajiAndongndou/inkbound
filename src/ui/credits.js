@@ -96,6 +96,13 @@ export const CREDITS = [
     changes: 'The distance half of our height-fog shader is the three.js fog_fragment chunk, unchanged.',
   },
   {
+    what: 'Critically damped smoothing ("SmoothDamp"), for the camera follow',
+    author: 'Thomas Lowe, "Critically Damped Ease-In/Ease-Out Smoothing", Game Programming Gems 4 (ed. Andrew Kirmse, 2004)',
+    source: 'https://books.google.com/books?vid=ISBN9781584502951',
+    licence: 'Published algorithm (book); no code copied',
+    changes: 'Reimplemented from the published formula in src/core/camera-rig.js (#225).',
+  },
+  {
     what: 'Vite (build tool)',
     author: 'Vite contributors',
     source: 'https://vitejs.dev',
