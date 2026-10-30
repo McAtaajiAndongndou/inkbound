@@ -22,7 +22,7 @@ Ordered by Renda's sharpest complaint first, then by the quality plan's root cau
 | 2 | Submerge drop size: `cameraOffset` 0.9 → 0.35, aim dip `maxAngle` 1.1 → 0.1 | §3.4 | config | Only if step 1 still loses the horizon. Does it still read as "in the paint"? | **Skipped**: step 1 fixed it |
 | 3 | Shot cost 4 → 2 (tank lasts ~7 s of trigger, not ~3.5 s) | §3.1 | config | Do you finish a fight before running dry? Does the tank still matter? | **Keep** (30 Oct) |
 | 3b | **Hits drip ink** (Renda's idea, #240): a shot that hits an enemy splats ~0.6 m of its colour on the floor just behind it, not under its feet | §3.1 | code (paint) | Do fights leave pools you dive into mid-fight? Do enemies start sliding or pinning on their own? | **Keep** (30 Oct) |
-| 4a | Submerged refill 32/s → 40/s (`SUBMERGE.refillMultiplier` 4 → 5): a full tank in 2.5 s | §3.1 | config | Does a dive become your reload? | |
+| 4a | Submerged refill 32/s → 40/s (`SUBMERGE.refillMultiplier` 4 → 5): a full tank in 2.5 s | §3.1 | config | Does a dive become your reload? | **Keep** (30 Oct) |
 | 4b | Swim speed 1.4× → 1.9× (`SUBMERGE.speedMultiplier`) | §3.4 | config | Do you swim to get places? | |
 | 5 | World grey slow 0.6 → 0.85 | §3.5 | config | Does the first minute still drag? Do you still want to paint ahead? | |
 | 6 | Death splat 1.8 m → 2.5 m | §3.1 | config | Do you swim into kills to refill? | |
@@ -61,3 +61,8 @@ It only applied if step 1 still lost the horizon, and Renda says the swimming ca
 ### Step 4 split in two
 
 Step 4 changed two numbers (refill and swim speed). One change at a time, so it's 4a, then 4b.
+
+### Step 4a — submerged refill 32/s → 40/s
+
+- **Branch:** `proto/submerge-refill-5` (7ec6448), stacked on 1, 3 and 3b. A full tank in 2.5 s under the paint; standing is still 12.5 s.
+- **Verdict: keep.** Core lane: through Ozuko's review.
