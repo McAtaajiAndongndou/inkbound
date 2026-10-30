@@ -226,6 +226,11 @@ export const TRAP = {
 // overcast with low contrast, so the grey reads as colour taken away rather than
 // as a night scene. The level file explains what each band does.
 export const OUTSKIRTS = {
+  // The goal you can see (campaign flow, 30 Oct): a mast and beacon just past
+  // the back of the extraction ledge (y 12, z −45), the same landmark the
+  // Ascent's lift tower and Last Colour's Siphon carry. Behind the ledge, so it
+  // is never in the walk; it has no collider.
+  beacon: { x: 0, z: -46.5, mastFrom: 0, top: 19.5, mastColour: 0x4a5058, colour: 0xffd23f },
   mood: {
     horizon: 0x9ba1a6,   // the haze; matches the sky's horizon band and the mist
     zenith:  0x4d5560,   // overhead: washed out, not navy
