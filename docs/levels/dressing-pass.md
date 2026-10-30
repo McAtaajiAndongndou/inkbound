@@ -143,3 +143,7 @@ The builder is `src/levels/dressing.js`. Each item is a box with a kind, and eac
 - **R7:** a torn grey flag with a grey-violet stripe stands by the lift tower.
 - **A new test rule: thin things.** A post, a leg, a flagpole or a raised arm, where two of its three sizes are 0.3 m or less, cannot hide anything, so it may stand taller than 1.2 m. Tilted items are now checked by their real (world) extent.
 - **Budget:** +9 draw calls at most for the whole Ascent pass, and +0.2 to +0.6 ms on best-of-runs, measured A/B.
+
+### The Primer (step 5)
+
+Rebel chalk on R0's west wall, around the sergeant's desk: a crossed-out pill, a tally of days, and an arrow on toward R1. There are no words, and it is in chalk cream (`PRIMER.dressing.chalk`), the rebels' mark. The grey-only test now allows the two sides' marks: the Corp's grey-violet and the rebels' chalk. +1 draw call, and frame time is within noise.

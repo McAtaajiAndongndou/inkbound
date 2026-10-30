@@ -591,6 +591,9 @@ export const DRESSING = {
     grate:    { colour: 0x2a2c2e, shape: 'box', look: 'toon' },
     concrete: { colour: GATE.concrete, shape: 'box', look: 'toon' },
     flag:     { colour: 0x7d7f82, shape: 'box', look: 'toon' },       // a Corp flag, bleached grey
+    // The Primer's rebel stencils: chalk, the rebels' own mark (PRIMER.dressing.chalk)
+    chalk:     { colour: PRIMER.dressing.chalk, shape: 'box', look: 'toon' },
+    chalkPill: { colour: PRIMER.dressing.chalk, shape: 'capsule', look: 'toon' },
   },
   // At most this many extra draw calls per level (the doc's budget).
   maxDrawCalls: 15,

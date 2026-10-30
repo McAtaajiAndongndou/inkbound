@@ -17,6 +17,7 @@ import { PRIMER as TUNING, PLACED_LIGHTS } from '../config.js';
 import * as kit from './level-kit.js';
 import { applyMood } from './mood.js';
 import { SpikePit } from './spike-pit.js';
+import { buildDressing } from './dressing.js';
 
 export class Level00 extends LayoutLevel {
   // Viewer shots: the design doc's "what you see" frames, one per room, plus
@@ -114,6 +115,8 @@ export class Level00 extends LayoutLevel {
       frame.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
       this.root.add(frame);
     }
+    // The rebels' chalk stencils on R0's wall (the dressing pass, PRIMER.dressing).
+    this.dressing = buildDressing(this, PRIMER.dressing.items);
   }
 
   /** Is `p` standing in R2's submerge pool (the layout's `r2-pool` prepaint)? */
