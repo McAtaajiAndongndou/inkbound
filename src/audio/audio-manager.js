@@ -14,7 +14,17 @@ const STORAGE_KEY = 'inkbound.audio';
  *
  *   audio.play('fire' | 'splat' | 'hit' | 'kill' | 'telegraph' | 'win' | 'lose')
  *   world (#113): 'claim' | 'charge' | 'gate' | 'jump' | 'land'
- *   traps (#113): 'spike' | 'collapse' | 'blade'
+ *   traps (#113): 'spike' | 'collapse'
+ *   polish audit: traps 'vent' | 'crush' | 'hiss' | 'tick' | 'creak';
+ *     you 'hurt' | 'submergeIn' | 'submergeOut' | 'refill' | 'tankFull' |
+ *     'lowInk' | 'sludge'; combos 'freeze' | 'shatter' | 'pin';
+ *     set pieces 'slam' | 'siphon' | 'solved' | 'siphonDown'
+ *
+ *   audio.play(name, { gain, pitch }) — `gain` (0..1) scales the recipe, for a
+ *   sound heard from a distance; `pitch` multiplies every frequency in it. On
+ *   top of `pitch`, EVERY play is detuned by up to ±AUDIO.pitchVariance
+ *   (polish audit P1-3): you fire 7 shots a second, and identical blips at
+ *   that rate are what tires the ear.
  *
  * Every gameplay sound is played from the gameplay step, which main.js skips
  * while the menu is open — so nothing new plays behind the pause menu.
@@ -25,6 +35,8 @@ export class AudioManager {
   constructor() {
     this.ctx = null;
     this.master = null;
+    this._pitch = 1;         // per-play detune and gain, set by play()
+    this._gain = 1;
     this._noise = null;      // one shared white-noise buffer for every noisy SFX
 
     this.volume = AUDIO.volume;
@@ -67,10 +79,25 @@ export class AudioManager {
     return this.muted ? 0 : this.volume;
   }
 
-  play(name) {
-    if (!this.ctx || this.effectiveVolume === 0) return;
+  play(name, { gain = 1, pitch = 1 } = {}) {
+    if (!this.ctx || this.effectiveVolume === 0 || !(gain > 0)) return;
     const sfx = SFX[name];
-    if (sfx) sfx(this, this.ctx.currentTime);
+    if (!sfx) return;
+    // Recipes read these through _tone/_burst; reset after, so a recipe that
+    // throws cannot leave the next sound detuned.
+    this._pitch = pitch * (1 + (this.random() * 2 - 1) * AUDIO.pitchVariance);
+    this._gain = Math.min(1, gain);
+    try {
+      sfx(this, this.ctx.currentTime);
+    } finally {
+      this._pitch = 1;
+      this._gain = 1;
+    }
+  }
+
+  /** 0..1. A method so the tests can pin the detune. */
+  random() {
+    return Math.random();
   }
 
   // --- building blocks ----------------------------------------------------
@@ -80,9 +107,9 @@ export class AudioManager {
     const osc = this.ctx.createOscillator();
     const env = this.ctx.createGain();
     osc.type = type;
-    osc.frequency.setValueAtTime(f0, t);
-    osc.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    this._envelope(env, t, dur, gain);
+    osc.frequency.setValueAtTime(f0 * this._pitch, t);
+    osc.frequency.exponentialRampToValueAtTime(f1 * this._pitch, t + dur);
+    this._envelope(env, t, dur, gain * this._gain);
     osc.connect(env).connect(this.master);
     osc.start(t);
     osc.stop(t + dur + 0.02);
@@ -96,9 +123,9 @@ export class AudioManager {
     src.buffer = this._noise;
     biquad.type = filter;
     biquad.Q.value = q;
-    biquad.frequency.setValueAtTime(f0, t);
-    biquad.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    this._envelope(env, t, dur, gain);
+    biquad.frequency.setValueAtTime(f0 * this._pitch, t);
+    biquad.frequency.exponentialRampToValueAtTime(f1 * this._pitch, t + dur);
+    this._envelope(env, t, dur, gain * this._gain);
     src.connect(biquad).connect(env).connect(this.master);
     src.start(t);
     src.stop(t + dur + 0.02);
@@ -208,9 +235,103 @@ export const SFX = {
     a._burst(t, { filter: 'lowpass', f0: 900, f1: 120, q: 1, dur: 0.5, gain: 0.16 });
     a._burst(t + 0.12, { filter: 'lowpass', f0: 600, f1: 90, q: 1, dur: 0.35, gain: 0.1 });
   },
-  // Swinging blade: an airy swoosh through the swing.
-  blade: (a, t) => {
-    a._burst(t, { filter: 'bandpass', f0: 500, f1: 2200, q: 3, dur: 0.28, gain: 0.12 });
+  // (The swinging blade's swoosh was here. The blades are cut, so it went too.)
+
+  // --- polish audit: traps you can hear (the levels lane plays them by distance)
+  // Vent eruption: a pressurised hiss with a low thump under it.
+  vent: (a, t) => {
+    a._burst(t, { filter: 'highpass', f0: 1800, f1: 3200, q: 0.8, dur: 0.6, gain: 0.13 });
+    a._tone(t, { type: 'sine', f0: 110, f1: 60, dur: 0.18, gain: 0.12 });
+  },
+  // Crusher drop: a heavy metal clank. The beat.
+  crush: (a, t) => {
+    a._burst(t, { filter: 'lowpass', f0: 700, f1: 80, q: 1.5, dur: 0.32, gain: 0.2 });
+    a._tone(t, { type: 'square', f0: 240, f1: 170, dur: 0.09, gain: 0.07 });
+  },
+  // Crusher rise: hydraulic hiss.
+  hiss: (a, t) => {
+    a._burst(t, { filter: 'bandpass', f0: 2200, f1: 1400, q: 2, dur: 0.45, gain: 0.07 });
+  },
+  // Warning-lamp tick: a dry click on each blink of the tell.
+  tick: (a, t) => {
+    a._tone(t, { type: 'square', f0: 2400, f1: 2300, dur: 0.025, gain: 0.05 });
+  },
+  // Catwalk step-on: a low metal groan.
+  creak: (a, t) => {
+    a._tone(t, { type: 'sawtooth', f0: 95, f1: 70, dur: 0.35, gain: 0.06 });
+    a._burst(t, { filter: 'bandpass', f0: 600, f1: 400, q: 6, dur: 0.3, gain: 0.05 });
+  },
+
+  // --- polish audit: what happens to YOU ------------------------------------
+  // Hurt (P0-4): a dull body thud and a short low buzz. Not a beep: a beep is a UI sound.
+  hurt: (a, t) => {
+    a._tone(t, { type: 'sine', f0: 150, f1: 55, dur: 0.16, gain: 0.26 });
+    a._burst(t, { filter: 'lowpass', f0: 900, f1: 120, q: 1, dur: 0.14, gain: 0.16 });
+  },
+  // Submerge: a wet plunge in, a lighter splash out (Splatoon's swim is mostly sound).
+  submergeIn: (a, t) => {
+    a._burst(t, { filter: 'lowpass', f0: 2400, f1: 180, q: 3, dur: 0.22, gain: 0.2 });
+    a._tone(t, { type: 'sine', f0: 420, f1: 140, dur: 0.16, gain: 0.08 });
+  },
+  submergeOut: (a, t) => {
+    a._burst(t, { filter: 'bandpass', f0: 500, f1: 2600, q: 2, dur: 0.16, gain: 0.14 });
+  },
+  // Refill: a soft bubble, played repeatedly while the tank fills at a pitch
+  // that rises with the tank (the `pitch` option), so filling is a rising tone.
+  refill: (a, t) => {
+    a._tone(t, { type: 'sine', f0: 520, f1: 760, dur: 0.06, gain: 0.05 });
+  },
+  // Tank full: Splatoon's ding, a clean two-note click.
+  tankFull: (a, t) => {
+    a._tone(t, { type: 'triangle', f0: 1320, dur: 0.06, gain: 0.12 });
+    a._tone(t + 0.06, { type: 'triangle', f0: 1760, dur: 0.12, gain: 0.12 });
+  },
+  // Low ink (P1-6): two falling blips before empty, heard while you watch the fight.
+  lowInk: (a, t) => {
+    a._tone(t, { type: 'square', f0: 880, f1: 820, dur: 0.05, gain: 0.06 });
+    a._tone(t + 0.09, { type: 'square', f0: 660, f1: 600, dur: 0.07, gain: 0.06 });
+  },
+  // Grey footstep: a sticky, damp squelch. Corp paint grabs your boots.
+  sludge: (a, t) => {
+    a._burst(t, { filter: 'lowpass', f0: 380, f1: 140, q: 4, dur: 0.12, gain: 0.07 });
+  },
+
+  // --- polish audit: the combo (P1-5). The enemies lane plays these -----------
+  // Blue freeze lands: a crisp, glassy crackle.
+  freeze: (a, t) => {
+    a._burst(t, { filter: 'highpass', f0: 3800, f1: 5200, q: 2, dur: 0.18, gain: 0.1 });
+    a._tone(t, { type: 'sine', f0: 1900, f1: 2600, dur: 0.14, gain: 0.06 });
+  },
+  // Freeze-shatter crit: glass breaking with weight under it. The best combo, so the biggest of these.
+  shatter: (a, t) => {
+    a._burst(t, { filter: 'highpass', f0: 2600, f1: 900, q: 1, dur: 0.32, gain: 0.2 });
+    a._tone(t, { type: 'triangle', f0: 1600, f1: 400, dur: 0.22, gain: 0.1 });
+    a._tone(t, { type: 'sine', f0: 140, f1: 60, dur: 0.2, gain: 0.1 });
+  },
+  // Green pin: a sticky clamp.
+  pin: (a, t) => {
+    a._burst(t, { filter: 'bandpass', f0: 700, f1: 300, q: 5, dur: 0.12, gain: 0.12 });
+    a._tone(t, { type: 'square', f0: 330, f1: 300, dur: 0.05, gain: 0.05 });
+  },
+
+  // --- polish audit: set pieces ---------------------------------------------
+  // Big Arm's slam: a deep boom.
+  slam: (a, t) => {
+    a._tone(t, { type: 'sine', f0: 90, f1: 35, dur: 0.45, gain: 0.22 });
+    a._burst(t, { filter: 'lowpass', f0: 600, f1: 60, q: 1, dur: 0.4, gain: 0.08 });
+  },
+  // The Siphon reveals a target: a low machine hum, rising.
+  siphon: (a, t) => {
+    a._tone(t, { type: 'sawtooth', f0: 110, f1: 220, dur: 0.7, gain: 0.06 });
+  },
+  // A Siphon target takes its colour.
+  solved: (a, t) => {
+    a._tone(t, { type: 'triangle', f0: 660, f1: 990, dur: 0.18, gain: 0.1 });
+  },
+  // The Siphon goes down: the machine winding down, a long fall in pitch.
+  siphonDown: (a, t) => {
+    a._tone(t, { type: 'sawtooth', f0: 330, f1: 55, dur: 1.4, gain: 0.08 });
+    a._burst(t + 0.3, { filter: 'lowpass', f0: 800, f1: 80, q: 1, dur: 1.0, gain: 0.08 });
   },
   win: (a, t) => {
     [523, 659, 784, 1047].forEach((f, i) =>

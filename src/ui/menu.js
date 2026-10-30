@@ -17,6 +17,27 @@
 //
 // Still TODO: loadout select, quality setting.
 import { OPTIONS } from '../config.js';
+
+/**
+ * The controls list, as data so a test can hold it to the real bindings
+ * (polish audit P0-3): it advertised F = Refill, a key that does not exist and
+ * a button the design forbids, and hid Shift (submerge) and Q (paintstreak).
+ */
+export const CONTROLS = [
+  ['WASD', 'Move'],
+  ['Space', 'Jump'],
+  ['Mouse', 'Look'],
+  ['Click', 'Paint'],
+  ['Right-click', 'Aim'],
+  ['1–4', 'Colour'],
+  ['Shift', 'Submerge in your paint (refill fast)'],
+  ['Q', 'Paintstreak (when full)'],
+  ['V', 'Switch view'],
+  ['R', 'Restart'],
+  ['M', 'Mute'],
+  ['Enter', 'Skip sergeant'],
+  ['Esc', 'Pause'],
+];
 import { CREDITS, OURS } from './credits.js';
 import { LEVELS } from '../levels/index.js';
 import { Briefing } from './briefing.js';
@@ -91,18 +112,8 @@ export class Menu {
 
         <section>
           <h2>Controls</h2>
-          <dl class="menu-controls">
-            <dt>WASD</dt><dd>Move</dd>
-            <dt>Space</dt><dd>Jump</dd>
-            <dt>Mouse</dt><dd>Look</dd>
-            <dt>Click</dt><dd>Paint</dd>
-            <dt>1–4</dt><dd>Colour</dd>
-            <dt>F</dt><dd>Refill ammo</dd>
-            <dt>V</dt><dd>Switch view</dd>
-            <dt>R</dt><dd>Restart</dd>
-            <dt>M</dt><dd>Mute</dd>
-            <dt>Enter</dt><dd>Skip sergeant</dd>
-            <dt>Esc</dt><dd>Pause</dd>
+          <dl class="menu-controls">${CONTROLS.map(([key, what]) => `
+            <dt>${esc(key)}</dt><dd>${esc(what)}</dd>`).join('')}
           </dl>
         </section>
         </div>
