@@ -419,7 +419,28 @@ export const OUTSKIRTS = {
 // drained overcast and nudged WARM: this is the rebels' own course, so its air
 // is dusty daylight, not the Corp's bleach. Same rules as OUTSKIRTS.mood: fog
 // matches the horizon band, never the whole sky (see src/levels/mood.js).
+// The combo rack (src/levels/combo-rack.js): the Big Arm combo taught in the
+// world. A board that says it — FREEZE, PIN, KNOCK in the colours that do
+// them — and three lamps over it that light as each step lands on the Big Arm
+// it watches, and go dark when the chain breaks. QA 30 Oct: "couldn't find the
+// combo, not even a hint at it". The plan's HUD pips (§4.3) are UI's; this is
+// the level's half, and it reads in a screenshot.
+export const COMBO_RACK = {
+  width: 7,              // m, the board
+  height: 2.2,
+  lamp: 0.6,             // m, each lamp cube
+  lampGap: 0.5,          // m above the board's top edge
+  board: 0x1f2226,       // the board's face: dark, so the colours carry
+  ink: '#e8e4da',        // the header's chalk white
+  dim: 0.16,             // an unlit lamp's share of its colour: there, but off
+};
+
 export const PRIMER = {
+  // R7's second wave (quality plan §9.1, R9 "the combo"): a chained Big Arm
+  // that one combo knocks down. It never moves, slams, grabs or touches for
+  // damage — the Primer may not kill (#79). Its windows are the real boss's,
+  // so what you learn here is what Last Colour asks of you.
+  comboDummy: { hp: 1, canMove: false, attackRange: 0, contactDamage: 0, grabs: false },
   mood: {
     horizon: 0xa59f94,   // warm dust haze
     zenith:  0x56606b,

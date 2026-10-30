@@ -545,8 +545,17 @@ const dressing = {
   ],
 };
 
+/**
+ * The combo racks (combo-rack.js): the Corp's own containment placards, one each
+ * side of Big Arm's north bay, on the north wall over the balconies, facing the
+ * Core (+z). Two, because the Siphon (22 m tall, in front of the bay) hides
+ * anything centred over the gate from most of the floor. Their lamps light as
+ * each step of the combo lands on Big Arm (QA 30 Oct).
+ */
+const comboRacks = [-15, 15].map((x) => ({ at: [x, 8.5, -61.6], facing: 0, header: 'CONTAINMENT PROTOCOL: SUBJECT IGNORES DAMAGE' }));
+
 export const LAST_COLOUR = {
   id: 'last-colour', name: 'Last Colour', cells: PAINT_GRID.level3Cells, prepaint,
   solids, slabs: [], strips, kerbs: [], landmarks, gates, traps, props, targets, spill, enemies, routes, rooms, win, doc,
-  curves, dressing,
+  curves, dressing, comboRacks,
 };

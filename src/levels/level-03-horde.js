@@ -22,6 +22,7 @@ import { buildProps, setLamp } from './prop-kit.js';
 import { buildDressing, wallBreakup, skylineDetail } from './dressing.js';
 import { CargoCrusher } from './crusher.js';
 import { Siphon } from './siphon.js';
+import { ComboRack } from './combo-rack.js';
 import * as kit from './level-kit.js';
 
 export class Level03 extends LayoutLevel {
@@ -56,6 +57,7 @@ export class Level03 extends LayoutLevel {
       },
     });
     this._bigArm();
+    this.comboRacks = LAST_COLOUR.comboRacks.map((spec) => new ComboRack(this.root, spec));
     this._curves();
     this._dressing();
     this._lights();
@@ -184,10 +186,16 @@ export class Level03 extends LayoutLevel {
     const phase = this.siphon.phase;
     if (phase === 'finale' || phase === 'done') this.sky?.restore();
     else if (phase !== 'dormant') this.sky?.drain();
-    // #112 — the sergeant's line on arrival at the base.
-    if (!this._saidBase && this.inRoom('R0', player.position)) {
-      this._saidBase = true;
-      this.game.say?.('last-colour-base');
-    }
+    for (const rack of this.comboRacks) rack.update(this.bigArm);
+    // #112 — the sergeant's lines: arrival at the base, Big Arm out of its bay
+    // (the combo, QA 30 Oct), and the Siphon's first plate (its exam).
+    this._said ??= new Set();
+    const ask = (id, when) => {
+      if (this._said.has(id) || !when) return;
+      if (this.game.say?.(id) !== false) this._said.add(id);
+    };
+    ask('last-colour-base', this.inRoom('R0', player.position));
+    ask('last-colour-big-arm', this.bigArm?.sleeping === false);
+    ask('last-colour-siphon', phase !== 'dormant');
   }
 }
