@@ -647,6 +647,12 @@ export const PAINT_GUN = {
   // ~3.5 s of trigger and each second of firing cost ~3.5 s standing still.
   // At 2 it lasts ~7 s. Refill rates are unchanged: submerge stays the reload.
   cost: 2,
+  // Loop pass step 3b (Renda's idea, #240): a shot that hits an enemy used to
+  // paint nothing. It now drips a small splat of its colour on the floor just
+  // PAST the enemy along the shot (not under its feet, so the floor colour
+  // does not slide or pin it on every hit). Kills still leave the big pool.
+  hitDrip: 0.6,          // m, the drip's radius (DEATH_SPLAT is 1.8)
+  hitDripOffset: 1.2,    // m from the enemy's CENTRE along the shot (any model): twice the drip radius, so its edge clears the feet
   fireDelay: 0.14,
   hipSpread: 0.025,
   adsSpread: 0.005,
