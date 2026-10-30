@@ -574,6 +574,51 @@ export const AUDIO = {
   pitchVariance: 0.06,   // +-6% detune on every play (polish audit P1-3): no machine-gun blips
 };
 
+// #199 — adaptive synthesised music (src/audio/music.js). Three layers: the
+// Corp drone (always on; its filter closes as territory grows), the colour
+// arpeggio (gain follows territory, a voice per colour fired) and the combat
+// drums (in while fighting, out combatHold s after). Each level has its own key
+// and tempo. `fullAt` matches SKY.to: the sky and the music read the same
+// territory number and arrive at "restored" together (DECISIONS, 30 Oct).
+export const MUSIC = {
+  volume: 0.6,            // the Music slider's default (0..1)
+  duck: 0.3,              // the music drops by this share under the sergeant's lines
+  duckRelease: 0.6,       // s to come back up after a line
+  fullAt: 0.2,            // territory at which the colour layer is at full gain
+  combatFadeIn: 1.0,      // s from silent to full drums once a fight starts
+  combatHold: 3,          // s the drums keep going after the fight ends
+  combatFadeOut: 2,       // s from full to silent after the hold
+  clearMinFight: 2,       // s a fight must last before its end earns the clear stinger
+  lookAhead: 0.12,        // s of notes scheduled ahead on the Web Audio clock
+  smoothing: 0.05,        // s time constant for layer gain changes
+  filterSmoothing: 0.8,   // s time constant for the drone's filter
+  droneOpen: 900,         // Hz: the drone's cutoff on an unpainted level — cold and present
+  droneClosed: 180,       // Hz: at full territory the Corp hum sinks under the colour
+  droneDetune: 0.006,     // the slow beat between the drone's two saws
+  gains: { drone: 0.05, colour: 0.18, combat: 0.22, stinger: 0.07 },
+  voices: { green: 0.35, blue: 0.22, red: 0.4, kick: 0.9, snare: 0.35 },
+  // Scale-degree indices per eighth note; past the scale's end wraps an octave up.
+  pattern: [0, 1, 2, 4, 5, 4, 2, 1],
+  // Semitone chords above the root an octave up: rising on a clear, falling
+  // on a death, IV-V-I on the win.
+  stingers: {
+    clear: [[0, 4, 7, 12]],
+    death: [[7, 3, 0, -5]],
+    win: [[5, 9, 12], [7, 11, 14], [0, 4, 7, 12]],
+  },
+  stingerStep: 0.32,      // s between a stinger's chords
+  stingerSpread: 0.06,    // s between a chord's notes (a strum, not a block)
+  stingerLength: 0.9,     // s each stinger note rings
+  // Each level's key (root Hz) and tempo (BPM): four levels, four sounds.
+  levels: {
+    primer: { root: 220.0, tempo: 92, scale: [0, 2, 4, 7, 9] },          // A major pentatonic: the training ground is friendly
+    outskirts: { root: 196.0, tempo: 100, scale: [0, 3, 5, 7, 10] },      // G minor pentatonic
+    ascent: { root: 164.81, tempo: 108, scale: [0, 2, 3, 7, 9] },         // E, dorian-ish: the climb lifts
+    'last-colour': { root: 174.61, tempo: 124, scale: [0, 1, 5, 7, 8] },  // F, phrygian edge: the Corp's home
+    default: { root: 196.0, tempo: 100, scale: [0, 3, 5, 7, 10] },
+  },
+};
+
 // Player feedback cues (polish audit P0-4, P1-6, Q1, Q3): the layer that tells
 // the player what happened. Read by src/ui/feedback.js; drawn by the HUD.
 export const FEEDBACK = {

@@ -108,5 +108,6 @@ export const CREDITS = [
 export const OURS = [
   'All gameplay code, level layouts and shaders (paint, toon, enemy, height fog except as noted above)',
   'All sound effects, synthesised in code with the Web Audio API',
+  'Music: synthesised in-game by the Inkbound team',
   'UI and HUD',
 ];

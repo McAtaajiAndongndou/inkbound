@@ -122,6 +122,9 @@ const gltfLoader = new GLTFLoader();
 // closed (simulate() does not run behind the menu) — and reset on restart.
 const run = { time: 0, dryTime: 0, over: false };
 
+// #199 — what the gameplay step tells the music, read once a frame in animate().
+const musicState = { inCombat: false, colour: null };
+
 // The campaign: Primer → Outskirts → the Ascent → Last Colour. A win offers the
 // next mission on Enter; Last Colour's win is the campaign's end.
 const campaign = new Campaign(LEVELS);
@@ -142,6 +145,7 @@ const game = {
       campaign: campaign.isFinale(currentLevelId) ? campaign.totals() : undefined,
     });
     audio.play("win");
+    audio.music.stinger("win");   // #199: the full cadence
   },
   // #112 — a level asks for a comms line by id at a calm, scripted beat. The
   // bar holds the text and refuses to show it mid-fight.
@@ -235,6 +239,10 @@ async function loadLevel(id = currentLevelId) {
   }
 
   hud.hideEnd();
+  // #199: this level's key and tempo, and a fresh start for its layers.
+  audio.music.start(currentLevelId);
+  musicState.colour = null;
+  musicState.inCombat = false;
   run.time = 0;
   run.dryTime = 0;
   run.over = false;
@@ -321,6 +329,7 @@ async function loadLevel(id = currentLevelId) {
     // wording. `player.dry` is set by simulate() each frame.
     hud.showEnd("lose", { level: currentLevelId, reason: player.dry ? "dry" : "dead" });
     audio.play("lose");
+    audio.music.stinger("death");   // #199: the falling chord
   };
 
   
@@ -499,11 +508,13 @@ function simulate(dt, elapsed, actions, mouse) {
     inCombat = enemy.alive && enemy.awareness !== "dormant";
   }
   comms.update(dt, inCombat);
+  musicState.inCombat = inCombat;   // #199: the drums follow the same rule
 
   gun.update(dt);
   if (input.firing && input.locked && !player.dead && !player.submerged && gun.tryFire(rig.camera, gunModel?.getMuzzleWorldPosition(muzzleVec, rig.firstPerson), input.aiming)) {
     gunModel?.kick();
     audio.play("fire");
+    musicState.colour = gun.colour;   // #199: firing a colour adds its voice
     avatar.fire();                // #124 — the shot accent, after the shot lands
   }
 
@@ -554,6 +565,15 @@ function animate() {
     surfaces: level.surfaces,
     streak,
   });
+  // #199 — the music reads the HUD's territory, the comms bar's combat rule,
+  // whether the sergeant is talking (it ducks) and the colour just fired.
+  audio.music.update(Math.min(rawDt, 0.1), {
+    territory: hud.coverage,
+    inCombat: musicState.inCombat,
+    talking: comms.timeline.phase === "showing",
+    colour: musicState.colour,
+  });
+  musicState.colour = null;
 
   const w = window.innerWidth;
   const h = window.innerHeight;

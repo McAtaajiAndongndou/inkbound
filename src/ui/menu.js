@@ -100,6 +100,10 @@ export class Menu {
             <input id="opt-volume" type="range" min="0" max="100" step="1">
             <output id="opt-volume-out"></output>
           </label>
+          <label class="menu-row">Music
+            <input id="opt-music" type="range" min="0" max="100" step="1">
+            <output id="opt-music-out"></output>
+          </label>
           <label class="menu-row">Mouse sensitivity
             <input id="opt-sens" type="range"
               min="${OPTIONS.sensitivityMin * 100}" max="${OPTIONS.sensitivityMax * 100}" step="5">
@@ -176,6 +180,8 @@ export class Menu {
     this.restartBtn = $('#menu-restart');
     this.volume = $('#opt-volume');
     this.volumeOut = $('#opt-volume-out');
+    this.music = $('#opt-music');
+    this.musicOut = $('#opt-music-out');
     this.sens = $('#opt-sens');
     this.sensOut = $('#opt-sens-out');
     this.muteBtn = $('#opt-mute');
@@ -212,6 +218,12 @@ export class Menu {
     });
     // a quick blip on release so the player hears the level they picked
     this.volume.addEventListener('change', () => audio.play('hit'));
+    // #199 — the music's own level. Effects are untouched at 0.
+    this.music.addEventListener('input', () => {
+      audio.unlock();
+      audio.music?.setVolume(this.music.value / 100);
+      this._sync();
+    });
 
     this.sens.addEventListener('input', () => {
       this.sensitivity = this.sens.value / 100;
@@ -378,6 +390,9 @@ export class Menu {
     const vol = Math.round(this.audio.volume * 100);
     this.volume.value = vol;
     this.volumeOut.textContent = vol;
+    const music = Math.round((this.audio.music?.volume ?? 0) * 100);
+    this.music.value = music;
+    this.musicOut.textContent = music;
     this.sens.value = Math.round(this.sensitivity * 100);
     this.sensOut.textContent = `${this.sensitivity.toFixed(2)}×`;
     this.muteBtn.setAttribute('aria-pressed', String(this.audio.muted));
