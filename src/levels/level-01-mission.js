@@ -75,7 +75,6 @@ const L1 = {
   // the thing plus ~1.5 m of breathing room.
   decorAvoid: [
     { xMin: 5, xMax: 16, zMin: -23, zMax: -17 },   // the block and the vent lane
-    { xMin: 22, xMax: 34, zMin: -30, zMax: -14 },  // the fallen billboard (dressing, below), on the east shelf
   ],
 
   bDeck: { xMin: 5, xMax: 9, zMin: -6, zMax: -2, y: 4.6, overhang: 0 },
@@ -194,9 +193,8 @@ const L1 = {
   //              tower: the same silhouettes as Last Colour, so the campaign's
   //              goal is in sight from its first outdoor level. Wide of the axis,
   //              so the beacon stays the thing you look at
-  //   billboard  a toppled Corp billboard for the immortality pill, on the east
-  //              forest shelf beside island C, leaning back on a buckled leg.
-  //              The fiction's first image. No words: the pill and the stripes
+  //   (The toppled Corp billboard on the east shelf was removed: in QA it read
+  //   as a stray object, not a pill ad — quality plan B13, Renda's call 30 Oct.)
   dressing: {
     skyline: [
       { kind: 'block', box: [-72, -32, -40, 22, -142, -112] },
@@ -206,26 +204,6 @@ const L1 = {
       { kind: 'stack', box: [-30, -25, -40, 33, -128, -123] },
       { kind: 'stack', box: [40, 44.5, -40, 30, -120, -115.5] },
     ],
-    // The billboard, in its own upright frame: a 12 x 6 m board facing west
-    // (-x), on two legs. `lean` turns every piece about `pivot` (the foot of the
-    // board's back) round z: the board has fallen back, away from the arena.
-    billboard: {
-      pivot: [26, -0.2],   // [x, y]
-      lean: -0.42,         // rad
-      pieces: [
-        { kind: 'panel', box: [25.4, 26, 2.6, 9.2, -28.6, -15.4] },          // the back frame
-        { kind: 'board', box: [25.2, 25.4, 2.9, 8.9, -28.3, -15.7] },        // the face
-        { kind: 'sign', box: [25.05, 25.25, 4.4, 7.4, -26, -18] },           // the pill
-        ...[-27.6, -26.8, -17.2, -16.4].map((z) => (
-          { kind: 'stencil', box: [25.1, 25.25, 3.3, 8.5, z - 0.22, z + 0.22] })),
-        { kind: 'rail', box: [25.6, 26, -0.2, 2.6, -26.3, -25.9] },         // the leg that held
-      ],
-      // The leg that buckled: snapped at the knee, in the world frame.
-      broken: [
-        { kind: 'rail', box: [25.7, 26.1, -0.2, 1.4, -18.1, -17.7] },
-        { kind: 'rail', box: [25.4, 25.8, 1.2, 2.6, -18.1, -17.7], tilt: [0, 0, 0.9] },
-      ],
-    },
   },
 
   // The win zone: the back of the extraction ledge.
@@ -1165,24 +1143,11 @@ export class Level01 extends LevelBase {
   }
 
   /**
-   * The dressing pass: the skyline and the billboard (L1.dressing). Built-in
-   * materials, so nothing joins `_lightDirection()`.
+   * The dressing pass: the skyline (L1.dressing). Built-in materials, so
+   * nothing joins `_lightDirection()`.
    */
   _dressing() {
-    const D = L1.dressing;
-    const { pivot: [px, py], lean, pieces, broken } = D.billboard;
-    const cos = Math.cos(lean);
-    const sin = Math.sin(lean);
-    // Each piece turns about its own centre (dressing.js), so move the centre
-    // round the pivot first: the board falls as one thing.
-    const fallen = pieces.map(({ kind, box: [x0, x1, y0, y1, z0, z1] }) => {
-      const dx = (x0 + x1) / 2 - px;
-      const dy = (y0 + y1) / 2 - py;
-      const mx = px + dx * cos - dy * sin - (x0 + x1) / 2;
-      const my = py + dx * sin + dy * cos - (y0 + y1) / 2;
-      return { kind, room: 'C', box: [x0 + mx, x1 + mx, y0 + my, y1 + my, z0, z1], tilt: [0, 0, lean] };
-    });
-    this.dressing = buildDressing(this, [...D.skyline, ...fallen, ...broken.map((b) => ({ ...b, room: 'C' }))]);
+    this.dressing = buildDressing(this, L1.dressing.skyline);
   }
 
   dispose() {
