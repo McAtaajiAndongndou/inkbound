@@ -9,6 +9,7 @@ import { EnemyShots } from "./enemy-shots.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
 import { createFrostMaterial } from "../shaders/frost/frost-material.js";
+import { trackShell, untrackShell } from "../shaders/frost/frost-pass.js";
 import { DeathBurst } from "./death-burst.js";
 
 // Paint ids are indices into the grid (see PAINT_IDS in config.js).
@@ -628,6 +629,8 @@ export class Enemy {
     this._frostShell.renderOrder = 2;
 
     this.mesh.add(this._frostShell);
+    // #196 — FrostPass checks tracked shells for "anything frozen on screen?"
+    trackShell(this._frostShell);
 
     parent.add(this.mesh);
   }
@@ -2642,6 +2645,7 @@ export class Enemy {
     this._shots?.release(this);
     this._shots = null;
 
+    if (this._frostShell) untrackShell(this._frostShell);
     this._frostShell?.geometry.dispose();
     this._frostShell?.material.dispose();
 

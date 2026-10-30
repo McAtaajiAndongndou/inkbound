@@ -19,6 +19,7 @@ import { PLAYER, ANIM, PAINTSTREAK, MISSION_INTRO, PAINT, SHAKE, DEATH_SPLAT } f
 import { Paintstreak, zoneSplat } from "./paint/paintstreak.js";
 import { HitStop, refillStep } from "./core/feel.js";
 import { pointLights } from "./shaders/point-lights.js";
+import { FrostPass } from "./shaders/frost/frost-pass.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -45,6 +46,8 @@ scene.add(new THREE.HemisphereLight(0x8899bb, 0x22222a, 0.5));
 // #195 — the point-light pool's fixed lights, in the scene for the whole game:
 // the light count never changes, so three.js never recompiles mid-fight.
 pointLights.attach(scene);
+// #196 — the scene copy frost shells refract. Renders only while one is on screen.
+const frostPass = new FrostPass();
 
 let level = null;
 let player = null;
@@ -226,6 +229,7 @@ async function loadLevel(id = currentLevelId) {
   if (level) {
     if (avatar) avatar.dispose();
     level.dispose();
+    frostPass.dispose();   // #196: the scene copy goes with the level
     scene.remove(player.mesh);
     player.dispose();
   }
@@ -556,6 +560,7 @@ function animate() {
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, w, h);
   pointLights.update(rig.camera, dt);   // #195: the nearest sources to this camera
+  frostPass.render(renderer, scene, rig.camera);   // #196: nothing, unless ice is on screen
   renderer.render(scene, rig.camera);
   if (intro) return; // no minimap under the intro: the HUD is hidden too
 
@@ -599,4 +604,7 @@ function animate() {
 window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   rig.resize(window.innerWidth / window.innerHeight);
+  // #196: keep the frost scene copy in step (render() also checks every frame).
+  const buffer = renderer.getDrawingBufferSize(new THREE.Vector2());
+  frostPass.setSize(buffer.x, buffer.y);
 });
