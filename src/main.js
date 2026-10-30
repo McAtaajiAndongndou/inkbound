@@ -15,8 +15,9 @@ import { PaintGunModel } from "./paint/paint-gun-model.js";
 import { Menu } from "./ui/menu.js";
 import { audio } from "./audio/audio-manager.js";
 import { preloadEnemyModel } from "./enemies/enemy.js";
-import { PLAYER, PAINT_GUN, ANIM, DRY_OUT, SUBMERGE, PAINTSTREAK, MISSION_INTRO } from "./config.js";
-import { Paintstreak } from "./paint/paintstreak.js";
+import { PLAYER, ANIM, PAINTSTREAK, MISSION_INTRO, PAINT, SHAKE, DEATH_SPLAT } from "./config.js";
+import { Paintstreak, zoneSplat } from "./paint/paintstreak.js";
+import { HitStop, refillStep } from "./core/feel.js";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -87,6 +88,8 @@ const hud = new Hud(document.getElementById("hud"));
 // zone at your feet. Edge-triggered here (no input.js action), so holding the
 // key cannot auto-fire it the moment the gauge fills again.
 const streak = new Paintstreak();
+// Polish audit P1-1: kills stop time for a few frames; rendering carries on.
+const hitStop = new HitStop();
 let streakKeyWasDown = false;
 let lastPaintColour = "blue"; // the zone's colour if grey is in hand
 hud.onColourClick((i) => gun && gun.selectColour(i));
@@ -134,6 +137,9 @@ const game = {
   // #112 — a level asks for a comms line by id at a calm, scripted beat. The
   // bar holds the text and refuses to show it mid-fight.
   say: (id) => comms.say(id),
+  // Polish audit P1-2: a level shakes the camera for a heavy event near the
+  // player (the crusher's beat, a catwalk falling). `amount` is trauma, 0..1.
+  shake: (amount) => rig.addTrauma(amount),
 
   // --- level switching (issue 006 is the menu that calls this) --------------
   // The menu needs three things and no more: the list to render, which one is
@@ -234,15 +240,43 @@ async function loadLevel(id = currentLevelId) {
 
   player = new Player(level.surfaces, level.spawn);
   scene.add(player.mesh);
+  // A level may name what its first frame faces (the Ascent: its lift beacon).
+  const facing = level.spawnFacing;
+  if (facing) {
+    player.yaw = facing.yaw;
+    player.pitch = facing.pitch;
+  }
+  // P0-4 + P1-2: a hit shakes the camera and flinches it up.
+  player.onHurt = () => {
+    rig.addTrauma(SHAKE.hurt);
+    rig.kick(SHAKE.hurtKick);
+  };
+  hitStop.reset();
+  rig.trauma.reset();
 
   // ENEMY RANGED ATTACKS DO DAMAGE. `Enemy` fires `onAttack` when a windup
   // completes, but nothing ever assigned it — every ranged enemy in the game was
   // a light show, so standing in the open cost nothing (playtest, 28 Oct). The
   // damage number lives on each config (`attackDamage`) beside `contactDamage`.
   for (const enemy of level.enemies) {
-    enemy.onAttack = (e) => player.takeDamage(e.config.attackDamage ?? 0);
-    // #129 killfeed: the enemy says what killed it; the HUD words it.
-    enemy.onDeath = (e, cause) => hud.reportKill(e.type, cause);
+    // The attacker's position rides along, for the HUD's damage arc (P0-4).
+    enemy.onAttack = (e) => player.takeDamage(e.config.attackDamage ?? 0, e.position);
+    enemy.onDeath = (e, cause) => {
+      // #129 killfeed: the enemy says what killed it; the HUD words it.
+      hud.reportKill(e.type, cause);
+      // P1-1: the kill lands. The freeze-shatter crit lands harder.
+      hitStop.hit(cause.effect === "shatter" ? "shatter" : "kill");
+      // P1-4: death returns colour — a splat of the killing colour, as player
+      // paint, so a kill becomes a refill pool. Grey and colourless kills give none.
+      if (cause.colour && cause.colour !== "grey") zoneSplat(level.surfaces, e.position, cause.colour, DEATH_SPLAT.radius);
+    };
+    // Big Arm (#99): a combo step stops time (P1-1); its slam shakes the camera
+    // by distance (P1-2), hit or not. Hooks only Big Arm fires.
+    enemy.onComboStep = () => hitStop.hit("combo");
+    enemy.onSlam = (e, at) => {
+      const d = player.position.distanceTo(at ?? e.position);
+      rig.addTrauma(SHAKE.slam * Math.max(0, 1 - d / SHAKE.slamRange));
+    };
   }
 
   // Hidden NOW, before the avatar exists, and revealed only if the model never
@@ -405,30 +439,14 @@ function simulate(dt, elapsed, actions, mouse) {
   }
   playMovementSounds(wasGrounded, fallSpeed);
 
-   if (!player.dead && player.onGround) {
-    const onPlayerPaint = level.surfaces.some((surface) => surface.isPlayerPaintAtWorld(player.position));
-
-    if (onPlayerPaint) {
-      // #108 — submerged refills 3× faster. That is the "commit" half of the
-      // trade: you cannot fire, but you come back up with a full tank.
-      const refillMult = player.submerged ? SUBMERGE.refillMultiplier : 1;
-      gun.ammo = Math.min(gun.maxAmmo, gun.ammo + PAINT_GUN.refillRate * refillMult * dt);
-    }
-    // ---- dry out (#75) ---------------------------------------------------
-    // Dry = empty tank AND no paint underfoot. The loss only fires after
-    // DRY_OUT.graceTime seconds of continuous dry state, so the player has a
-    // beat to notice the ammo bar pulsing and step back onto paint.
-    player.dry = gun.ammo <= 0 && !onPlayerPaint;
-    if (player.dry) {
-      player.dryTimer += dt;
-      if (player.dryTimer >= DRY_OUT.graceTime) player.kill();
-    } else {
-      player.dryTimer = 0;
-    }
-  } else {
-    player.dry = false;
-    player.dryTimer = 0;
-  }
+  // Refill and dry out (#75, #108). Any frame the feet touch the floor counts,
+  // the bounce off red included: before the polish audit (P0-2) red never
+  // refilled you, because a bounce never sets `onGround`.
+  const touching = !player.dead && (player.onGround || player.touchedGround);
+  const onPlayerPaint = touching && level.surfaces.some((surface) => surface.isPlayerPaintAtWorld(player.position));
+  refillStep(player, gun, onPlayerPaint, dt);
+  // P1-2: a hard landing on red flings you; the camera feels it.
+  if (player.bounceImpact >= SHAKE.redBounceFall) rig.addTrauma(SHAKE.redBounce);
  
 
   const p = player.mesh.position;
@@ -446,6 +464,9 @@ function simulate(dt, elapsed, actions, mouse) {
     // camera raise the gun together instead of one lagging the other.
     avatar.setAiming(input.aiming);
     avatar.setMoving(speed > 0.5);
+    // Polish audit Q1: submerged, the body becomes a blob in the paint's colour
+    // (the shaders lane's avatar; optional until it lands).
+    avatar.setSubmerged?.(player.submerged, PAINT[player.currentColour]?.hex);
   }
   avatar.update(dt);
 
@@ -494,7 +515,8 @@ function animate() {
   // so enemies cannot hurt you while you change settings.
   if (!menu.open) {
     rig.setAiming(input.aiming);
-    simulate(dt, elapsed, actions, mouse);
+    // P1-1: during a hit-stop the world steps by 0 and keeps rendering.
+    simulate(hitStop.step(dt), elapsed, actions, mouse);
   }
 
   // The intro waits under the pause menu (it checks), like the briefing. It

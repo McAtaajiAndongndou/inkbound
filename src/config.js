@@ -951,10 +951,40 @@ export const DRY_OUT = {
 export const SUBMERGE = {
   key: 'ShiftLeft',          // hold this key to submerge (coordinate with team)
   speedMultiplier: 1.4,      // faster than normal walking — the reward for committing
-  refillMultiplier: 3,       // 3× the base PAINT_GUN.refillRate
+  refillMultiplier: 4,       // 4× the base PAINT_GUN.refillRate: 32/s, a full tank in 3.1 s (polish audit; was 3)
   cameraOffset: 0.9,         // metres the TPV camera drops, so you read as "in" the paint
   maxAngle: 1.1,             // radians — how far the camera tilts down while submerged
 };
+// Hit-stop (polish audit P1-1): seconds the simulation freezes, rendering on.
+export const HIT_STOP = {
+  kill: 0.04,       // any kill
+  shatter: 0.08,    // the blue freeze-shatter crit: the game's best combo
+  combo: 0.12,      // a Big Arm combo step landing
+};
+
+// Camera shake as trauma (polish audit P1-2): events add trauma 0..1, the
+// shake is trauma squared, decaying linearly. Never on firing.
+export const SHAKE = {
+  decay: 1.6,          // trauma per second
+  frequency: 22,       // how fast the shudder moves
+  maxOffset: 0.3,      // metres, at full trauma
+  maxRoll: 0.06,       // radians of roll at full trauma
+  maxAngle: 0.035,     // radians of pitch wobble at full trauma
+  kickDecay: 14,       // the hurt flinch's exponential decay, per second
+  hurt: 0.35,          // medium: you were hit
+  hurtKick: 0.045,     // radians the camera flinches up on a hit (P0-4)
+  redBounce: 0.18,     // small: a hard landing on red flings you
+  redBounceFall: 6,    // m/s of fall before a red landing counts as hard
+  slam: 0.85,          // large: Big Arm's slam, at its centre
+  slamRange: 16,       // metres over which the slam's shake fades to nothing
+};
+
+// Death returns colour (polish audit P1-4): a killed enemy bursts into a splat
+// of the colour that killed it, as player paint — a kill becomes a refill pool.
+export const DEATH_SPLAT = {
+  radius: 1.8,
+};
+
 // Mantle (#157). A green climb ends by pulling the player onto the top
 // surface — the missing move every climbing game has. Automatic, not a
 // button: the player is already pushing into the wall, and a second input at
