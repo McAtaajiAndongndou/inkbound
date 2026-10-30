@@ -20,7 +20,7 @@ Ordered by Renda's sharpest complaint first, then by the quality plan's root cau
 |---|---|---|---|---|---|
 | 1 | **Submerge camera glides** in and out instead of snapping. Same drop as `main`, only the transition changes | §3.4 | code (core) | Does Shift still feel jarring? Can you keep an enemy on screen while you dive? | **Keep** (30 Oct) |
 | 2 | Submerge drop size: `cameraOffset` 0.9 → 0.35, aim dip `maxAngle` 1.1 → 0.1 | §3.4 | config | Only if step 1 still loses the horizon. Does it still read as "in the paint"? | **Skipped**: step 1 fixed it |
-| 3 | Shot cost 4 → 2 (tank lasts ~7 s of trigger, not ~3.5 s) | §3.1 | config | Do you finish a fight before running dry? Does the tank still matter? | |
+| 3 | Shot cost 4 → 2 (tank lasts ~7 s of trigger, not ~3.5 s) | §3.1 | config | Do you finish a fight before running dry? Does the tank still matter? | **Keep** (30 Oct) |
 | 3b | **Hits drip ink** (Renda's idea, #240): a shot that hits an enemy splats ~0.6 m of its colour on the floor just behind it, not under its feet | §3.1 | code (paint) | Do fights leave pools you dive into mid-fight? Do enemies start sliding or pinning on their own? | |
 | 4 | Submerged refill 32/s → 40/s and swim speed 1.4× → 1.9× | §3.1, §3.4 | config | Does a dive become your reload? Do you swim to get places? | |
 | 5 | World grey slow 0.6 → 0.85 | §3.5 | config | Does the first minute still drag? Do you still want to paint ahead? | |
@@ -46,3 +46,8 @@ Ordered by Renda's sharpest complaint first, then by the quality plan's root cau
 ### Step 2: skipped
 
 It only applied if step 1 still lost the horizon, and Renda says the swimming camera now works.
+
+### Step 3 — shot cost 4 → 2
+
+- **Branch:** `proto/shot-cost-2` (dffa65c), stacked on step 1. A full tank is 50 shots, ~7 s of trigger (the Ascent 30).
+- **Verdict: keep.** Paint lane: goes to `main` through Dikeledi's review. The Ascent's tank stays 60: with cheaper shots it is no longer punishing, so step 3 settles the open question above.
