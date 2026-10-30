@@ -26,8 +26,10 @@ Ordered by Renda's sharpest complaint first, then by the quality plan's root cau
 | 4b | Swim speed 1.4× → 1.9× (`SUBMERGE.speedMultiplier`) | §3.4 | config | Do you swim to get places? | **Keep** (30 Oct) |
 | 5 | World grey slow 0.6 → 0.85 | §3.5 | config | Does the first minute still drag? Do you still want to paint ahead? | **Keep** (30 Oct); the slow isn't felt at all → #244 |
 | 6 | Death splat 1.8 m → 2.5 m | §3.1 | config | Do you swim into kills to refill? | **Keep** (30 Oct) |
-| 7 | Hip spread 0.025 → 0.06 (`PAINT_GUN.hipSpread`) | §3.2 | config | Does hip-fire feel like painting and aiming feel like shooting? | |
+| 7 | Hip spread 0.025 → 0.06 (`PAINT_GUN.hipSpread`) | §3.2 | config | Does hip-fire feel like painting and aiming feel like shooting? | **Keep** (30 Oct) |
 | 7b | ADS spread 0.005 → 0.004: only if step 7 leaves aiming feeling loose (a 20% change to an already tight number) | §3.2 | config | | |
+| 7c | **Hip-fire splats bigger**, 1.4 → 1.8 m; aiming unchanged (Renda: "the paint from hipfire takes up wider surface area") | §3.2 | code (paint) | Does hip-fire cover ground fast, like a painter? | |
+| 7d | Aimed splats smaller, 1.4 → 0.7 m, played on its own | §3.2 | config | Does aiming still paint enough to be worth it? | |
 | 8 | Field of view 70 → 78 | §5 | config | More of the fight on screen, or just fish-eye? | |
 | 9 | Whole-camera position damping | §5 | code (core) | Does the camera still feel stiff? | |
 
@@ -88,3 +90,8 @@ Step 4 changed two numbers (refill and swim speed). One change at a time, so it'
 ### Step 7 split
 
 Step 7 changed two numbers. Hip spread is the real change (×2.4); the ADS tweak is 20% of a number that's already tight, so it's 7b, played only if step 7 makes aiming feel loose by comparison.
+
+### Step 7 — hip spread 0.025 → 0.06
+
+- **Branch:** `proto/hip-spread-0-06` (d5ffcfc). At ~13 m, hip shots scatter 0.93 m against 0.10 m aimed.
+- **Verdict: keep.** Renda then asked for hip-fire paint to cover more ground and aiming to stay accurate, which is the plan's §3.2 split (#232). Added as 7c (bigger hip splats) and 7d (smaller aimed splats), one at a time.
