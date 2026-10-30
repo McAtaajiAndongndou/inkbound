@@ -4,7 +4,6 @@
 // Browsers block audio until first user gesture: the context is only created
 // in unlock(), which main.js calls from a click/keypress, never on page load.
 import { AUDIO } from '../config.js';
-import { Music } from './music.js';
 
 const STORAGE_KEY = 'inkbound.audio';
 
@@ -43,9 +42,6 @@ export class AudioManager {
     this.volume = AUDIO.volume;
     this.muted = false;
     this._load();
-    // #199 — the adaptive music, on its own bus into this one's master, so the
-    // Music slider never touches the effects and Volume/mute still cover both.
-    this.music = new Music(this);
   }
 
   /** Create/resume the context. Call from a user gesture; repeat calls are cheap. */
@@ -263,7 +259,7 @@ export const SFX = {
     a._burst(t, { filter: 'bandpass', f0: 2200, f1: 1400, q: 2, dur: 0.45, gain: 0.12 });   // #215
   },
   // Warning-lamp tick: a dry click on each blink of the tell.
-  // #215: the warning must be heard before the slam, under music.
+  // #215: the warning must be heard before the slam.
   tick: (a, t) => {
     a._tone(t, { type: 'square', f0: 2400, f1: 2300, dur: 0.05, gain: 0.15 });
   },

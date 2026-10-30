@@ -329,7 +329,7 @@ export class Hud {
   /** Which end screen is up: 'win', 'lose' or null. */
   /**
    * The level's territory, 0..1 — the number the Territory readout shows
-   * (#127), for the music (#199). (`territory` is already the readout's element.)
+   * (#127). (`territory` is already the readout's element.)
    */
   get coverage() {
     return this._coverageValue;

@@ -259,6 +259,10 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Why:** in the loop-pass playtest Renda never noticed the 40% slow at all ("it felt the same"), so the harsher number only cost pace. The real gap is feedback: #244 makes the grey/paint contrast felt (camera, sound, footfalls). Once it lands, the number can be retuned.
 - **Not yet:** the plan's two greys (fresh enemy grey staying at 0.6) is #235.
 
+## 2026-10-30 — background music removed (Moses, as captain)
+
+- **The game has no background music.** #199's adaptive synthesised score (drone, colour arpeggio, combat drums, win/death stingers) and its Music slider are removed. Sound effects are unchanged. The code is in git history (`src/audio/music.js`, PR #199) if it comes back.
+
 ## 2026-10-30 — the Core's waves come at you (Renda, QA)
 
 - **The Core's Drainers hunt across the room** (`LAST_COLOUR.waveDrainer`: `huntRadius` 70, `resumeRadius` 80, given per placement as the layout's `tune`). The Drainer type is unchanged (8 / 14), and so are the hangar's Drainers. **Why:** at 8 m, wave two's Drainers fed in their bays ~30 m out. Wave three waits on wave two, and Big Arm waits on wave three, so the fight stalled until the player walked into the corners. That is the QA note "they just stay in the corners".
