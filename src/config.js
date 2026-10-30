@@ -162,8 +162,18 @@ export const CAMERA = {
   minHeightAboveFeet: 1.1, // camera never dips below player.position.y + this
 
   adsFov: 45,
-  normalFov: 78,           // loop pass step 8 (quality plan §5): was 70; more of the fight on screen in third person
+  normalFov: 78,           // first person (V), not aiming. Loop pass step 8 (quality plan §5): was 70, kept at 78; third person has its own tpvFov (#225)
   adsTransitionSpeed: 10,
+
+  // #225 (quality plan §5): a camera welded to the player sent every step and
+  // landing straight to the screen, and walls stood between you and yourself.
+  tpvFov: 78,              // third person (the loop pass kept 78, step 8); first person is normalFov
+  submergeFovBoost: 8,     // + while submerged AND moving: the speed reads
+  followTime: 0.06,        // s, the critically damped follow of the player's position. ROTATION is never damped: aim stays 1:1 with the mouse
+  snapDistance: 6,         // m the player moves in one frame that counts as a teleport (load, respawn): snap, do not sweep
+  collisionRadius: 0.25,   // m kept between the camera and a wall it is pulled in front of
+  collisionMin: 0.6,       // m, the closest the camera is pulled to the shoulder
+  collisionEaseOut: 0.2,   // s to ease back out once the wall is gone (pulling IN is instant)
 };
 
 // Player health. Enemies deal their ENEMY.*.contactDamage on touch.

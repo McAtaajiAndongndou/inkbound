@@ -258,6 +258,10 @@ async function loadLevel(id = currentLevelId) {
 
   player = new Player(level.surfaces, level.spawn);
   scene.add(player.mesh);
+  // #225: the camera collides with this level's surfaces, and starts on the
+  // player rather than sweeping in from wherever the last level left it.
+  rig.setColliders(level.surfaces.map((surface) => surface.mesh));
+  rig.snap();
   // A level may name what its first frame faces (the Ascent: its lift beacon).
   const facing = level.spawnFacing;
   if (facing) {
