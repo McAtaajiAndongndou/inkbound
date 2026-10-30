@@ -306,6 +306,32 @@ export const KINDS = {
 };
 
 /**
+ * The Ascent's trees (dressing pass, docs/levels/dressing-pass.md): the same
+ * MegaKit, hand-placed only (the layout's `dressing.trees`), never scattered.
+ * Pines below, dead trees higher up, none on the summit: the mountain thins
+ * as you climb. Two models each, because every variant is a draw call per
+ * material, and the level's whole dressing budget is +15.
+ */
+export const ASCENT_KINDS = {
+  pine: {
+    models: ['./assets/megakit/pine-4.glb', './assets/megakit/pine-5.glb'],
+    maxVariants: 2,
+    height: 5.5,
+    fallback: 'tree',
+    scale: [0.85, 1.3],
+    step: 1, spacing: 1, edge: 0, inset: 0, seed: 0xa5c3e1,
+  },
+  deadTree: {
+    models: ['./assets/megakit/dead-tree-1.glb', './assets/megakit/dead-tree-3.glb'],
+    maxVariants: 2,
+    height: 5.0,
+    fallback: 'tree',
+    scale: [0.85, 1.2],
+    step: 1, spacing: 1, edge: 0, inset: 0, seed: 0xa5c3e2,
+  },
+};
+
+/**
  * The shared palette, one material per colour, built once for the WHOLE level.
  *
  * Shared across kinds on purpose: a blue bush and a blue tree must be the same

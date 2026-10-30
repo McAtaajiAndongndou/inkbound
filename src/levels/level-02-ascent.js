@@ -17,6 +17,8 @@ import { LayoutLevel } from './layout-level.js';
 import { ASCENT } from './layouts/ascent.js';
 import { ASCENT as TUNING, TRAP, CURVES, PLACED_LIGHTS } from '../config.js';
 import { cables } from './curves.js';
+import { buildDressing } from './dressing.js';
+import { Decor, ASCENT_KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
 import { applyMood } from './mood.js';
 import { buildProps } from './prop-kit.js';
@@ -46,6 +48,7 @@ export class Level02 extends LayoutLevel {
     if (beacon) kit.placeLight(this, PLACED_LIGHTS.beacon, beacon.position.clone());
     this.props = buildProps(this, ASCENT.props);
     this._silhouettes();
+    this._dressing();
     this.catwalk = new CollapsingCatwalk(
       this.surfaces
         .filter((s) => s.catwalk)
@@ -53,6 +56,28 @@ export class Level02 extends LayoutLevel {
     );
     // A segment falling next to you shakes the camera (polish audit, P1-2).
     this.catwalk.onFall = (gain) => this.game?.shake?.(TRAP.shake.catwalk * gain);
+  }
+
+  /**
+   * The dressing pass (docs/levels/dressing-pass.md): the distant range and the
+   * rock strata (dressing.js), and the MegaKit trees (decor.js), hand-placed
+   * from the layout's `dressing.trees`. The trees' toon materials are custom-
+   * shaded, so they join the light-direction pass here (AGENTS rule 5).
+   */
+  _dressing() {
+    const D = ASCENT.dressing;
+    this.dressing = buildDressing(this, D.items);
+    this.palette = createDecorPalette();
+    this.decor = {};
+    for (const [kind, config] of Object.entries(ASCENT_KINDS)) {
+      const hand = (D.trees[kind] ?? []).map(([x, y, z, scale]) => ({ x, y, z, scale }));
+      const trees = new Decor(this.root, { kind, config, palette: this.palette, hand });
+      trees.build([]);   // no floors: hand-placed only, and never re-coloured
+      if (this.game?.loadGLB) trees.loadModels(this.game.loadGLB);
+      this.decor[kind] = trees;
+    }
+    const materials = [this.palette.base, ...Object.values(this.palette.tint)];
+    kit.aimCustomShading([], materials, this.sunDir.toArray());
   }
 
   /** The base: unfogged, dark, a shape against the sky (config ASCENT.base). */
@@ -67,11 +92,20 @@ export class Level02 extends LayoutLevel {
   update(dt, player) {
     super.update(dt, player);
     this.catwalk.update(dt, player);
+    for (const trees of Object.values(this.decor)) trees.update(dt, player.position);
     // #112 — the sergeant's one line on the summit (R7): no enemies, the base
     // on the horizon (docs/levels/02-the-ascent.md).
     if (!this._saidSummit && this.inRoom('R7', player.position)) {
       this._saidSummit = true;
       this.game.say?.('ascent-summit');
     }
+  }
+
+  dispose() {
+    // A late model load must not land in a dead level, and the palette's
+    // painted colours are on no mesh, so the root walk cannot see them.
+    for (const trees of Object.values(this.decor ?? {})) trees.dispose();
+    if (this.palette) for (const m of [this.palette.base, ...Object.values(this.palette.tint)]) m.dispose();
+    super.dispose();
   }
 }

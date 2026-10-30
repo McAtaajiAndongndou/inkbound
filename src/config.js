@@ -569,7 +569,10 @@ export const DRESSING = {
     // Skyline: the facility outside, unlit and unfogged like the Ascent's base
     block:    { colour: SILHOUETTE, shape: 'box', look: 'silhouette' },
     stack:    { colour: SILHOUETTE, shape: 'round', look: 'silhouette' },
-    peak:     { colour: SILHOUETTE, shape: 'lump', look: 'silhouette' },
+    // The Ascent's distant range: a shade lighter than its base (ASCENT.base),
+    // so the nearer base still reads in front of the farther mountains.
+    range:    { colour: 0x4a4f57, shape: 'lump', look: 'silhouette' },
+    strata:   { colour: 0x5c5a55, shape: 'box', look: 'toon' },   // rock bands: a warm stone, so they read as rock, not as slots
     // Story clusters
     crate:    { colour: LAST_COLOUR.props.crate, shape: 'box', look: 'toon' },
     machine:  { colour: 0x4f5256, shape: 'box', look: 'toon' },
