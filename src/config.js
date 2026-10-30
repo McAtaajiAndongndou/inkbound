@@ -1,6 +1,25 @@
 // Every colour and tuning number lives here.
 // If you are about to type a magic number into another file, it belongs here.
 
+// #194 — wet paint. The paint map doubles as a HEIGHT map: its painted mask,
+// filtered smooth, is a blob's thickness; the gradient of that thickness bends
+// the normal, and the bent normal drives a Blinn-Phong gloss and a Fresnel
+// reflection of the level's sky. Painted cells only: Corp grey stays matte.
+export const PAINT_WET = {
+  bumpStrength: 0.9,     // how hard a blob's rim tilts the normal (height units per texel)
+  noiseScale: 0.18,      // amplitude of the value noise on a blob's top, so it is not flat
+  noiseFreq: 0.7,        // noise cells per paint cell
+  shininess: 48,         // Blinn-Phong exponent: tight, wet highlights
+  specular: 0.4,         // highlight strength on fully painted ground (0.55 washed red to pink at the mirror angle)
+  fresnelPower: 5,       // Schlick's exponent: 5 is the textbook value
+  fresnelBase: 0.04,     // F0, reflectance head-on (water ≈ 0.02, plastic 0.04)
+  reflectStrength: 0.35, // CAP on how much sky replaces paint colour (readability rule)
+  envSize: 64,           // px per face of the sky probe's cube map
+  envNear: 0.5,          // the probe camera's clip planes, metres
+  envFar: 1000,
+  envHeight: 2,          // m above the origin the probe looks out from (the dome is centred there)
+};
+
 // Paint ids are ALSO the indices written into the paint data texture.
 // 0 = grey (unpainted). Do not reorder without updating the shader.
 export const PAINT_IDS = { grey: 0, blue: 1, red: 2, green: 3 };

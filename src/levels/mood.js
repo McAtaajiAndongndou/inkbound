@@ -16,6 +16,7 @@
 // and fill go in `level.atmosphere` so main.js can hide them for the minimap,
 // and the dome is MeshBasicMaterial: no `uLightDir` to wire (AGENTS rule 5).
 import * as THREE from 'three';
+import { SkyProbe } from '../shaders/sky-probe.js';
 
 function smoothstep(edge0, edge1, x) {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
@@ -58,5 +59,8 @@ export function applyMood(level, mood) {
   fill.position.set(-18, 12, -12);
   fill.castShadow = false;
   level.root.add(fill);
+
+  // #194: the sky that wet paint mirrors, photographed once now the dome exists.
+  level.skyProbe = new SkyProbe({ atmosphere: level.atmosphere, renderer: level.game.renderer });
   return fill;
 }

@@ -11,3 +11,4 @@ import splatFrag from './splat/splat.frag.glsl?raw';
 export const SHADERS = {
   splat: { vertex: splatVert, fragment: splatFrag },
 };
+export { SkyProbe } from './sky-probe.js';

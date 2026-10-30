@@ -58,6 +58,8 @@ const noModels = new URLSearchParams(window.location.search).has('nomodels');
 const gltfLoader = new GLTFLoader();
 const game = {
   scene,
+  // The level's SkyProbe (#194) renders its cube map through this.
+  renderer,
   loadGLB: noModels
     ? (url) => Promise.reject(new Error(`[viewer] ?nomodels: ${url} skipped`))
     : (url) => gltfLoader.loadAsync(url),
@@ -263,6 +265,22 @@ window.viewer = {
   camera,
   controls,
   scene,
+  renderer,
+  /**
+   * Mean ms per frame over `n` frames of a synchronous render, GPU included
+   * (`gl.finish()`), for the PRs' before/after numbers (#194, #196).
+   */
+  timeRender(n = 120) {
+    const gl = renderer.getContext();
+    renderer.render(scene, camera);
+    gl.finish();
+    const t0 = performance.now();
+    for (let i = 0; i < n; i++) {
+      tick();
+      gl.finish();
+    }
+    return (performance.now() - t0) / n;
+  },
 };
 
 // --- wiring ------------------------------------------------------------------
@@ -308,6 +326,11 @@ window.addEventListener('resize', () => {
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
+  tick();
+}
+
+/** One viewer frame: tick the level's looks, then draw. */
+function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.elapsedTime;
   if (level) {

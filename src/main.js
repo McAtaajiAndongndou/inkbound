@@ -121,6 +121,8 @@ const campaign = new Campaign(LEVELS);
 
 const game = {
   scene,
+  // #194: the level's SkyProbe renders the sky's cube map through it.
+  renderer,
   loadGLB: (url) => gltfLoader.loadAsync(url),
   onWin: () => {
     run.over = true;
