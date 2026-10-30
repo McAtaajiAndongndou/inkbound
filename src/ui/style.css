@@ -183,7 +183,7 @@ canvas {
 #health-bar { width: 180px; height: 12px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; }
 #health-fill { height: 100%; width: 100%; transition: width .12s linear; }
 #health-text { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
-.end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; background: rgba(15,15,22,.75); }
+.end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; background: rgba(var(--ink-shade), .75); }
 .end h1 { margin: 0 0 8px; font-size: 48px; letter-spacing: .05em; }
 .end p { margin: 0; color: var(--ink-dim); }
 /* #81: which level, why you lost, and how to restart without a refresh. */
@@ -199,6 +199,15 @@ canvas {
   color: var(--ink-fg);
 }
 #end-win h1 { color: #4ee08a; }
+/* The campaign's end (Last Colour's win): the title in all three paints — the
+   colour is back — and the campaign's totals under the scorecard. */
+#end-win.finale h1 {
+  background: linear-gradient(90deg, var(--paint-blue), var(--paint-red) 50%, var(--paint-green));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.end .end-campaign { margin: 14px 0 0; font-size: 15px; font-weight: 600; color: var(--ink-fg); }
 #end-lose h1 { color: #ff4d5a; }
 #end-lose.dry h1 { color: #3aa7ff; }
 
@@ -829,3 +838,41 @@ body.in-intro #hud { visibility: hidden; }
 }
 /* The Primer's still carries its card above the frame (no intro there). */
 .briefing-card { width: min(1100px, 100%, 140vh); box-sizing: border-box; }
+
+/* The intro's objective marker: a pulsing diamond and label pinned to the
+   goal (main.js projects it). Off-white like the card — "here", never amber
+   ("this hurts"). Its box is anchored at the point, so the transform sets it. */
+.intro-marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: -9px 0 0 -60px;
+  width: 120px;
+  transition: opacity .4s ease-in;
+}
+#mission-intro.leaving .intro-marker { opacity: 0; }
+.intro-marker i {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ink-fg);
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, .35);
+  animation: marker-pulse 1s ease-in-out infinite alternate;
+}
+.intro-marker span {
+  font-size: clamp(11px, 1.5vh, 15px);
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-fg);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+  white-space: nowrap;
+}
+@keyframes marker-pulse {
+  from { transform: rotate(45deg) scale(1);    opacity: 1; }
+  to   { transform: rotate(45deg) scale(1.35); opacity: .55; }
+}

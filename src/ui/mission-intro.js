@@ -101,11 +101,14 @@ export class MissionIntro {
         <p class="intro-when"></p>
         <p class="intro-objective"></p>
       </div>
+      <div class="intro-marker hidden"><i></i><span></span></div>
       <p class="intro-hint">Click or press any key to skip</p>
     `;
     parent.appendChild(el);
     this.el = el;
     this.fields = ['.intro-name', '.intro-location', '.intro-when', '.intro-objective'].map((s) => el.querySelector(s));
+    this.marker = el.querySelector('.intro-marker');
+    this.goal = null;
 
     // Capture phase on window, as the briefing does: runs before Input and
     // stops the skipping press reaching the game.
@@ -139,6 +142,9 @@ export class MissionIntro {
   play(intro) {
     this.timeline = new IntroTimeline(intro.card);
     this.from = intro.from;
+    this.goal = intro.goal ?? null;
+    this.marker.querySelector('span').textContent = this.goal?.label ?? '';
+    this.placeMarker(null);
     this._blips = 0;
     this.gate.reset();
     this.el.classList.remove('hidden', 'leaving');
@@ -161,9 +167,20 @@ export class MissionIntro {
     this._render();
   }
 
+  /**
+   * Pin the objective marker at screen position `at` ({ x, y } in CSS pixels),
+   * or hide it (null: no goal, behind the camera, or off screen). main.js
+   * projects the goal through the camera each frame.
+   */
+  placeMarker(at) {
+    this.marker.classList.toggle('hidden', !at);
+    if (at) this.marker.style.transform = `translate(${at.x}px, ${at.y}px)`;
+  }
+
   hide() {
     this.timeline = null;
     this.from = null;
+    this.goal = null;
     this.el.classList.add('hidden');
   }
 

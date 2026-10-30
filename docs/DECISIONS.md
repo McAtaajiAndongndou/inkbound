@@ -179,3 +179,11 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 
 - **Menus and panels are Corp grey; paint appears where the player acts.** Panels are dark cuts of `PAINT.grey`, not navy. A button is grey until hovered, then paint sweeps in from the left (blue, red, green in turn), the grey-to-colour transition in miniature. The selected thing (Play, the level you're in) is already painted. Tokens live at the top of `src/ui/style.css`.
 - **Amber and telegraph yellow never appear in menus.** They mean danger (#126).
+
+## 2026-10-30 — campaign flow (Moses; levels-lane parts flagged for Renda)
+
+- **A new player starts in the Primer.** `DEFAULT_LEVEL_ID` is `primer`: its reasons for waiting (the sergeant #111/#112, the trap #101) are both in. A returning player skips it with **Continue** on the title, which loads the furthest mission they have reached (kept in their browser; `ui/campaign.js`).
+- **The campaign runs in the ONE list's order.** A win offers the next mission on **Enter**, which plays its intro; R and Esc still restart and pause. Last Colour's win is the campaign's end: "THE COLOUR'S BACK", the campaign's totals, and Enter opens the credits.
+- **The sergeant speaks: six lines.** The Primer's three are its level doc's own. R7's warning is asked on climbing into R6, not in R7: walking into R7 wakes its Charger, and a fight clears the comms bar. Outskirts, Ascent and Last Colour lines are a first draft for Renda + Moses.
+- **Every mission intro pins an objective marker on its goal** ("Extraction", "Supply lift", "The Siphon"), off-white, never amber. **Outskirts' extraction gets a mast and beacon** like the other two levels' goals (levels lane: Renda to keep or move).
+- **No sergeant art yet, so none is requested:** the briefing shows its plain panel and the deployment check has no 404.
