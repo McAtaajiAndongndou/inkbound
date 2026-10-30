@@ -6,6 +6,7 @@ import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_ATTACK, ENEMY_BODY,
 import { pointLights } from "../shaders/point-lights.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { EnemyShots } from "./enemy-shots.js";
+import { intersectTwoSided } from "./two-sided.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
 import { createFrostMaterial } from "../shaders/frost/frost-material.js";
@@ -132,6 +133,19 @@ export function resetPlayerSignal() {
  * pairs of eyes; keeping it would only let a ray that grazes the ground report
  * occlusion that a player looking at the same scene would never see.
  */
+/** The floors a climber's sight line is tested against (#220). */
+function floorMeshes(list, parent) {
+  const meshes = [];
+  if (list) {
+    for (const s of list) if (s?.isFloor && s.mesh) meshes.push(s.mesh);
+    return meshes;
+  }
+  parent?.traverse?.((obj) => {
+    if (obj.userData?.paintSurface?.isFloor) meshes.push(obj);
+  });
+  return meshes;
+}
+
 function sightBlockers(explicit, parent) {
   const meshes = [];
   if (explicit) {
@@ -536,6 +550,13 @@ export class Enemy {
     // level's root, so an enemy can find them without being handed them — but a
     // level may pass its own list, and a test that wants one wall passes one.
     this._blockers = sightBlockers(blockers, parent);
+    // #220: the exception to "a floor never blocks sight". A climber can be
+    // UNDER a floor — on the face below a deck — and one shot the player
+    // standing on it, seeing them through it. For a climber, floors block
+    // sight (tested two-sided: a floor faces up, the climber is below). Only
+    // climbers: a balcony turret looking down past its own balcony edge is
+    // tuned as it is (Last Colour, wave three).
+    this._sightFloors = config.climbsGreen ? floorMeshes(surfaces ?? floors, parent) : [];
     // Attack tokens (polish audit, Enemies 2): ONE pool per level, kept on its
     // root, so a ranged enemy must hold a token to wind up and at most
     // ENEMY_ATTACK.tokens shoot at once. Doom (2016) and Halo do this: a crowd
@@ -2383,7 +2404,7 @@ export class Enemy {
    * Allocation-free; the raycaster, vectors and hit array are built once.
    */
   _canSee(playerPos) {
-    if (this._blockers.length === 0) return true;
+    if (this._blockers.length === 0 && this._sightFloors.length === 0) return true;
 
     // Raycasting reads `matrixWorld`, and in a headless run NOTHING refreshes it:
     // the renderer does that once per frame in the browser, so the walls are
@@ -2399,6 +2420,9 @@ export class Enemy {
     for (let i = 0; i < this._blockers.length; i++) {
       this._blockers[i].updateWorldMatrix(true, false);
     }
+    for (let i = 0; i < this._sightFloors.length; i++) {
+      this._sightFloors[i].updateWorldMatrix(true, false);
+    }
 
     this._eye.set(this.position.x, this.position.y + AWARENESS.eyeHeight, this.position.z);
     this._look.set(playerPos.x, playerPos.y + AWARENESS.eyeHeight, playerPos.z);
@@ -2411,6 +2435,8 @@ export class Enemy {
     this._raycaster.far = d - 0.25;       // the player is not behind themselves
     this._hits.length = 0;
     this._raycaster.intersectObjects(this._blockers, false, this._hits);
+    if (this._hits.length > 0) return false;
+    if (this._sightFloors.length > 0) intersectTwoSided(this._raycaster, this._sightFloors, this._hits);   // #220
     return this._hits.length === 0;
   }
 
