@@ -4,6 +4,7 @@
 // Browsers block audio until first user gesture: the context is only created
 // in unlock(), which main.js calls from a click/keypress, never on page load.
 import { AUDIO } from '../config.js';
+import { Music } from './music.js';
 
 const STORAGE_KEY = 'inkbound.audio';
 
@@ -42,6 +43,9 @@ export class AudioManager {
     this.volume = AUDIO.volume;
     this.muted = false;
     this._load();
+    // #199 — the adaptive music, on its own bus into this one's master, so the
+    // Music slider never touches the effects and Volume/mute still cover both.
+    this.music = new Music(this);
   }
 
   /** Create/resume the context. Call from a user gesture; repeat calls are cheap. */
