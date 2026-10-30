@@ -122,6 +122,7 @@ A check of the game against the brief's rubric (`CGV Project Brief`, section 11)
 | 076 | #197 | Dynamic sky driven by territory | levels | SHOULD | S | — (refreshes #194's probe if in) |
 | 077 | #198 | Curves, flat vs smooth shading, placed lights | levels | SHOULD | S–M | #195 (lights part only) |
 | 078 | #199 | Adaptive synthesised music | ui | MUST | M | — |
+| 079 | #231 | Submerge camera eases in and out | core | MUST | S | prototype: `proto/submerge-camera-glide` |
 | 080 | #215 | Trap sounds you can hear (spike pit, crusher) | ui | SHOULD | S | — |
 | 081 | #216 | A hit, or a level wake, alerts the enemy at any range (also fixes B6) | shaders (enemies) | MUST | S | — |
 | 082 | #217 | Primer: the sergeant warns before the spike pit | ui (+ levels trigger) | SHOULD | S | B5 branch |

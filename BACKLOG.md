@@ -39,6 +39,10 @@ Ideas, playtest findings and parked work. **Check triage status before building 
 
 ---
 
+## Playtest finding — 30 Oct 2026 (feel branch)
+
+- **Submerging snaps the camera.** Renda: "it happens too jarringly"; he likes the swimming indicator. The rig cuts straight to the lowered camera on the frame Shift goes down, with no easing. Core: ease it in and out (issue 079). Diagnosis in `docs/quality-plan.md` §3.4.
+
 ## Finding — 30 Oct 2026 (mission intro build)
 
 - **Last Colour spawns the third-person camera behind the landing's back wall.** The wall is a single-sided paintable plane at z 90 (x ±6, y 3–12); the play camera starts at z 91, so for its first frames the player looks through the wall from behind. Happens with or without the intro (the intro's path test stops 1.5 m short of the play camera for this reason). Levels: move the spawn forward or the wall back. Core: the rig has no camera collision at all.
