@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
-import { PAINT, PAINT_GRID, OUTSKIRTS } from '../config.js';
+import { PAINT_GRID, OUTSKIRTS, GATE } from '../config.js';
 import { audio } from '../audio/audio-manager.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
@@ -529,25 +529,16 @@ function createWasteSurface(width, depth, amplitude) {
 }
 
 /**
- * The tower's look: concrete, undersides, and the drain field's colour (#39 #6,
- * #3). Numbers and colours only, so the structure can be re-tuned without
- * touching `_tower()`.
+ * The tower's look lives in config now: `GATE` (polish audit P0-5, AGENTS rule
+ * 4). The drain field was PAINT.red's family; it is the Corp's grey-violet, and
+ * an opened door's lock bar turns white ("here"), never paint green.
  *
  * The concrete is a cold, drained grey — deliberately NOT the grey-green of the
  * ground and foliage. Everything the Corrupt Corp built is a different, deader
  * material from the world it is standing on, and the tower is the first
  * structure big enough for that to read.
  */
-const TOWER = {
-  // The gate frames are the only structure left in the level — everything else is
-  // a PaintSurface. See `_gate`.
-  concrete: 0x6b6f73,
-
-  field: 0xff3b46,     // the drain field, in PAINT.red's family so it reads as hostile
-  fieldOpacity: 0.42,
-  fieldScroll: 0.55,   // texture drift per second, so a live barrier looks alive
-  fieldFade: 1.8,      // opacity per second once the arena clears
-};
+const TOWER = GATE;
 
 /** GLSL's smoothstep, for the sky gradient. Kept local: this is its only user. */
 function smoothstep(edge0, edge1, x) {
@@ -1096,6 +1087,10 @@ export class Level01 extends LevelBase {
         } else {
           mat.opacity = opacity;
         }
+      } else if (gate.light.position.y > gate.barRest - TOWER.barDrop) {
+        // The field is gone: the lock bar sinks into its lintel, so the Ledge's
+        // look back at your colour is not framed by a dead door (polish audit).
+        gate.light.position.y = Math.max(gate.barRest - TOWER.barDrop, gate.light.position.y - TOWER.barSink * dt);
       }
     }
 
@@ -1451,12 +1446,12 @@ export class Level01 extends LevelBase {
     // the doorway, not a signpost telling you to paint something.
     const light = new THREE.Mesh(
       new THREE.BoxGeometry(6, 0.4, 0.4),
-      new THREE.MeshBasicMaterial({ color: PAINT.red.hex }),
+      new THREE.MeshBasicMaterial({ color: TOWER.lock }),
     );
     light.position.set(0, yTop + 1.8, z);
     this.root.add(light);
 
-    return { contains, surface: s, light, curtain, frame, open: false, watch: [] };
+    return { contains, surface: s, light, curtain, frame, open: false, watch: [], barRest: light.position.y };
   }
 
   /**
@@ -1491,7 +1486,7 @@ export class Level01 extends LevelBase {
   _openGate(gate) {
     gate.open = true;
     gate.surface.mesh.position.y = -100;
-    gate.light.material.color.setHex(PAINT.green.hex);
+    gate.light.material.color.setHex(TOWER.open);   // white: "the way is here" (P0-5)
     audio.play('gate'); // #113 — the arena is won; you hear the way open
   }
 

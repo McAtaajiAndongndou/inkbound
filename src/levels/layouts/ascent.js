@@ -287,7 +287,16 @@ const doc = {
   ],
 };
 
+/**
+ * What the first frame faces (polish audit): the lift tower's beacon, the goal
+ * you can see. Facing -z, level, the frame was R1's grey face and nothing else.
+ * The beacon is 43 degrees up, past the camera's pitch limit, so the player
+ * starts at that limit with the beacon high in the frame. (The gantry's
+ * floodlights are hidden behind the peak from here; they are R5's landmark.)
+ */
+const spawnLook = landmarks.find((l) => l.id === 'lift-tower').beacon;
+
 export const ASCENT = {
-  id: 'ascent', name: 'The Ascent', cells: PAINT_GRID.level2Cells,
+  id: 'ascent', name: 'The Ascent', cells: PAINT_GRID.level2Cells, spawnLook,
   solids, slabs, strips, kerbs, landmarks, props, enemies, routes, rooms, win, doc,
 };

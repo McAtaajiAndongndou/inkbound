@@ -326,7 +326,7 @@ const doc = {
     { name: 'overview', label: 'Overview (from the south-east)', pos: [70, 75, 115], target: [0, 2, 12], fov: 55, caption: 'One axis, south to north: lift, hangar, corridor, the Core — and the Siphon at the end of it.' },
     { name: 'top', label: 'Top-down plan', pos: [0, 260, 8.01], target: [0, 0, 8], fov: 40, caption: 'Plan view. Floors are coloured by room.' },
     { name: 'core', label: 'The Core from above', pos: [46, 48, -2], target: [0, 2, -36], fov: 55, caption: 'The Core: the Siphon in the middle, the ring balcony, the three wave bays behind their gates.' },
-    { name: 'corridor', label: 'The corridor from above', pos: [22, 26, 48], target: [0, 2, 14], fov: 55, caption: 'The corridor: the alcove turret, the pillars, the flanking walkway over the laser grid.' },
+    { name: 'corridor', label: 'The corridor from above', pos: [22, 26, 48], target: [0, 2, 14], fov: 55, caption: 'The corridor: the alcove turret, the pillars, the cargo crusher and the flanking walkway beside it.' },
   ],
 };
 

@@ -1,6 +1,7 @@
 // OWNER: E (Levels)
 import * as THREE from 'three';
 import { ASCENT, TRAP } from '../config.js';
+import { playAt } from './trap-sound.js';
 
 /**
  * The Ascent's collapsing catwalk (#102): "can you cross before it drops?"
@@ -16,6 +17,10 @@ import { ASCENT, TRAP } from '../config.js';
  * THE TELL is the campaign's trap language: while a segment is going it shakes
  * and its underside flashes DANGER amber, the same amber as the spike pit, the
  * vent and the crusher.
+ *
+ * It is HEARD too (polish audit): a creak when you step on, the crumble
+ * (`collapse`) when it gives way, and `onFall(gain)` — the level's camera
+ * shake — for a fall next to you. All by distance (trap-sound.js).
  *
  * FAIL FORWARD: a fall lands on the scree 8 m down (the layout test proves
  * every segment has a catch floor), and the segment is back after
@@ -54,8 +59,10 @@ export class CollapsingCatwalk {
         colour: slab.material.color.getHex(),
         state: 'solid',   // solid → going → fallen → solid
         t: 0,
+        centre: new THREE.Vector3((data.x[0] + data.x[1]) / 2, data.y, (data.z[0] + data.z[1]) / 2),
       };
     });
+    this.onFall = null;   // (gain 0..1) => void — the level's camera shake
   }
 
   /** Is `p` (feet) standing on segment `s`? */
@@ -80,11 +87,17 @@ export class CollapsingCatwalk {
     for (const s of this.segments) {
       s.t += dt;
       if (s.state === 'solid') {
-        if (this._on(s, p)) { s.state = 'going'; s.t = 0; }
+        if (this._on(s, p)) {
+          s.state = 'going';
+          s.t = 0;
+          playAt('creak', s.centre, p);
+        }
       } else if (s.state === 'going') {
         if (s.t >= cfg.delay) {
           s.state = 'fallen';
           s.t = 0;
+          const gain = playAt('collapse', s.centre, p);
+          if (gain > 0) this.onFall?.(gain);
           s.floor.mesh.position.y = -100;   // below PLAYER.killY: out of every floor test
         }
       } else if (s.state === 'fallen' && s.t >= cfg.reformAfter && !this._inside(s, p)) {
