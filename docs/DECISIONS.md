@@ -195,3 +195,13 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Grey makes you easier to hit.** On grey (4.2 m/s) a sidestep only just clears a 12 m shot; on paint (7 m/s) it clears it easily. Painting is defence.
 - **`onAttack` keeps its meaning:** "this enemy's attack hit the player". For a ranged enemy it now fires on pellet contact. `main.js` does not change.
 - **Melee is unchanged:** Charger, Stalker, Drainer, Big Arm.
+
+## 2026-10-30 — polish audit, shaders + enemies lane (Lethabo to approve)
+
+- **Attack tokens (Enemies 2).** A ranged enemy (an `attackRange` over `ENEMY_ATTACK.meleeReach`, not a lunger) must hold one of `ENEMY_ATTACK.tokens` (2) to wind up. The pool is per level (on the level root's `userData`), handed back when the attack or burst ends, or on a freeze, stun or death. Melee never queues: reaching you is its own limit. Doom (2016) and Halo's rule: a crowd is dangerous without five shots landing on one frame.
+- **The telegraph whine is heard by distance (Enemies 3)**: full inside 6 m, silent past 15 m (`ENEMY_ATTACK.telegraphHearing`). The visual tell is unchanged at every distance.
+- **Death bursts (Enemies 4, P1-4).** A paint kill throws drops of the killing colour (`src/enemies/death-burst.js`) over the corpse's existing 0.45 s sink. main.js paints the splat (core lane). The sink stays: it is tested and reads as weight. The burst is what was missing. A colourless (trap) kill gets no burst.
+- **The combo is heard (P1-5)**: `freeze` when blue freezes, `shatter` on the crit, `pin` once per green pin (Big Arm's step 2 too).
+- **Big Arm reports `onComboStep(boss, step)` and `onSlam(boss, point)`**, and its slam booms. Step 1 is reported only when the freeze lands, not on each build-up hit. main.js uses them for hit-stop and camera shake.
+- **Submerged is a form (Q1)** (`Avatar.setSubmerged`, `SWIM`): the body squashes to 0.15 height on its feet, a blob of the ground's colour marks it, a ring ripples on the way in and out, and wake rings trail it while it moves.
+- **No new enemy types.** Every change is to existing enemies' pacing and feedback.

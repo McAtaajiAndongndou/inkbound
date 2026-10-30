@@ -31,6 +31,7 @@
 import * as THREE from "three";
 import { ENEMY, PAINT, PAINT_IDS } from "../config.js";
 import { Enemy } from "./enemy.js";
+import { audio } from "../audio/audio-manager.js";
 
 const CFG = ENEMY.bigArm;
 // The model is fitted to MODEL_HEIGHTS.bigArm (2.4 m) against the shared 1.6 m;
@@ -114,6 +115,9 @@ export class BigArm extends Enemy {
       super.takeColourHit(colourId, 0, sourcePos);
       this.hp = hp;
       this._knockback.set(0, 0, 0);
+      // Polish audit P1-1: the level stops time for a step — this one only once
+      // the blue has actually frozen it, not on each build-up hit.
+      if (this.combo === "frozen") this.onComboStep?.(this, 1);
       return true;
     }
     if (colourId === PAINT_IDS.green && state === "frozen") {
@@ -125,6 +129,8 @@ export class BigArm extends Enemy {
       this._grabTimer = 0;
       this.mesh.scale.setScalar(1);
       this._tint(colourId);
+      audio.play("pin");
+      this.onComboStep?.(this, 2);
       return true;
     }
     if (colourId === PAINT_IDS.red && state === "pinned") {
@@ -134,6 +140,7 @@ export class BigArm extends Enemy {
       this._lastColour = "red";
       this.hp -= 1;
       this._tint(colourId);
+      this.onComboStep?.(this, 3);
       if (this.hp <= 0) {
         this._die("red", "knockback");
         return true;
@@ -241,6 +248,10 @@ export class BigArm extends Enemy {
       if (this._scratch.lengthSq() > 1e-6) this._slamPoint.addScaledVector(this._scratch.normalize(), cfg.slamReach);
     }
     this.slam(this._slamPoint);
+    // Polish audit: the slam was silent and weightless. A boom, and the level
+    // shakes the camera by how close you were (`onSlam`), hit or not.
+    audio.play("slam");
+    this.onSlam?.(this, this._slamPoint);
     if (playerPos) {
       const dx = playerPos.x - this._slamPoint.x;
       const dz = playerPos.z - this._slamPoint.z;
