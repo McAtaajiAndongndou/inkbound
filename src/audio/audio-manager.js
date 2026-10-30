@@ -230,9 +230,13 @@ export const SFX = {
 
   // Traps (#113). Each plays when the trap fires, not every frame it exists.
   // Spike pit: a dry metallic snap as the spikes come up.
+  // #215: a metallic SHING — two detuned high squares — over a light thud,
+  // 0.2 s so it outlasts `hurt`'s attack and reads as the trap, not the hit.
+  // Still under a splat in total (#113's rule for world sounds).
   spike: (a, t) => {
-    a._burst(t, { filter: 'highpass', f0: 2600, f1: 1800, q: 1, dur: 0.07, gain: 0.12 });
-    a._tone(t, { type: 'square', f0: 1700, f1: 1500, dur: 0.04, gain: 0.05 });
+    a._tone(t, { type: 'square', f0: 3100, f1: 2700, dur: 0.2, gain: 0.3 });
+    a._tone(t, { type: 'square', f0: 3180, f1: 2760, dur: 0.18, gain: 0.06 });
+    a._tone(t, { type: 'sine', f0: 110, f1: 55, dur: 0.12, gain: 0.18 });
   },
   // Collapsing segment: a crumble, falling in pitch as it gives way.
   collapse: (a, t) => {
@@ -248,17 +252,20 @@ export const SFX = {
     a._tone(t, { type: 'sine', f0: 110, f1: 60, dur: 0.18, gain: 0.12 });
   },
   // Crusher drop: a heavy metal clank. The beat.
+  // #215: the level's beat — a low sine thump (80 → 40 Hz) under the clank.
   crush: (a, t) => {
-    a._burst(t, { filter: 'lowpass', f0: 700, f1: 80, q: 1.5, dur: 0.32, gain: 0.2 });
-    a._tone(t, { type: 'square', f0: 240, f1: 170, dur: 0.09, gain: 0.07 });
+    a._tone(t, { type: 'sine', f0: 80, f1: 40, dur: 0.5, gain: 0.4 });
+    a._burst(t, { filter: 'lowpass', f0: 700, f1: 80, q: 1.5, dur: 0.32, gain: 0.25 });
+    a._tone(t, { type: 'square', f0: 240, f1: 170, dur: 0.09, gain: 0.1 });
   },
   // Crusher rise: hydraulic hiss.
   hiss: (a, t) => {
-    a._burst(t, { filter: 'bandpass', f0: 2200, f1: 1400, q: 2, dur: 0.45, gain: 0.07 });
+    a._burst(t, { filter: 'bandpass', f0: 2200, f1: 1400, q: 2, dur: 0.45, gain: 0.12 });   // #215
   },
   // Warning-lamp tick: a dry click on each blink of the tell.
+  // #215: the warning must be heard before the slam, under music.
   tick: (a, t) => {
-    a._tone(t, { type: 'square', f0: 2400, f1: 2300, dur: 0.025, gain: 0.05 });
+    a._tone(t, { type: 'square', f0: 2400, f1: 2300, dur: 0.05, gain: 0.15 });
   },
   // Catwalk step-on: a low metal groan.
   creak: (a, t) => {
