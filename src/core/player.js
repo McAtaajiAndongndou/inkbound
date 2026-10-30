@@ -423,11 +423,13 @@ export class Player {
       if (wall && wall.topY != null) {
         const belowTop = wall.topY - this.position.y;
         if (!this.onGround && belowTop > 0 && belowTop <= MANTLE.reach) {
-          // Probe just past the wall's face, at the top edge. The inward
-          // offset uses the wall normal so a wall facing -Z gets the floor
-          // on its -Z side, and a wall facing +Z on its +Z side.
-          const probeX = this.position.x + wall.normal.x * (PLAYER.radius + MANTLE.inward);
-          const probeZ = this.position.z + wall.normal.z * (PLAYER.radius + MANTLE.inward);
+          // Probe just past the wall's top edge, on the far side. #184:
+          // `wall.normal` points out of the wall toward the climber (it is
+          // built from the side the player is on), so "past the edge" is
+          // AGAINST the normal. Adding it probed behind the climber's back
+          // and mantled them down onto the floor they climbed from.
+          const probeX = this.position.x - wall.normal.x * (PLAYER.radius + MANTLE.inward);
+          const probeZ = this.position.z - wall.normal.z * (PLAYER.radius + MANTLE.inward);
           const probeY = wall.topY + 0.1;    // just above the edge
           const topFloor = this._probeGroundAt(probeX, probeY, probeZ);
           if (topFloor) {
