@@ -165,3 +165,17 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **The slam hits only inside its radius.** `main.js` wires `onAttack` to damage the player unconditionally (right for a shot), so the boss checks its own reach before calling it. **The slam greys floor at its own height only:** the 5 m balconies are out of reach, so raised paint stays safe paint.
 - **Its two Drainers exist from load**, dormant at the back of the bay, because the paint gun takes its target list once. A `summon` wake rule nothing satisfies keeps them asleep until phase 2 (or a hit).
 - **Big Arm and its Drainers are the Core's waves 4 and 5** (room R3), so "the Core is clear", which the Siphon waits for, includes them without a new rule.
+
+## 2026-10-30 — mission intros (Renda + Moses)
+
+- **Each mission opens with a mission intro** (`docs/mission-intro.md`): at most 6 s of camera over the still-grey level, one eased move from the goal to the player's spawn view, while a title card types out level, location, day and time, and objective. Any fresh key or click skips. This **narrows** the out-of-scope "cutscenes or exposition walls": the intro has no characters, no dialogue and no controls text, so the reasons for that cut still hold.
+- **Why:** the campaign had no sense of place or goal before the first step, and the marking bands reward the grey-to-colour transition. Showing the level grey before the player paints it is that transition's "before" picture.
+- **The Primer has no camera move.** Its briefing still (#111) carries the same title card instead, so the tutorial still starts moving inside 8 s.
+- **It plays on a new mission, not on a restart.** R after a loss, and restart from the pause menu, go straight to play (CoD does not replay an intro on a retry).
+- **The intro is not play time:** the scorecard clock and dry time start when control is handed over. The simulation is paused under it exactly as under the menu.
+- **Parked:** a mission outro over the level as painted, voice, and multi-shot cameras. The outro needs its own entry.
+
+## 2026-10-30 — the UI wears the game's colour rule (Moses)
+
+- **Menus and panels are Corp grey; paint appears where the player acts.** Panels are dark cuts of `PAINT.grey`, not navy. A button is grey until hovered, then paint sweeps in from the left (blue, red, green in turn), the grey-to-colour transition in miniature. The selected thing (Play, the level you're in) is already painted. Tokens live at the top of `src/ui/style.css`.
+- **Amber and telegraph yellow never appear in menus.** They mean danger (#126).

@@ -131,6 +131,14 @@ The campaign's escalation rule. The same loop under no pressure (tutorial), with
 The rebel leader who briefs the player. Appears as one briefing still and one line per level.
 _Avoid_: commander, captain, CO, leader
 
+**Mission intro**:
+The ≤6 s, skippable opening of a mission: one camera move from the goal to the spawn view over the grey level, under a title card (level, location, day and time, objective). No characters, no dialogue.
+_Avoid_: cutscene, cinematic, flyover, intro cam
+
+**Title card**:
+The four-line text block of a mission intro. The Primer's briefing still carries it too.
+_Avoid_: mission card, location stamp
+
 **Supply lift**:
 The transition that carries the player from the mountain into the military base.
 _Avoid_: cable car, elevator, transition level

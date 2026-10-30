@@ -1,7 +1,20 @@
+/* The UI wears the game's own rule: GREY is Corrupt Corp's (every panel is a
+   dark cut of their paint, PAINT.grey 0x585e54), COLOUR is the rebels' (paint
+   appears where the player acts: hover, focus, the thing selected). Amber and
+   telegraph yellow are danger (#126) and never appear in menus. The three
+   paints match PAINT in config.js. */
 :root {
-  --ink-bg: #0f0f16;
-  --ink-fg: #e8e8ef;
-  --ink-dim: #9a9aab;
+  --ink-bg: #12140f;
+  --ink-fg: #eceee6;
+  --ink-dim: #a4a998;
+  --ink-shade: 18, 20, 15;          /* rgb of --ink-bg, for see-through panels */
+  --ink-panel: #1f221b;
+  --ink-line: rgba(196, 204, 180, .12);
+  --ink-raise: rgba(196, 204, 180, .08);
+  --corp-grey: #585e54;
+  --paint-blue: #3aa7ff;
+  --paint-red: #ff4d5a;
+  --paint-green: #4ee08a;
 }
 
 html,
@@ -200,7 +213,7 @@ canvas {
 .scorecard > div {
   padding: 12px 10px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, .06);
+  background: var(--ink-raise);
 }
 .scorecard dt {
   font-size: 11px;
@@ -260,21 +273,33 @@ canvas {
   z-index: 15;
   display: flex;
   padding: 16px;
-  background: rgba(15, 15, 22, .72);
-  backdrop-filter: blur(3px);
+  background: rgba(var(--ink-shade), .72);
+  backdrop-filter: blur(3px) saturate(.4); /* the world behind drains while paused */
   overflow-y: auto;
   cursor: pointer; /* the backdrop resumes; the card does not */
 }
 
 .menu-card {
+  position: relative;
   width: min(440px, 100%);
   margin: auto; /* centres, but still scrolls instead of clipping on short screens */
-  padding: 24px 26px;
+  padding: 28px 26px 24px;
   border-radius: 14px;
-  background: #181822;
-  border: 1px solid rgba(255, 255, 255, .08);
+  overflow: hidden; /* clips the paint stripe to the corners */
+  background: linear-gradient(180deg, #252920, var(--ink-panel) 40%);
+  border: 1px solid var(--ink-line);
   box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
   cursor: default;
+}
+
+/* The rebels' three paints across the top of the Corp-grey card. */
+.menu-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg,
+    var(--paint-blue) 0 33.3%, var(--paint-red) 33.3% 66.6%, var(--paint-green) 66.6%);
 }
 
 .menu-card h1 {
@@ -283,7 +308,7 @@ canvas {
   font-size: 34px;
   letter-spacing: .08em;
   /* the four paint colours, so the title reads as the game's own */
-  background: linear-gradient(90deg, #3aa7ff, #ff4d5a 45%, #4ee08a);
+  background: linear-gradient(90deg, var(--paint-blue), var(--paint-red) 45%, var(--paint-green));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -302,12 +327,17 @@ canvas {
   margin-bottom: 20px;
 }
 
+/* Buttons are grey until you point at them, then paint sweeps in from the
+   left: the grey-to-colour transition, in the menu. Each button carries a
+   paint in --c (cycled below); the selected/primary one is already painted. */
 .menu-card button {
+  --c: var(--paint-blue);
   border: 0;
   border-radius: 8px;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, .1);
+  background: linear-gradient(var(--c), var(--c)) left / 0% 100% no-repeat, var(--ink-raise);
   color: var(--ink-fg);
+  transition: background-size .18s ease-out, color .18s ease-out;
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -315,20 +345,36 @@ canvas {
   cursor: pointer;
 }
 
-.menu-card button:hover { background: rgba(255, 255, 255, .18); }
-.menu-card button:focus-visible { outline: 2px solid #3aa7ff; outline-offset: 2px; }
-.menu-card button.primary { background: #3aa7ff; color: #0f0f16; font-size: 16px; padding: 12px 14px; }
+.menu-card button:hover:not(:disabled) { background-size: 100% 100%, auto; color: var(--ink-bg); }
+.menu-card button:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+.menu-card button.primary { background: var(--paint-blue); color: var(--ink-bg); font-size: 16px; padding: 12px 14px; }
 .menu-card button.primary:hover { background: #62b9ff; }
+/* One paint per button, in the order the HUD lists them: blue, red, green. */
+.menu-actions button:nth-child(3n + 2),
+.level-list li:nth-child(3n + 2) button { --c: var(--paint-red); }
+.menu-actions button:nth-child(3n),
+.level-list li:nth-child(3n) button { --c: var(--paint-green); }
 
 .menu-card section + section { margin-top: 18px; }
 
 .menu-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 10px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--ink-dim);
+}
+/* A grey tick before each heading: Corp's colour, waiting to be painted. */
+.menu-card h2::before {
+  content: '';
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--corp-grey);
 }
 
 .menu-row {
@@ -340,10 +386,11 @@ canvas {
   font-size: 14px;
 }
 
-.menu-row input[type="range"] { width: 100%; accent-color: #3aa7ff; }
+.menu-row input[type="range"] { width: 100%; accent-color: var(--paint-blue); }
 .menu-row output { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-dim); font-size: 13px; }
 .menu-row button { grid-column: 2 / 4; padding: 7px 10px; font-size: 13px; }
-.menu-row button[aria-pressed="true"] { background: #ff4d5a; color: #0f0f16; }
+.menu-row button { --c: var(--paint-green); }
+.menu-row button[aria-pressed="true"] { --c: var(--paint-red); background: var(--paint-red); color: var(--ink-bg); }
 
 .menu-controls {
   display: grid;
@@ -375,7 +422,7 @@ canvas {
   flex-direction: column;
   gap: 2px;
   padding: 9px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, .06);
+  border-bottom: 1px solid var(--ink-line);
 }
 
 .credits-list li:first-child { padding-top: 0; }
@@ -385,12 +432,12 @@ canvas {
 .credits-src { overflow-wrap: anywhere; }
 
 .menu-card a {
-  color: #62b9ff;
+  color: var(--paint-blue);
   text-decoration: none;
 }
 
 .menu-card a:hover { text-decoration: underline; }
-.menu-card a:focus-visible { outline: 2px solid #3aa7ff; outline-offset: 2px; border-radius: 2px; }
+.menu-card a:focus-visible { outline: 2px solid var(--paint-blue); outline-offset: 2px; border-radius: 2px; }
 
 .credits-ours li {
   color: var(--ink-dim);
@@ -406,7 +453,7 @@ canvas {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #4ee08a;
+  background: var(--paint-green);
 }
 
 /* Level select view inside the menu card (#78). The loaded level is marked. */
@@ -435,7 +482,7 @@ canvas {
 
 .level-list button.current {
   background: rgba(78, 224, 138, .16);
-  box-shadow: inset 3px 0 0 #4ee08a;
+  box-shadow: inset 3px 0 0 var(--paint-green);
 }
 
 .level-list button.current::after {
@@ -444,15 +491,17 @@ canvas {
   font-size: 11px;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: #4ee08a;
+  color: var(--paint-green);
 }
+.level-list button.current:hover::after { color: inherit; }
+.level-list button:hover:not(:disabled) .level-num { color: inherit; opacity: .7; }
 
 .level-list button:disabled { opacity: .5; cursor: wait; }
 
 .level-error {
   margin: 0 0 12px;
   font-size: 13px;
-  color: #ff4d5a;
+  color: var(--paint-red);
 }
 
 /* ---- dry out warning (#75) ----------------------------------------------
@@ -505,7 +554,7 @@ canvas {
   justify-content: center;
   gap: 2vh;
   padding: 16px;
-  background: rgba(10, 10, 16, .92);
+  background: rgba(var(--ink-shade), .92);
 }
 .briefing-frame {
   position: relative;
@@ -514,8 +563,8 @@ canvas {
   margin: 0;
   border-radius: 12px;
   overflow: hidden;
-  background: #181822; /* the plain panel the line sits on when there is no art */
-  border: 1px solid rgba(255, 255, 255, .08);
+  background: var(--ink-panel); /* the plain panel the line sits on when there is no art */
+  border: 1px solid var(--ink-line);
   box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
 }
 .briefing-still {
@@ -531,7 +580,7 @@ canvas {
   right: 0;
   bottom: 0;
   padding: 2.2vh 3vh 2.6vh;
-  background: linear-gradient(transparent, rgba(10, 10, 16, .88) 35%);
+  background: linear-gradient(transparent, rgba(var(--ink-shade), .88) 35%);
 }
 #briefing.no-still .briefing-comms {
   top: 0;
@@ -573,8 +622,8 @@ canvas {
   max-width: min(720px, calc(100% - 32px));
   padding: 1.2vh 2.2vh 1.4vh;
   border-radius: 10px;
-  background: rgba(10, 10, 16, .82);
-  border: 1px solid rgba(255, 255, 255, .08);
+  background: rgba(var(--ink-shade), .82);
+  border: 1px solid var(--ink-line);
   opacity: 0;
   visibility: hidden;
   transform: translate(-50%, 16px);
@@ -621,7 +670,7 @@ canvas {
   gap: 8px;
   padding: 4px 8px;
   border-radius: 8px;
-  background: rgba(15, 15, 22, .55);
+  background: rgba(var(--ink-shade), .55);
   box-sizing: border-box;
 }
 .territory-label {
@@ -674,7 +723,7 @@ canvas {
 #killfeed li {
   padding: 3px 10px;
   border-radius: 6px;
-  background: rgba(15, 15, 22, .55);
+  background: rgba(var(--ink-shade), .55);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: .06em;
@@ -694,7 +743,7 @@ canvas {
   width: 180px;
   height: 3px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, .08);
+  background: var(--ink-raise);
 }
 #streak-fill {
   height: 100%;
@@ -724,3 +773,59 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
   #streak.full #streak-fill { animation: none; box-shadow: 0 0 6px 1px rgba(255, 255, 255, .7); }
 }
+
+/* Mission intro (G4, docs/mission-intro.md). The title card, bottom-left, over
+   the camera move — CoD's mission card. Above the HUD, below the pause menu
+   (15). Off-white on a dark band: never amber (danger) or telegraph yellow.
+   The fade matches MISSION_INTRO.fadeOut in config.js. */
+#mission-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+body.in-intro #hud { visibility: hidden; }
+#mission-intro .intro-card {
+  position: absolute;
+  left: max(16px, 5vw);
+  bottom: 12vh;
+  transition: opacity .4s ease-in;
+}
+#mission-intro.leaving .intro-card,
+#mission-intro.leaving .intro-hint { opacity: 0; transition: opacity .4s ease-in; }
+.intro-card {
+  max-width: calc(100% - 32px);
+  padding: 1.6vh 2.4vh 1.8vh;
+  border-left: 3px solid #4ee08a;
+  background: rgba(var(--ink-shade), .72);
+  color: var(--ink-fg);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .6);
+}
+.intro-card p { margin: .3em 0 0; min-height: 1.3em; }
+.intro-name {
+  margin: 0;
+  min-height: 1.15em;
+  font-size: clamp(26px, 5vh, 56px);
+  font-weight: 800;
+  letter-spacing: .06em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+.intro-location { font-size: clamp(15px, 2.2vh, 24px); font-weight: 600; }
+.intro-when {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: clamp(12px, 1.6vh, 18px);
+  letter-spacing: .08em;
+  color: var(--ink-dim);
+}
+.intro-objective { font-size: clamp(15px, 2.2vh, 24px); font-weight: 600; }
+.intro-hint {
+  position: absolute;
+  right: max(16px, 4vw);
+  bottom: 4vh;
+  margin: 0;
+  font-size: clamp(12px, 1.5vh, 16px);
+  color: var(--ink-dim);
+}
+/* The Primer's still carries its card above the frame (no intro there). */
+.briefing-card { width: min(1100px, 100%, 140vh); box-sizing: border-box; }
