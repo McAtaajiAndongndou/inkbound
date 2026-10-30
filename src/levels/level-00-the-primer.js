@@ -80,15 +80,25 @@ export class Level00 extends LayoutLevel {
     }
   }
 
-  /** The layout's trap zones, built as spike pits in the floor they sit on. */
+  /**
+   * The layout's trap zones, built as spike pits in the floors they sit on.
+   * R6's floor is three pieces across the pit, so collect every piece the box
+   * touches (sampled every half metre); one piece left blue on the others unread.
+   */
   _pits() {
     this.pits = [];
-    const centre = new THREE.Vector3();
+    const p = new THREE.Vector3();
     for (const t of PRIMER.traps) {
       const [x0, x1, y0, , z0, z1] = t.box;
-      centre.set((x0 + x1) / 2, y0, (z0 + z1) / 2);
-      const floor = this.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - y0) < 1e-6 && s.worldToCell(centre));
-      this.pits.push(new SpikePit({ parent: this.root, floor, box: t.box }));
+      const floors = new Set();
+      for (let x = x0; x <= x1; x += 0.5) {
+        for (let z = z0; z <= z1; z += 0.5) {
+          p.set(x, y0, z);
+          const floor = this.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - y0) < 1e-6 && s.worldToCell(p));
+          if (floor) floors.add(floor);
+        }
+      }
+      this.pits.push(new SpikePit({ parent: this.root, floors: [...floors], box: t.box }));
     }
   }
 

@@ -26,13 +26,15 @@ export class SpikePit {
   /**
    * @param {object} spec
    * @param {THREE.Object3D} spec.parent   the level root
-   * @param {object} spec.floor            the PaintSurface the pit is in
+   * @param {object[]} spec.floors        every PaintSurface the pit lies across.
+   *                                       A room's floor can be several pieces,
+   *                                       and blue on any of them must count.
    * @param {number[]} spec.box            the layout trap box [x0,x1,y0,y1,z0,z1]
    */
-  constructor({ parent, floor, box }) {
+  constructor({ parent, floors, box }) {
     const [x0, x1, y0, , z0, z1] = box;
     const cfg = TRAP.pit;
-    this.floor = floor;
+    this.floors = floors;
     this.trap = new TrapVolume({
       // Only the spikes hurt (B3): a jump over the pit clears it.
       region: new THREE.Box3(new THREE.Vector3(x0, y0 - 0.5, z0), new THREE.Vector3(x1, y0 + cfg.hurtHeight, z1)),
@@ -85,7 +87,9 @@ export class SpikePit {
 
   /** Is the floor under `position` blue? Blue slides over the spikes. */
   onBlue(position) {
-    return this.floor.paintIdAtWorld(position) === PAINT_IDS.blue;
+    // Any piece under the feet will do: off a piece reads grey, and on a seam
+    // two pieces both claim the point, so either one being blue counts.
+    return this.floors.some((f) => f.paintIdAtWorld(position) === PAINT_IDS.blue);
   }
 
   update(dt, targets) {
