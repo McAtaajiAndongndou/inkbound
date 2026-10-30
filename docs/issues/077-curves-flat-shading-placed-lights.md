@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** rubric, 3D Effects ("curves, surfaces", "smooth and flat shading", "multiple light sources")
 **Cost:** S–M
-**Depends on:** 074 (point light pool) for the lights part. The curves and shading parts depend on nothing
+**Depends on:** #195 (point light pool) for the lights part. The curves and shading parts depend on nothing
 
 ### Context
 
@@ -10,7 +10,7 @@ The rubric check on 30 Oct found:
 
 - **no curves or curved surfaces anywhere.** Every level is built from boxes and cylinders; no `Curve`, `TubeGeometry` or `LatheGeometry` appears in `src/`.
 - **flat shading used in exactly one place**, so the "smooth versus flat" contrast the rubric asks about can't be pointed at.
-- **no point lights** (074 makes them possible; this issue places them).
+- **no point lights** (#195 makes them possible; this issue places them).
 
 All three are set dressing, which makes them a levels job. They also fix a visual complaint from the polish audit: the levels read as stacked boxes.
 
@@ -33,7 +33,7 @@ All three are set dressing, which makes them a levels job. They also fix a visua
 
 This is one material flag per prop, plus a sentence in the level docs so the team can point at it in the demo.
 
-**Placed lights (after 074):** register sources with the pool.
+**Placed lights (after #195):** register sources with the pool.
 
 | Light | Colour |
 |---|---|

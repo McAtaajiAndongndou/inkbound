@@ -2,7 +2,7 @@
 **Priority:** SHOULD
 **PRD:** rubric, 3D Effects ("multiple light sources")
 **Cost:** M
-**Depends on:** nothing. 077 (levels) places the lights
+**Depends on:** nothing. #198 (levels) places the lights
 
 ### Context
 

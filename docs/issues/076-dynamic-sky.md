@@ -2,7 +2,7 @@
 **Priority:** SHOULD. Cheap, and it ticks a named technique on the theme's key moment
 **PRD:** rubric, 3D Effects ("static and dynamic skyboxes"); Gameplay & Experience (theme)
 **Cost:** S
-**Depends on:** nothing. If 073 has landed, also call its `SkyProbe.refresh()`
+**Depends on:** nothing. If #194 has landed, also call its `SkyProbe.refresh()`
 
 ### Context
 
@@ -27,7 +27,7 @@ The theme gives a dynamic sky an obvious job. **Corp has drained the colour out 
 - **Config:** a `SKY` block with `from: 0.05`, `to: 0.5`, `rate`, `scansPerSecond: 2` and `finale: 2.5`, plus a `drained` palette in each level's mood.
 - **AGENTS rule 5:** the dome is unlit and needs no `uLightDir`. Keep `fog: false` and `depthWrite: false`.
 - **AGENTS rule 6:** the material and geometry dispose with `level.root`, as today.
-- If 073 is in, call `level.skyProbe.refresh()` when `k` has moved by more than 0.02 since the last refresh. Never every frame.
+- If #194 is in, call `level.skyProbe.refresh()` when `k` has moved by more than 0.02 since the last refresh. Never every frame.
 
 ### Scope — files you may touch
 

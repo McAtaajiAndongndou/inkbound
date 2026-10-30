@@ -2,7 +2,7 @@
 **Priority:** MUST. It closes the largest named gap in the 15% 3D Effects band
 **PRD:** rubric, 3D Effects ("textures used for more than colour (bump maps, height maps)", "reflections")
 **Cost:** M
-**Depends on:** nothing. 076 (dynamic sky) calls `refresh()` on the probe this adds
+**Depends on:** nothing. #197 (dynamic sky) calls `refresh()` on the probe this adds
 
 ### Context
 

@@ -196,7 +196,7 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **`onAttack` keeps its meaning:** "this enemy's attack hit the player". For a ranged enemy it now fires on pellet contact. `main.js` does not change.
 - **Melee is unchanged:** Charger, Stalker, Drainer, Big Arm.
 
-## 2026-10-30 — Closing the 3D Effects gap (drafts 073–078)
+## 2026-10-30 — Closing the 3D Effects gap (drafts 073–078, #194–#199)
 
 - **Renda: the rubric's named techniques go where the theme already is,** not into new set pieces. Height-mapped, reflective paint (073), a sky that warms with territory (076), and ice that refracts (075).
 - **Grey stays matte; only paint is wet.** Gloss and reflection are applied to painted cells only, so dead and alive differ in sheen as well as colour. Reflection is capped so a paint colour never reads as sky.
