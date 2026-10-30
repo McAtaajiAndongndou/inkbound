@@ -28,7 +28,7 @@ Ordered by Renda's sharpest complaint first, then by the quality plan's root cau
 | 6 | Death splat 1.8 m → 2.5 m | §3.1 | config | Do you swim into kills to refill? | **Keep** (30 Oct) |
 | 7 | Hip spread 0.025 → 0.06 (`PAINT_GUN.hipSpread`) | §3.2 | config | Does hip-fire feel like painting and aiming feel like shooting? | **Keep** (30 Oct) |
 | 7b | ADS spread 0.005 → 0.004: only if step 7 leaves aiming feeling loose (a 20% change to an already tight number) | §3.2 | config | | |
-| 7c | **Hip-fire splats bigger**, 1.4 → 1.8 m; aiming unchanged (Renda: "the paint from hipfire takes up wider surface area") | §3.2 | code (paint) | Does hip-fire cover ground fast, like a painter? | |
+| 7c | **Hip-fire splats bigger**, 1.4 → 1.8 m; aiming unchanged (Renda: "the paint from hipfire takes up wider surface area") | §3.2 | code (paint) | Does hip-fire cover ground fast, like a painter? | **Keep** (30 Oct) |
 | 7d | Aimed splats smaller, 1.4 → 0.7 m, played on its own | §3.2 | config | Does aiming still paint enough to be worth it? | |
 | 8 | Field of view 70 → 78 | §5 | config | More of the fight on screen, or just fish-eye? | |
 | 9 | Whole-camera position damping | §5 | code (core) | Does the camera still feel stiff? | |
@@ -95,3 +95,8 @@ Step 7 changed two numbers. Hip spread is the real change (×2.4); the ADS tweak
 
 - **Branch:** `proto/hip-spread-0-06` (d5ffcfc). At ~13 m, hip shots scatter 0.93 m against 0.10 m aimed.
 - **Verdict: keep.** Renda then asked for hip-fire paint to cover more ground and aiming to stay accurate, which is the plan's §3.2 split (#232). Added as 7c (bigger hip splats) and 7d (smaller aimed splats), one at a time.
+
+### Step 7c — hip-fire splats 1.4 → 1.8 m
+
+- **Branch:** `proto/hip-splat-1-8` (587d5ba). One shot paints 132 cells hip against 96 aimed (about 1.4×).
+- **Verdict: keep.**
