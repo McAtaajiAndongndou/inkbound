@@ -9,7 +9,10 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { buildDressing } from '../src/levels/dressing.js';
+import { Level02 } from '../src/levels/level-02-ascent.js';
 import { Level03 } from '../src/levels/level-03-horde.js';
+import { ASCENT as AS } from '../src/levels/layouts/ascent.js';
+import { ASCENT_KINDS } from '../src/levels/decor.js';
 import { LAST_COLOUR as LC } from '../src/levels/layouts/last-colour.js';
 import { DRESSING, PAINT, DANGER, MARKER, GATE, LAST_COLOUR as LC_TUNING } from '../src/config.js';
 
@@ -89,6 +92,7 @@ test('grey only: no dressing colour reads as a paint colour, as amber or as mark
 
 const LEVELS = [
   { name: 'Last Colour', Level: Level03, layout: LC, beacon: LC.landmarks[0].beacon },
+  { name: 'The Ascent', Level: Level02, layout: AS, beacon: AS.landmarks[0].beacon },
 ];
 
 for (const { name, Level, layout, beacon } of LEVELS) {
@@ -215,4 +219,71 @@ test('Last Colour: every room has its story cluster', async () => {
   const glass = level.dressing.meshes.find((m) => m.name === 'dressing:round|glass');
   assert.ok(glass && glass.material.transparent && glass.material.opacity < 0.5);
   level.dispose();
+});
+
+// --- The Ascent ----------------------------------------------------------------
+
+const treeMeshes = (level) => {
+  const out = [];
+  for (const d of Object.values(level.decor)) d.root.traverse((o) => { if (o.isMesh) out.push(o); });
+  return out;
+};
+
+test('The Ascent: MegaKit trees, hand-placed off the fight floors, thinning with height', async () => {
+  const level = await loaded(Level02);
+  const trees = Object.entries(AS.dressing.trees).flatMap(([kind, list]) => list.map(([x, y, z]) => ({ kind, x, y, z })));
+  assert.ok(trees.length >= 12);
+  for (const d of Object.values(level.decor)) {
+    assert.equal(d.root.parent, level.root);
+    assert.ok(d.props.length > 0);
+  }
+  const points = Object.values(AS.routes).flat().map((q) => new THREE.Vector3(...q));
+  const strips = AS.strips.map(stripBox);
+  for (const t of trees) {
+    const at = new THREE.Vector3(t.x, t.y, t.z);
+    for (const q of points) assert.ok(at.distanceTo(q) >= 4, `tree at ${t.x},${t.z} is on the route`);
+    for (const s of strips) assert.ok(s.distanceToPoint(at) >= 3, `tree at ${t.x},${t.z} is at a climb`);
+    // On a catch shelf, or the trailhead's rim: never in a fight.
+    const floor = AS.solids.find((s) => s.top && Math.abs(s.box[3] - t.y) < 1e-6
+      && t.x > s.box[0] && t.x < s.box[1] && t.z > s.box[4] && t.z < s.box[5]);
+    assert.ok(floor, `tree at ${t.x},${t.z} stands on nothing`);
+    assert.ok(floor.kind === 'catch' || (floor.id === 'trailhead' && Math.abs(t.x) >= 17), `tree on ${floor.id}`);
+    if (t.kind === 'pine') assert.ok(t.y <= 4, 'pines grow low');
+  }
+  assert.ok(!trees.some((t) => t.y >= 32), 'nothing on the summit or the ledge');
+  for (const m of treeMeshes(level)) assert.ok(!level.surfaces.some((s) => s.mesh === m), 'a tree collides');
+  // Trees are custom-shaded: aimed with the sun (AGENTS rule 5).
+  assert.ok(level.palette.base.uniforms.uLightDir.value.distanceTo(level.sunDir) < 1e-6);
+  level.dispose();
+});
+
+test('The Ascent: no tree hides the beacon from any room eye, and the budget holds with every model loaded', async () => {
+  const level = await loaded(Level02);
+  const beacon = AS.landmarks[0].beacon;
+  for (const r of AS.rooms.filter((rm) => !rm.planned)) {
+    if (blockedBySolids(r.eye.pos, beacon, AS.solids)) continue;
+    assert.equal(clearSight(r.eye.pos, beacon, treeMeshes(level)), null, `${r.id}'s view of the beacon`);
+  }
+  // A loaded variant is one draw call per material (base and tint).
+  const trees = Object.values(ASCENT_KINDS).reduce((n, k) => n + k.maxVariants * 2, 0);
+  assert.ok(level.dressing.meshes.length + trees <= DRESSING.maxDrawCalls, `${level.dressing.meshes.length} + ${trees} draw calls`);
+  // The range sits behind the base, never in front of it, from the summit.
+  const R7 = AS.rooms.find((r) => r.id === 'R7').eye.pos;
+  const base = AS.landmarks.find((l) => l.id === 'the-base-stack').box;
+  assert.equal(clearSight(R7, [(base[0] + base[1]) / 2, base[3] - 2, (base[4] + base[5]) / 2], level.dressing.meshes), null);
+  level.dispose();
+});
+
+test('The Ascent: ten reloads free the trees and their palette', async () => {
+  let made = 0;
+  let freed = 0;
+  for (let i = 0; i < 10; i++) {
+    const level = await loaded(Level02);
+    const mats = new Set([level.palette.base, ...Object.values(level.palette.tint)]);
+    for (const m of treeMeshes(level)) { made++; m.geometry.addEventListener('dispose', () => { freed++; }); }
+    for (const m of mats) { made++; m.addEventListener('dispose', () => { freed++; }); }
+    level.dispose();
+  }
+  assert.ok(made > 0);
+  assert.ok(freed >= made, `${freed} of ${made} freed`);
 });

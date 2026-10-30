@@ -121,3 +121,10 @@ The builder is `src/levels/dressing.js`. Each item is a box with a kind, and eac
 - **Skyline.** Five blocks, two plant rooms and two stacks. Every top is under the mast (27 m, tested). The north blocks sit close behind the Core so they clear its 14 m wall from the R3 eye.
 - **Clusters:** as the doc lists them, with one change. **R5 has no drain puddles.** A decal on the floor hides the paint underneath it, so the Siphon's pipes end in low elbows (under 1.2 m) instead. The corner pipes are `mount: 'siphon'`: they hug the Siphon, so they hide nothing it does not already hide (tested within 0.6 m).
 - **Budget:** +6 draw calls at most (R0/R1 eyes; four to six from other eyes). Frame time is within noise: the worst eye (R2) measured +0.3 ms on best-of-runs, A/B with the dressing hidden and shown in the same session.
+
+### The Ascent (step 3)
+
+- **Trees.** MegaKit pines and dead trees, placed by hand from `ASCENT.dressing.trees` through `Decor` with the new `ASCENT_KINDS` and no scatter. They stand only where nobody fights: the trailhead's rim (|x| ≥ 17), the scree under the catwalk, and the west catch shelf under the ledge. Pines grow low and dead trees grow high, and nothing stands on the summit (tested). There are two models per kind, because every variant costs a draw call per material. The trees' toon materials join the light-direction pass.
+- **The range.** Two ridges of overlapping peaks, to the north and the east, inside the sky dome. They are a shade lighter than the base, so the base still reads in front of them from the summit (tested).
+- **Strata.** Warm stone bands set into the big faces, starting at least 3 m above the floor at their foot and kept clear of the climb strips.
+- **Budget:** +8 draw calls at most, with every tree model loaded. Frame time was +0.4 ms at the R0 eye on best-of-runs and +0.7 ms on the median, measured A/B. The trees are the heavy part.

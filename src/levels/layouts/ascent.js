@@ -325,8 +325,58 @@ const curves = {
   })),
 };
 
+/**
+ * The dressing pass (docs/levels/dressing-pass.md, src/levels/dressing.js and
+ * decor.js). No collision; keep-outs tested in tests/dressing.test.js.
+ *
+ *   trees   MegaKit pines at the foot of the mountain, dead trees on the west
+ *           catch shelf, nothing on the summit: it thins as you climb. Only
+ *           off the fight floors: the trailhead's rim (outside the walking
+ *           line and wave 2's Crawlers), the scree under the catwalk and the
+ *           catch shelf under the ledge. [x, y, z, scale]
+ *   range   distant peaks behind the summit and to the east, unfogged, a
+ *           shade lighter than the base so the base still reads in front
+ *   strata  rock bands set into the big faces, 3 m+ over the floor at their
+ *           foot and clear of the climb strips
+ */
+const STRATA_DEPTH = 0.8;
+/** A band along a face: `face` is '+z' etc. (the side it looks out of), `at` the face's plane. */
+const band = (face, at, from, to, y, h = 1.0) => {
+  const out = face[0] === '+' ? [at, at + STRATA_DEPTH] : [at - STRATA_DEPTH, at];
+  return { kind: 'strata', box: face[1] === 'z' ? [from, to, y, y + h, ...out] : [...out, y, y + h, from, to] };
+};
+const dressing = {
+  trees: {
+    pine: [
+      [-18, 0, 53, 1.1], [-17.5, 0, 57.5, 0.9], [18, 0, 54, 1.0], [17.6, 0, 58.5, 1.2],
+      [-17.6, 0, 69, 1.0], [17.6, 0, 71.5, 0.9], [-18, 0, 76, 1.2], [18, 0, 77, 1.0],
+      [24, 4, 41.5, 1.1], [35, 4, 42, 1.0], [22, 4, 26, 0.9], [36, 4, 26, 1.2],
+    ],
+    deadTree: [
+      [26, 4, 14, 1.0], [36.5, 4, 18, 1.1],
+      [-33, 26, -20, 1.0], [-34, 26, -5, 1.2], [-33.5, 26, 8, 0.9], [-34, 26, 20, 1.1],
+    ],
+  },
+  items: [
+    // Ridges of overlapping peaks, taller than wide, inside the sky dome (450 m).
+    // A lump overshoots its box by about a quarter, so the tops are ~100-150 m.
+    ...[[-50, -390, 70, 80], [30, -405, 90, 110], [105, -375, 60, 70], [170, -340, 50, 55]]
+      .map(([x, z, w, top]) => ({ kind: 'range', box: [x - w / 2, x + w / 2, -60, top, z - w / 2, z + w / 2] })),
+    ...[[330, -150, 70, 95], [355, -60, 60, 75], [340, 30, 50, 60]]
+      .map(([x, z, w, top]) => ({ kind: 'range', box: [x - w / 2, x + w / 2, -60, top, z - w / 2, z + w / 2] })),
+    // Terrace One's south face over the trailhead (strips at |x| < 4).
+    band('+z', 48, -17, -6, 4.2), band('+z', 48, 6, 17, 4.6), band('+z', 48, -15, -7, 8.8, 0.7), band('+z', 48, 7, 16, 9.2, 0.7),
+    // The core's south face over Terrace One.
+    band('+z', 24, -23, -4, 16.5), band('+z', 24, 4, 23, 17), band('+z', 24, -20, 20, 20.8, 0.7),
+    // The peak's south face over the shoulder.
+    band('+z', 18, -23, 11, 29), band('+z', 18, -18, 6, 34, 0.7),
+    // Terrace Two's west face over the drop between the canyon and leg 1.
+    band('-x', 38, -23, -10, 8), band('-x', 38, -22, -12, 15.5, 0.7),
+  ],
+};
+
 export const ASCENT = {
   id: 'ascent', name: 'The Ascent', cells: PAINT_GRID.level2Cells, spawnLook, prepaint,
   solids, slabs, strips, kerbs, landmarks, props, enemies, routes, rooms, win, doc,
-  curves,
+  curves, dressing,
 };
