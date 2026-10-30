@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { Level00 } from '../src/levels/level-00-the-primer.js';
-import { PRIMER as L } from '../src/levels/layouts/primer.js';
 
 const { CameraRig } = await import('../src/core/camera-rig.js');
 const { Player } = await import('../src/core/player.js');
@@ -34,10 +33,4 @@ test('B4: nothing stands between the Primer spawn and its first-frame camera', a
   const blocked = ray.intersectObjects(meshes, false);
   assert.equal(blocked.length, 0, `the camera starts behind something ${blocked[0]?.distance.toFixed(2)} m from the player`);
   level.dispose();
-});
-
-test('B4: the spawn pad stays under the spawn', () => {
-  const [x, , z] = L.routes.main[0];
-  const [x0, x1, z0, z1] = L.prepaint.find((p) => p.id === 'spawn-pad').rect;
-  assert.ok(x > x0 && x < x1 && z > z0 && z < z1, 'the spawn should land on its pad');
 });

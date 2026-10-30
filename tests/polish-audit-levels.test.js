@@ -229,9 +229,10 @@ test('the Siphon sounds each reveal, each solved target, and its fall', async ()
 
 // --- spawn pads ----------------------------------------------------------------
 
-test('every level starts on a pad of the player\'s paint, so its first steps are fast', async () => {
+// The polish audit's green spawn pad is removed (Renda, 30 Oct): every level
+// starts on the Corp's grey, and the player's first paint is their own.
+test('every level starts on grey: no spawn pad of paint', async () => {
   const { createLevel, LEVELS } = await import('../src/levels/index.js');
-  const { SPAWN_PAD, SURFACE } = await import('../src/config.js');
   for (const { id } of LEVELS) {
     const level = createLevel(id, { scene: new THREE.Scene(), onWin: null, say: () => true });
     await level.load();
@@ -242,10 +243,10 @@ test('every level starts on a pad of the player\'s paint, so its first steps are
       .sort((a, b) => b.mesh.position.y - a.mesh.position.y)[0];
     assert.ok(floor, `${id}: a floor under the spawn`);
     const ground = feet.clone().setY(floor.mesh.position.y);
-    assert.ok(floor.isPlayerPaintAtWorld(ground), `${id}: the spawn is on player paint`);
-    assert.deepEqual(floor.surfaceAtWorld(ground), SURFACE[SPAWN_PAD.colour], `${id}: the pad is ${SPAWN_PAD.colour}`);
-    const edge = ground.clone().add(new THREE.Vector3(SPAWN_PAD.half + 1.5, 0, 0));
-    if (floor.worldToCell(edge)) assert.equal(floor.isPlayerPaintAtWorld(edge), false, `${id}: past the pad it is grey again`);
+    for (const [dx, dz] of [[0, 0], [2, 0], [-2, 0], [0, 2], [0, -2]]) {
+      const p = ground.clone().add(new THREE.Vector3(dx, 0, dz));
+      if (floor.worldToCell(p)) assert.equal(floor.isPlayerPaintAtWorld(p), false, `${id}: paint at the spawn (${dx}, ${dz})`);
+    }
     level.dispose();
   }
 });

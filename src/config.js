@@ -335,17 +335,6 @@ export const TRAP = {
   },
 };
 
-// The spawn pad (polish audit; grey's 0.6 slow, #74, is settled and unchanged).
-// Grey is the whole level at load, so every level's first minute was spent at
-// 4.2 m/s and its first impression was "this game is slow". A square of the
-// player's paint under the spawn makes the first steps fast, so stepping off it
-// is felt as a loss. Green: it grips (blue would slide you off, red would bounce
-// you), and you can submerge in it.
-export const SPAWN_PAD = {
-  colour: 'green',
-  half: 2.5,           // metres from the spawn to the pad's edge: a 5 m square
-};
-
 // Outskirts' grey-world mood (polish pass 1). DRAINED, NOT DARK: a pale, bleached
 // overcast with low contrast, so the grey reads as colour taken away rather than
 // as a night scene. The level file explains what each band does.

@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
-import { PAINT_GRID, OUTSKIRTS, GATE, SPAWN_PAD, CURVES, PLACED_LIGHTS } from '../config.js';
+import { PAINT_GRID, OUTSKIRTS, GATE, CURVES, PLACED_LIGHTS } from '../config.js';
 import { cables, flat } from './curves.js';
 import { audio } from '../audio/audio-manager.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
@@ -679,7 +679,6 @@ export class Level01 extends LevelBase {
     this._ascent();
     this._shoulders();
     this._extraction();
-    this._spawnPad();
     this._mood();
     this._waste();
     this._light();
@@ -1508,13 +1507,6 @@ export class Level01 extends LevelBase {
     gate.surface.mesh.position.y = -100;
     gate.light.material.color.setHex(TOWER.open);   // white: "the way is here" (P0-5)
     audio.play('gate'); // #113 — the arena is won; you hear the way open
-  }
-
-  /** The spawn pad (polish audit, SPAWN_PAD): first steps at full speed, grey felt as a loss. */
-  _spawnPad() {
-    const { x, z } = L1.spawn;
-    const h = SPAWN_PAD.half;
-    kit.paintRect(this, [x - h, x + h, z - h, z + h], 0, SPAWN_PAD.colour);
   }
 
   /**
