@@ -137,6 +137,11 @@ A check of the game against the brief's rubric (`CGV Project Brief`, section 11)
 | 091 | #227 | UK/SA spelling pass, and the rule in AGENTS.md (B14) | ui (+ everyone) | COULD | S | — |
 | 092 | #228 | Controls screen: check Shift and Q are taught | ui | SHOULD | S | — |
 | 093 | #229 | Remove grey from the player's colours (§3.6) | paint | SHOULD | S | — |
+| 094 | #232 | Hip-fire paints, ADS kills: two firing modes (§3.2) | paint | SHOULD | M | loop pass verdict |
+| 095 | #233 | Floor colours on demand for the player (§3.3) | core (+ paint, levels re-measure) | SHOULD | M | loop pass verdict |
+| 096 | #234 | Pop-out jump and wall-submerge (§3.4) | core | SHOULD | S–M | #231 |
+| 097 | #235 | Two greys: world 0.85, fresh Corp 0.6 (§3.5) | paint + core | SHOULD | M | loop pass verdict |
+| 098 | #236 | Dry out stops being a death (§3.7) | core | SHOULD | S–M | #226 |
 
 Not drafted here, but on the brief's final checklist and still open: **play the published URL** (PRD L1), **measure frame rate on lab hardware**, **trailer and devlog**.
 
