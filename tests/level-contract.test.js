@@ -143,7 +143,7 @@ test("island B's deck is a solid block you cannot climb (#012)", async () => {
  */
 test('a wall is solid to an enemy — cover is not player-only (#014)', async () => {
   const { level } = await buildLevel();
-  const charger = level.gateC.watch.find((e) => e.type === 'charger');
+  const charger = level.gateC.watch.find((e) => e.config === ENEMY.charger);
   charger.wake();
 
   // C's block: 4 x 2 at y 3.0, solid. Stand the charger behind it and make it
@@ -189,7 +189,7 @@ test('enemies hold their spawn until the player enters their arena (#012)', asyn
   const inB = { position: new THREE.Vector3(0, 0, 3) };
   level.update(1 / 60, inB);
   assert.equal(b.find((e) => e.type === 'sprayer').sleeping, false, 'landing in B wakes its Sprayer');
-  assert.ok(b.filter((e) => e.type === 'charger').every((e) => e.sleeping), 'the Chargers wait their beat');
+  assert.ok(b.filter((e) => e.config === ENEMY.charger).every((e) => e.sleeping), 'the Chargers wait their beat');
   for (let t = 0; t < OUTSKIRTS.sprayerFirst + 0.1; t += 1 / 60) level.update(1 / 60, atA);
   assert.ok(b.every((e) => e.sleeping === false), 'then the whole arena is awake');
 });
@@ -260,7 +260,7 @@ test("nothing grows through C's block — decor keep-out is empty (#014)", async
  */
 test('red knockback stops at a wall instead of pushing through it (#014)', async () => {
   const { level } = await buildLevel();
-  const charger = level.gateC.watch.find((e) => e.type === 'charger');
+  const charger = level.gateC.watch.find((e) => e.config === ENEMY.charger);
   charger.wake();
 
   const block = level.surfaces.find(
@@ -770,7 +770,7 @@ test('update() with a non-Vector3 leaves the enemy finite rather than NaN', asyn
 test('update() with a real position moves the enemy toward the player', async () => {
   const { level } = await buildLevel();
   // An AWAKE Charger — island B's. Island A's is dormant by design (#011).
-  const enemy = level.gateB.watch.find((e) => e.type === 'charger');
+  const enemy = level.gateB.watch.find((e) => e.config === ENEMY.charger);
   enemy.wake();     // dormant until the player enters island B
   const before = enemy.position.clone();
 
@@ -836,7 +836,7 @@ test('paint rules reach the enemy: blue means less traction, more speed, less br
 
 test('on grey a Charger keeps re-aiming at a sidestepping player', async () => {
   const { level } = await buildLevel();
-  const charger = level.gateB.watch.find((e) => e.type === 'charger');
+  const charger = level.gateB.watch.find((e) => e.config === ENEMY.charger);
   charger.wake();   // B's enemies are dormant until the player enters the arena
   const islandB = level.surfaces.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
@@ -886,7 +886,7 @@ test('on grey a Charger keeps re-aiming at a sidestepping player', async () => {
 test('the Charger charges — nothing plants it before it gets to you', async () => {
   const { level } = await buildLevel();
   // Island B's Charger, not island A's: A's is dormant by design (#011).
-  const charger = level.gateB.watch.find((e) => e.type === 'charger');
+  const charger = level.gateB.watch.find((e) => e.config === ENEMY.charger);
   charger.wake();   // B's enemies are dormant until the player enters the arena
 
   const islandB = level.surfaces.find((s) => s.isFloor
@@ -911,7 +911,7 @@ test('the Charger charges — nothing plants it before it gets to you', async ()
 
 test('on blue a Charger commits to its heading and slides past a sidestep', async () => {
   const { level } = await buildLevel();
-  const charger = level.gateB.watch.find((e) => e.type === 'charger');
+  const charger = level.gateB.watch.find((e) => e.config === ENEMY.charger);
   charger.wake();   // B's enemies are dormant until the player enters the arena
   const islandB = level.surfaces.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
@@ -959,7 +959,7 @@ test('on blue a Charger commits to its heading and slides past a sidestep', asyn
 test('the enemy reads the paint grid through the same API the player does', async () => {
   const { level } = await buildLevel();
   // Island B's Charger specifically: `level.enemies[0]` is island A's now (#011).
-  const charger = level.gateB.watch.find((e) => e.type === 'charger');
+  const charger = level.gateB.watch.find((e) => e.config === ENEMY.charger);
   charger.wake();   // B's enemies are dormant until the player enters the arena
   const islandB = charger._probe.floors.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
