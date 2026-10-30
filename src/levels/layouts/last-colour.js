@@ -22,7 +22,7 @@
 // AXES. x east, y up, z SOUTH. The player arrives in the south (+z) by the
 // Ascent's supply lift and walks north (−z) to the Siphon.
 // BOXES are [x0, x1, y0, y1, z0, z1], metres, axis-aligned.
-import { PAINT_GRID } from '../../config.js';
+import { PAINT_GRID, LAST_COLOUR as TUNING } from '../../config.js';
 
 /** Solid rock, steel and concrete. `top: true` means a walkable top. */
 const solids = [
@@ -236,26 +236,35 @@ const enemies = [
   { id: 'c-turret-2', type: 'turret', pos: [-10, 0, 15], room: 'R2', wave: 1, wake: 'always' },
   { id: 'c-charger', type: 'charger', pos: [0, 0, 30], room: 'R2', wave: 1, wake: 'enter:R2' },
   // Wave two — the Core: eight Drainers, two Chargers, the first Stalker (#98).
+  // Every Core Drainer is a wave Drainer (`tune`, config LAST_COLOUR.waveDrainer):
+  // it hunts across the room instead of feeding in its bay, so each wave comes at you.
   // Split across the west and east bays; the Stalker comes from the east alone.
   ...[[-28, -40], [-28, -37], [-28, -34], [-28, -31]].map(([x, z], i) => ({
-    id: `w2-drainer-w${i + 1}`, type: 'drainer', pos: [x, 0, z], room: 'R3', wave: 2, wake: 'enter:R3',
+    id: `w2-drainer-w${i + 1}`, type: 'drainer', pos: [x, 0, z], room: 'R3', wave: 2, wake: 'enter:R3', tune: TUNING.waveDrainer,
   })),
   ...[[28, -40], [28, -37], [28, -34], [28, -31]].map(([x, z], i) => ({
-    id: `w2-drainer-e${i + 1}`, type: 'drainer', pos: [x, 0, z], room: 'R3', wave: 2, wake: 'enter:R3',
+    id: `w2-drainer-e${i + 1}`, type: 'drainer', pos: [x, 0, z], room: 'R3', wave: 2, wake: 'enter:R3', tune: TUNING.waveDrainer,
   })),
   { id: 'w2-charger-w', type: 'charger', pos: [-30, 0, -36], room: 'R3', wave: 2, wake: 'enter:R3' },
   { id: 'w2-charger-e', type: 'charger', pos: [30, 0, -38], room: 'R3', wave: 2, wake: 'enter:R3' },
   { id: 'w2-stalker', type: 'stalker', pos: [30, 0, -33], room: 'R3', wave: 2, wake: 'enter:R3' },
+  // QA 30 Oct: every enemy type in the Core's waves. A Sprayer per bay in wave
+  // two (ranged pressure while you repaint), a Wall-crawler per bay in wave
+  // three (it climbs the balconies' green after you).
+  { id: 'w2-sprayer-w', type: 'sprayer', pos: [-30, 0, -33], room: 'R3', wave: 2, wake: 'enter:R3' },
+  { id: 'w2-sprayer-e', type: 'sprayer', pos: [30, 0, -39], room: 'R3', wave: 2, wake: 'enter:R3' },
   // Wave three — waiting, visible, at the back of the same bays; plus two
   // turrets on the north balcony that take the high ground's safety away.
   ...[[-33, -40], [-33, -36], [-33, -32]].map(([x, z], i) => ({
-    id: `w3-drainer-w${i + 1}`, type: 'drainer', pos: [x, 0, z], room: 'R3', wave: 3, wake: 'cleared:R3.2+8',
+    id: `w3-drainer-w${i + 1}`, type: 'drainer', pos: [x, 0, z], room: 'R3', wave: 3, wake: 'cleared:R3.2+8', tune: TUNING.waveDrainer,
   })),
   ...[[33, -40], [33, -36], [33, -32]].map(([x, z], i) => ({
-    id: `w3-drainer-e${i + 1}`, type: 'drainer', pos: [x, 0, z], room: 'R3', wave: 3, wake: 'cleared:R3.2+8',
+    id: `w3-drainer-e${i + 1}`, type: 'drainer', pos: [x, 0, z], room: 'R3', wave: 3, wake: 'cleared:R3.2+8', tune: TUNING.waveDrainer,
   })),
   { id: 'w3-charger-w', type: 'charger', pos: [-31, 0, -41], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
   { id: 'w3-charger-e', type: 'charger', pos: [31, 0, -31], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
+  { id: 'w3-crawler-w', type: 'wallCrawler', pos: [-30, 0, -37], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
+  { id: 'w3-crawler-e', type: 'wallCrawler', pos: [30, 0, -36], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
   { id: 'w3-turret-nw', type: 'turret', pos: [-23, 5, -59], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
   { id: 'w3-turret-ne', type: 'turret', pos: [23, 5, -59], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
   // Big Arm (#99, src/enemies/boss.js): the Core's fourth wave, out of the
@@ -265,8 +274,8 @@ const enemies = [
   // The two Drainers it calls in phase 2. They exist from load (the paint gun
   // takes its target list once), dormant and visible at the back of the bay;
   // `summon` is a rule nothing satisfies, so only Big Arm (or a hit) wakes them.
-  { id: 'ba-drainer-w', type: 'drainer', pos: [-3.5, 0, -72], room: 'R3', wave: 5, wake: 'summon' },
-  { id: 'ba-drainer-e', type: 'drainer', pos: [3.5, 0, -72], room: 'R3', wave: 5, wake: 'summon' },
+  { id: 'ba-drainer-w', type: 'drainer', pos: [-3.5, 0, -72], room: 'R3', wave: 5, wake: 'summon', tune: TUNING.waveDrainer },
+  { id: 'ba-drainer-e', type: 'drainer', pos: [3.5, 0, -72], room: 'R3', wave: 5, wake: 'summon', tune: TUNING.waveDrainer },
 ];
 
 /** Routes. The main route walks the floor; the flank takes the walkway. */
@@ -294,7 +303,8 @@ const rooms = [
     eye: { pos: [0, 1.5, 39], target: [0, 3, -8] },
     question: 'Can I fight without room to repaint?' },
   // dwell: the 8 s breath between waves two and three (decision 1).
-  { id: 'R3', name: 'The Core', act: 2, intensity: 9, fightSeconds: 180, dwellSeconds: 8,
+  // hunt: its woken waves never give up on you (layout-level.js) — QA 30 Oct.
+  { id: 'R3', name: 'The Core', act: 2, intensity: 9, fightSeconds: 180, dwellSeconds: 8, hunt: true,
     eye: { pos: [0, 1.5, -9.5], target: [0, 8, -36] },
     question: 'Can I hold ground and fight at the same time?' },
   // dwell: the 12 s warning while Big Arm's gate pulses (decision 1).
@@ -535,8 +545,17 @@ const dressing = {
   ],
 };
 
+/**
+ * The combo racks (combo-rack.js): the Corp's own containment placards, one each
+ * side of Big Arm's north bay, on the north wall over the balconies, facing the
+ * Core (+z). Two, because the Siphon (22 m tall, in front of the bay) hides
+ * anything centred over the gate from most of the floor. Their lamps light as
+ * each step of the combo lands on Big Arm (QA 30 Oct).
+ */
+const comboRacks = [-15, 15].map((x) => ({ at: [x, 8.5, -61.6], facing: 0, header: 'CONTAINMENT PROTOCOL: SUBJECT IGNORES DAMAGE' }));
+
 export const LAST_COLOUR = {
   id: 'last-colour', name: 'Last Colour', cells: PAINT_GRID.level3Cells, prepaint,
   solids, slabs: [], strips, kerbs: [], landmarks, gates, traps, props, targets, spill, enemies, routes, rooms, win, doc,
-  curves, dressing,
+  curves, dressing, comboRacks,
 };

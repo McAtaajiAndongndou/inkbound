@@ -202,6 +202,14 @@ export function spawnEnemies(level, specs, label = 'level') {
         // plan §4.2): the model changes, the stats and behaviour do not.
         model: spec.model ?? ENEMY[spec.type]?.model,
       });
+      // A layout may tune one placement (`tune`, e.g. LAST_COLOUR.waveDrainer):
+      // the type's numbers with a few overridden, never a new type (AGENTS rule
+      // 7). Applied AFTER construction: `Enemy` reads its type (and so its
+      // model) off the config's identity, and a copy would come out a Sprayer.
+      if (spec.tune) {
+        enemy.config = { ...enemy.config, ...spec.tune };
+        if (spec.tune.hp !== undefined) enemy.hp = spec.tune.hp;
+      }
       enemies.push(enemy);
       if (spec.sleeping) sleepers.push({ enemy, wakeOn: spec.wakeOn, wakeDelay: spec.wakeDelay ?? 0 });
     }

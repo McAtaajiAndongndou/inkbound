@@ -16,7 +16,7 @@
 //
 // AXES. x east, y up, z SOUTH; the player starts in the south and walks north.
 // BOXES are [x0, x1, y0, y1, z0, z1], metres, axis-aligned.
-import { PAINT_GRID, CAMERA } from '../../config.js';
+import { PAINT_GRID, CAMERA, PRIMER as TUNING } from '../../config.js';
 
 // Where the player starts (quality plan B4). The third-person camera sits
 // CAMERA.tpvDistance behind them, so the spawn keeps that much room, plus a
@@ -195,7 +195,13 @@ const prepaint = [
   { id: 'r8-red-pad', room: 'R8', colour: 'red', y: 8, rect: [5, 9, -68, -64], note: 'Free play: bounce onto the platform' },
 ];
 
-/** The gate that holds R7 shut until its Charger is gone. */
+/**
+ * The combo rack (combo-rack.js) on R7's east door wall, behind the dummy:
+ * the board faces the hall (+z), above the target board, lamps on top.
+ */
+const comboRack = { at: [8, 13.3, -49.4], facing: 0, header: 'BIG ARM DRILL: BULLETS DO NOTHING' };
+
+/** The gate that holds R7 shut until its Charger and the combo dummy are gone. */
 const gates = [
   { id: 'gate-r7', box: [-4, 4, 8, 18, -50.2, -49.8], opens: 'cleared:R7' },
 ];
@@ -211,6 +217,11 @@ const enemies = [
   // the pit, ~1 s from the door at a sprint). The Charger waits dormant and
   // visible meanwhile: time to read it and paint the ground it will cross.
   { id: 'r7-charger', type: 'charger', pos: [0, 8, -40], room: 'R7', wave: 1, wake: 'enter:R7+8' },
+  // Wave two (QA 30 Oct; quality plan §9.1, "the combo"): a chained Big Arm,
+  // woken once the Charger is down. One combo knocks it flat, and the gate waits
+  // for it, so nobody reaches Last Colour without having landed the combo once.
+  // Harmless (config PRIMER.comboDummy); its rack is on the wall behind it.
+  { id: 'r7-combo-dummy', type: 'bigArm', pos: [7, 8, -44], room: 'R7', wave: 2, wake: 'cleared:R7.1', tune: TUNING.comboDummy },
 ];
 
 const routes = {
@@ -297,5 +308,5 @@ const dressing = {
 export const PRIMER = {
   id: 'primer', name: 'The Primer', cells: PAINT_GRID.level0Cells,
   solids, slabs: [], strips, kerbs: [], landmarks: [], gates, traps, targets: [], prepaint, markings, lamps,
-  enemies, routes, rooms, win, doc, dressing,
+  enemies, routes, rooms, win, doc, dressing, comboRack,
 };

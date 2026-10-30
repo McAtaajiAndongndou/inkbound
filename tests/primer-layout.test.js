@@ -145,10 +145,10 @@ test('the low wall stops a walk and allows a hop', () => {
   assert.ok(h > CHEST && h < JUMP_APEX);
 });
 
-test('one Charger, in R7, and its gate opens when it is gone', () => {
-  assert.equal(L.enemies.length, 1);
-  assert.equal(L.enemies[0].type, 'charger');
-  assert.equal(L.enemies[0].room, 'R7');
+test('R7: a Charger, then the combo dummy, and its gate opens when both are gone', () => {
+  assert.equal(L.enemies.length, 2);
+  assert.deepEqual(L.enemies.map((e) => [e.type, e.room, e.wave]), [['charger', 'R7', 1], ['bigArm', 'R7', 2]]);
+  assert.equal(L.enemies[1].wake, 'cleared:R7.1', 'the dummy wakes once the Charger is down');
   assert.equal(L.gates[0].opens, 'cleared:R7');
 });
 

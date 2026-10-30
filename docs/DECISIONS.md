@@ -262,3 +262,18 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 ## 2026-10-30 — background music removed (Moses, as captain)
 
 - **The game has no background music.** #199's adaptive synthesised score (drone, colour arpeggio, combat drums, win/death stingers) and its Music slider are removed. Sound effects are unchanged. The code is in git history (`src/audio/music.js`, PR #199) if it comes back.
+
+## 2026-10-30 — the Core's waves come at you (Renda, QA)
+
+- **The Core's Drainers hunt across the room** (`LAST_COLOUR.waveDrainer`: `huntRadius` 70, `resumeRadius` 80, given per placement as the layout's `tune`). The Drainer type is unchanged (8 / 14), and so are the hangar's Drainers. **Why:** at 8 m, wave two's Drainers fed in their bays ~30 m out. Wave three waits on wave two, and Big Arm waits on wave three, so the fight stalled until the player walked into the corners. That is the QA note "they just stay in the corners".
+- **A `hunt` room's woken enemies never give up** (layout-level.js). An enemy that goes Dormant there is woken again, so it is provoked (#216). One Charger overshot past the 16 m sight radius and stalled the chain the same way.
+- **Every enemy type fights in the Core:** a Sprayer per bay in wave two, a Wall-crawler per bay in wave three (quality plan §4.3, "all the enemy types in this level"). No new types (AGENTS rule 7).
+- Tested: `tests/last-colour-waves.test.js`. A player who stands still at the Core's centre sees every wave come to them and Big Arm wake. It fails on the previous code.
+
+## 2026-10-30 — the Big Arm combo is taught (Renda, QA)
+
+- **Primer R7 has a second wave: a chained Big Arm** (`PRIMER.comboDummy`: one combo, never moves, slams, grabs or touches for damage). It wakes once the Charger is down, and R7's gate waits for it, so every player lands the combo once before Last Colour. Its windows are the real boss's. This is the quality plan's §9.1 R9 built as a wave in an existing room, not a new room.
+- **Combo racks** (`src/levels/combo-rack.js`, `COMBO_RACK`): a board reading FREEZE · PIN · KNOCK in blue, green and red, with three lamps that light as each step lands and go dark when the chain breaks. There is one in R7 and two in the Core, either side of Big Arm's bay, because the Siphon hides anything centred over the gate. This is the level's half of §4.3. The HUD bar and pips are still UI's.
+- **Three sergeant lines:** `primer-combo` (dummy wakes), `last-colour-big-arm` (Big Arm wakes) and `last-colour-siphon` (first plate opens). The wording is Renda's, added to `src/ui/comms-lines.js` with Moses's OK.
+- **A layout `tune` is applied after the enemy is built**, because `Enemy` reads its type and model off the config's identity, and a copied config came out as a Sprayer.
+- Tested: `tests/combo-teaching.test.js`.

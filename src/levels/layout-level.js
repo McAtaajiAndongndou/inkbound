@@ -79,11 +79,12 @@ export class LayoutLevel extends LevelBase {
     const live = this.layout.enemies.filter((e) => !e.planned);
     const specs = live.map((e) => ({
       type: e.type, x: e.pos[0], y: e.pos[1], z: e.pos[2],
-      sleeping: e.wake !== 'always', wakeOn: e.wake,
+      sleeping: e.wake !== 'always', wakeOn: e.wake, tune: e.tune,
     }));
     const { enemies } = kit.spawnEnemies(this, specs, this.constructor.name);
     this.enemies = enemies;
     this.roster = live.map((data, i) => ({ data, enemy: enemies[i] })).filter((r) => r.enemy);
+    this._huntRooms = new Set((this.layout.rooms ?? []).filter((r) => r.hunt).map((r) => r.id));
   }
 
   /**
@@ -162,6 +163,14 @@ export class LayoutLevel extends LevelBase {
     for (let i = 0; i < this.roster.length; i++) {
       const { data, enemy } = this.roster[i];
       if (enemy.sleeping && this._rule(data.wake, player) === 'yes') enemy.wake();
+      // A `hunt` room's waves never give up on you (Last Colour's Core, QA 30
+      // Oct): an enemy that loses you — a Charger that overshoots past the sight
+      // radius — drops to Dormant and stands still, and the next wave waits on
+      // it forever. Woken again, it is provoked (#216) and comes back.
+      else if (!enemy.sleeping && enemy.alive && enemy.awareness === 'dormant' && this._huntRooms.has(data.room)) {
+        enemy.sleeping = true;
+        enemy.wake();
+      }
     }
     for (let i = 0; i < this.enemies.length; i++) {
       this.enemies[i].update(dt, player.position);
