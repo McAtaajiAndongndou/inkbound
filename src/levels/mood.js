@@ -24,6 +24,11 @@ import * as THREE from 'three';
 import { SKY } from '../config.js';
 import { SkyProbe } from '../shaders/sky-probe.js';
 
+// Same sun as main.js's DirectionalLight (18, 30, 12), so custom-shaded
+// surfaces are lit from the side the shadows say, and a sun drawn in the sky
+// stands on that side too. A layout may give its own `sunDir` (#125).
+export const DEFAULT_SUN = [18, 30, 12];
+
 function smoothstep(edge0, edge1, x) {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
@@ -33,8 +38,10 @@ const skyVertex = /* glsl */ `
   attribute float aBand;   // 0 at the bottom pole, 1 at the top; the horizon is 0.5
   varying float vBand;
   varying float vAzimuth;  // round the horizon, -PI..PI (the hills' x)
+  varying vec3 vDir;       // the direction from the centre (the sun's disc and glow)
   void main() {
     vBand = aBand;
+    vDir = position;
     vAzimuth = atan(position.z, position.x);
     vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     // #224: ON the far plane (depth 1), so the camera's far clip can never cut
@@ -57,6 +64,10 @@ const skyVertex = /* glsl */ `
 // Below a crest the sky is mixed toward the void: the far layer a little, the
 // near layer more. They use the band uniforms, so they warm with the sky.
 // uHills.x = 0 turns them off (every level without `hills`).
+// An optional MIDDLE layer (`midShade` > 0) and a pull toward the zenith per
+// layer (`farTint` / `midTint` / `nearTint`) give layered ridges, each farther
+// one lighter and bluer: atmospheric perspective (the Ascent, Renda 30 Oct).
+// Without them a mood draws exactly the two plain layers above.
 const skyFragment = /* glsl */ `
   uniform vec3 uHorizon;
   uniform vec3 uZenith;
@@ -64,8 +75,15 @@ const skyFragment = /* glsl */ `
   uniform vec4 uHills;      // x on (0/1), y mean crest height, z swell, w softness
   uniform vec3 uHillShade;  // x far shade, y near shade, z near layer's drop
   uniform float uHillGround; // the band where the land under the hills reaches the void
+  uniform vec2 uHillMid;    // x the middle layer's shade (0 = no middle layer), y its drop
+  uniform vec3 uHillTint;   // far, middle, near: how far each layer is pulled toward the zenith
+  uniform float uHillJag;   // 0 rolling hills (Outskirts) .. 1 jagged mountain peaks (the Ascent)
+  uniform vec4 uSun;        // xyz the direction to the sun, w on (0/1)
+  uniform vec4 uSunLook;    // x cos(disc radius), y glow tightness, z glow strength, w how much is showing
+  uniform vec3 uSunColour;
   varying float vBand;
   varying float vAzimuth;
+  varying vec3 vDir;
   // Ridged: 1 - |sin| turns each wave into a peak, so crests read as hilltops
   // rather than a rolling gradient. Whole-number frequencies close the loop.
   float ridge(float x) { return 1.0 - abs(sin(x)) * 2.0; }
@@ -75,20 +93,51 @@ const skyFragment = /* glsl */ `
          + ridge(a * 17.0 + seed * 4.1) * 0.2
          + sin(a * 41.0 + seed * 1.3) * 0.1;
   }
+  // A layer's colour: its shade toward the void, then pulled toward the sky's blue.
+  vec3 hillColour(float shade, float tint) {
+    return mix(mix(uHorizon, uVoid, shade), uZenith, tint);
+  }
+  // Mountains, not hills (Renda: the Ascent's must not look like Outskirts'):
+  // triangle waves, so flanks are straight rock faces with a point at the top
+  // and a notch at the bottom (ridge()'s curved flanks read as scallops). The
+  // big peaks dominate; the fine terms break the faces into crags.
+  // Whole numbers again: no seam.
+  float tri(float x) { return asin(sin(x)) * 0.63662; }  // 2/PI: -1..1
+  float crag(float a, float seed) {
+    return tri(a * 5.0 + seed) * 0.55
+         + tri(a * 13.0 + seed * 2.3) * 0.3
+         + tri(a * 31.0 + seed * 4.1) * 0.15;
+  }
+  float line(float a, float seed) { return mix(crest(a, seed), crag(a, seed), uHillJag); }
   void main() {
     vec3 c = mix(uHorizon, uZenith, smoothstep(0.5, 0.8, vBand));
     c = mix(c, uVoid, 1.0 - smoothstep(0.3, 0.5, vBand));
+    // THE SUN (a mood's optional \`sun\`): a disc and a glow, drawn BEFORE the
+    // hills so a low sun can sit behind a peak. uSunLook.w follows the sky, so
+    // a drained sky smothers it and painting lets it through.
+    if (uSun.w > 0.5) {
+      float d = dot(normalize(vDir), uSun.xyz);
+      float glow = pow(max(d, 0.0), uSunLook.y) * uSunLook.z;
+      float disc = smoothstep(uSunLook.x - 0.0003, uSunLook.x + 0.0001, d);
+      c = mix(c, uSunColour, clamp(glow, 0.0, 1.0) * uSunLook.w);
+      c = mix(c, uSunColour, disc * uSunLook.w);
+    }
     if (uHills.x > 0.5) {
-      float far = 0.5 + uHills.y + uHills.z * crest(vAzimuth, 1.7);
-      float near = 0.5 + uHills.y - uHillShade.z + uHills.z * crest(vAzimuth, 5.3);
+      float far = 0.5 + uHills.y + uHills.z * line(vAzimuth, 1.7);
+      float near = 0.5 + uHills.y - uHillShade.z + uHills.z * line(vAzimuth, 5.3);
       float inFar = 1.0 - smoothstep(far - uHills.w, far + uHills.w, vBand);
       float inNear = 1.0 - smoothstep(near - uHills.w, near + uHills.w, vBand);
-      c = mix(c, mix(uHorizon, uVoid, uHillShade.x), inFar);
+      c = mix(c, hillColour(uHillShade.x, uHillTint.x), inFar);
+      if (uHillMid.x > 0.0) {
+        float mid = 0.5 + uHills.y - uHillMid.y + uHills.z * line(vAzimuth, 3.1);
+        float inMid = 1.0 - smoothstep(mid - uHills.w, mid + uHills.w, vBand);
+        c = mix(c, hillColour(uHillMid.x, uHillTint.y), inMid);
+      }
       // Under the near crest is land, all the way down: the near layer's colour
       // at the horizon, darkening to the void only toward the bottom, so the
       // hills stand on ground instead of floating over a pale strip and a pit.
       float down = 1.0 - smoothstep(uHillGround, near, vBand);
-      vec3 land = mix(mix(uHorizon, uVoid, uHillShade.y), uVoid, down * down);
+      vec3 land = mix(hillColour(uHillShade.y, uHillTint.z), uVoid, down * down);
       c = mix(c, land, inNear);
     }
     gl_FragColor = vec4(c, 1.0);
@@ -97,12 +146,25 @@ const skyFragment = /* glsl */ `
 `;
 
 /**
+ * Where a mood's sun is drawn: on the same side of the sky as the light
+ * (`sunFrom`'s compass bearing), so lit faces still face it, but at the mood's
+ * own `elevation` in degrees. A low sun for a dawn is the usual skybox cheat:
+ * the shadows keep the light's real height. No `sun` gives w = 0 (off).
+ */
+export function sunDirection(sun, sunFrom = DEFAULT_SUN) {
+  if (!sun) return new THREE.Vector4(0, 0, 0, 0);
+  const bearing = Math.atan2(sunFrom[2], sunFrom[0]);
+  const up = THREE.MathUtils.degToRad(sun.elevation);
+  return new THREE.Vector4(Math.cos(up) * Math.cos(bearing), Math.sin(up), Math.cos(up) * Math.sin(bearing), 1);
+}
+
+/**
  * A three-band sky dome: a small ShaderMaterial whose band colours are the
  * uniforms uHorizon / uZenith / uVoid (#197), starting on `colours` (the
  * mood's own palette by default). `fog: false` is load-bearing (see
  * Outskirts): at radius 200 the whole dome would be fogged flat.
  */
-export function skyDome(mood, radius = 200, colours = mood) {
+export function skyDome(mood, radius = 200, colours = mood, sunFrom = DEFAULT_SUN) {
   const geo = new THREE.SphereGeometry(radius, 32, 20);
   const pos = geo.attributes.position;
   const band = new Float32Array(pos.count);
@@ -122,6 +184,16 @@ export function skyDome(mood, radius = 200, colours = mood) {
         ? new THREE.Vector3(mood.hills.farShade, mood.hills.nearShade, mood.hills.nearDrop)
         : new THREE.Vector3() },
       uHillGround: { value: mood.hills ? mood.hills.groundFloor : 0 },
+      uHillMid: { value: new THREE.Vector2(mood.hills?.midShade ?? 0, mood.hills?.midDrop ?? 0) },
+      uHillTint: { value: new THREE.Vector3(
+        mood.hills?.farTint ?? 0, mood.hills?.midTint ?? 0, mood.hills?.nearTint ?? 0) },
+      uHillJag: { value: mood.hills?.jag ?? 0 },
+      uSun: { value: sunDirection(mood.sun, sunFrom) },
+      uSunLook: { value: new THREE.Vector4(
+        Math.cos(THREE.MathUtils.degToRad(mood.sun?.size ?? 0)),
+        mood.sun?.glowTight ?? 1, mood.sun?.glow ?? 0,
+        mood.drained ? (mood.sun?.drained ?? 1) : 1) },
+      uSunColour: { value: new THREE.Color(mood.sun?.colour ?? 0xffffff) },
     },
     side: THREE.BackSide,
     fog: false,
@@ -165,6 +237,7 @@ export class DynamicSky {
       zenith: new THREE.Color(mood.zenith),
       void: new THREE.Color(mood.void),
     };
+    this.sunDrained = mood.sun?.drained ?? 1;   // how much sun shows through a drained sky
     this.coverage = 0;
     this.target = 0;
     this.k = 0;
@@ -221,6 +294,7 @@ export class DynamicSky {
     u.uHorizon.value.copy(this.drained.horizon).lerp(this.restored.horizon, k);
     u.uZenith.value.copy(this.drained.zenith).lerp(this.restored.zenith, k);
     u.uVoid.value.copy(this.drained.void).lerp(this.restored.void, k);
+    if (u.uSunLook) u.uSunLook.value.w = this.sunDrained + (1 - this.sunDrained) * k;
     if (this.fog) this.fog.color.copy(u.uHorizon.value);
     if (this.probe && Math.abs(k - this._refreshedAt) > SKY.refreshStep) {
       this._refreshedAt = k;
@@ -236,7 +310,7 @@ export class DynamicSky {
 export function buildSky(level, mood) {
   // A mood with a `drained` palette starts drained; the driver warms it (#197).
   const start = mood.drained ?? mood;
-  const dome = skyDome(mood, mood.skyRadius, start);
+  const dome = skyDome(mood, mood.skyRadius, start, level.layout?.sunDir ?? DEFAULT_SUN);
   level.atmosphere.add(dome);
   level.game.scene.fog = new THREE.Fog(start.horizon, mood.fogNear, mood.fogFar);
   // #194: the sky that wet paint mirrors, photographed once now the dome exists.

@@ -517,7 +517,46 @@ export const ASCENT = {
     fogFar:  170,        // the far side of the mountain is haze, the tower is not
     fillColour: 0x9fb4d6,
     fillIntensity: 0.6,
-    skyRadius: 450,      // past the base (~245 m), so the dome is behind it
+    // Past the base (its farthest corner is ~308 m out), so the dome is behind
+    // it, but INSIDE the game camera's reach (camera-rig.js far: 400) from
+    // anywhere on the climb (<= 76 m out). At 450 the dome was cut off past
+    // 400 m and the void showed through as a black disc (Renda: "the black sun").
+    skyRadius: 310,
+    // Far ridges drawn into the sky dome (quality plan §8.4 item 6; Renda: the
+    // grey 3D peaks "are meant to be mountains … the execution sucks"). The
+    // Outskirts hills, made mountains: taller and three layers deep, each
+    // farther one lighter and bluer (pulled toward the zenith), so distance
+    // reads from colour alone. Land fills under the near crest, as in Outskirts.
+    hills: {
+      // Renda (30 Oct): "I don't want them to be too similar to the hills in L1".
+      // Outskirts rolls; the Ascent is jagged: pointed peaks, sharp notches,
+      // taller and with more rise and fall between them.
+      jag: 1,            // 0 = Outskirts' rolling crest, 1 = all-ridged mountain peaks
+      height: 0.062,     // mean crest, band units above the horizon (0.5); ~7 degrees
+      swell: 0.036,      // crests rise and dip this much: peaks up to ~11 degrees
+      farShade: 0.1,     // the far range: barely off the horizon colour
+      midShade: 0.28,    // the middle range
+      nearShade: 0.5,    // the near range: darkest, it reads as closest
+      midDrop: 0.011,    // the middle crests sit this much lower than the far ones
+      nearDrop: 0.022,   // and the near ones lower again (height - swell - nearDrop > 0: no gaps)
+      farTint: 0.4,      // share of the zenith's blue in the far range
+      midTint: 0.22,
+      nearTint: 0.06,
+      soft: 0.0015,
+      groundFloor: 0.1,  // the land under the near crest darkens to the void only by here
+    },
+    // The dawn sun (Renda, 30 Oct: "do something about the sun"): there was no
+    // sun to see. Drawn low, on the same side as the scene light (so lit faces
+    // still face it), just over the ridges so a peak can hide part of it. The
+    // Corp's grey smothers it; painting the climb lets it through (#197).
+    sun: {
+      elevation: 8,      // degrees above the horizon: among the peaks (they reach ~11)
+      size: 2.4,         // degrees, the disc's radius: big and soft, not a pin-prick
+      glow: 0.55,        // the halo's strength at the disc's edge
+      glowTight: 260,    // higher = a tighter halo (a power of the angle's cosine)
+      colour: 0xffe2bf,  // pale warm dawn: the one warm thing in a cold sky
+      drained: 0.25,     // share of the sun showing through a drained sky
+    },
   },
   // The collapsing catwalk (#102): "can you cross before it drops?"
   catwalk: {
@@ -599,9 +638,6 @@ export const DRESSING = {
     stack:    { colour: SILHOUETTE, shape: 'round', look: 'silhouette', hazed: true },
     window:   { colour: 0xaaa4c2, shape: 'box', look: 'silhouette' },        // Corp lights: GATE.field's violet, lifted and greyed (the grey-only rule); never hazed
     smoke:    { colour: 0x8d9094, shape: 'lump', look: 'haze' },
-    // The Ascent's distant range: a shade lighter than its base (ASCENT.base),
-    // so the nearer base still reads in front of the farther mountains.
-    range:    { colour: 0x4a4f57, shape: 'lump', look: 'silhouette' },
     strata:   { colour: 0x5c5a55, shape: 'box', look: 'toon' },   // rock bands: a warm stone, so they read as rock, not as slots
     // Story clusters
     crate:    { colour: LAST_COLOUR.props.crate, shape: 'box', look: 'toon' },

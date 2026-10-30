@@ -332,8 +332,9 @@ const curves = {
  *           off the fight floors: the trailhead's rim (outside the walking
  *           line and wave 2's Crawlers), the scree under the catwalk and the
  *           catch shelf under the ledge. [x, y, z, scale]
- *   range   distant peaks behind the summit and to the east, unfogged, a
- *           shade lighter than the base so the base still reads in front
+ *   (no range) the distant mountains are drawn into the sky dome
+ *           (ASCENT.mood.hills): the 3D peaks read as grey lumps (Renda,
+ *           30 Oct: "the execution sucks"), and were removed
  *   strata  rock bands set into the big faces, 3 m+ over the floor at their
  *           foot and clear of the climb strips
  */
@@ -429,12 +430,6 @@ const dressing = {
   },
   items: [
     ...clusters,
-    // Ridges of overlapping peaks, taller than wide, inside the sky dome (450 m).
-    // A lump overshoots its box by about a quarter, so the tops are ~100-150 m.
-    ...[[-50, -390, 70, 80], [30, -405, 90, 110], [105, -375, 60, 70], [170, -340, 50, 55]]
-      .map(([x, z, w, top]) => ({ kind: 'range', box: [x - w / 2, x + w / 2, -60, top, z - w / 2, z + w / 2] })),
-    ...[[330, -150, 70, 95], [355, -60, 60, 75], [340, 30, 50, 60]]
-      .map(([x, z, w, top]) => ({ kind: 'range', box: [x - w / 2, x + w / 2, -60, top, z - w / 2, z + w / 2] })),
     // Terrace One's south face over the trailhead (strips at |x| < 4).
     band('+z', 48, -17, -6, 4.2), band('+z', 48, 6, 17, 4.6), band('+z', 48, -15, -7, 8.8, 0.7), band('+z', 48, 7, 16, 9.2, 0.7),
     // The core's south face over Terrace One.
