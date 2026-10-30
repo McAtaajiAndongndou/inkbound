@@ -95,6 +95,8 @@ Three cross-lane gaps found while blocking out the Ascent (`docs/levels/02-the-a
 | 062 | #157 | Mantle | core | COULD | M | — (coordinates with #122) |
 | 065 | — (not published) | Mantle probes the wrong side of the wall (regression from #157) | core | MUST | S | — |
 | 066 | — (not published) | Enemy pellets: ranged shots fly, can be dodged, stop at walls | shaders (enemies) | MUST | M | — |
+| 067 | — (not published) | Enemies are solid to the player | core | MUST | S | — (pairs with 068) |
+| 068 | — (not published) | Enemies push each other apart | shaders (enemies) | SHOULD | S | 067 (config move) |
 
 **#155 is the one that matters most:** until it lands, every level gets Outskirts' 100-ink tank, so the Ascent's rationing — its whole identity — is not in the game. One line in `main.js`.
 
