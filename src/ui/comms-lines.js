@@ -11,6 +11,8 @@
 export const COMMS_LINES = {
   // The Primer, R2: the first paintable wall.
   'primer-splat': { who: 'Sergeant', text: "That's colour. It changes what you can do, not just what you see." },
+  // The Primer, R2's pool (polish audit): the refill verb, which no room taught.
+  'primer-submerge': { who: 'Sergeant', text: "That's your ammo too. Hold Shift to sink into it and refill fast." },
   // The Primer, on climbing into R6: R7's Charger ahead, still asleep. Asked a
   // room early, because walking into R7 wakes it and a fight clears the bar.
   'primer-theirs': { who: 'Sergeant', text: "One of theirs. It won't stop. Make the ground stop it instead." },

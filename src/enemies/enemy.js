@@ -2,11 +2,13 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_NAV, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, STALKER } from "../config.js";
+import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_ATTACK, ENEMY_BODY, ENEMY_NAV, ENEMY_SHOT, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, STALKER } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
+import { EnemyShots } from "./enemy-shots.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
 import { createFrostMaterial } from "../shaders/frost/frost-material.js";
+import { DeathBurst } from "./death-burst.js";
 
 // Paint ids are indices into the grid (see PAINT_IDS in config.js).
 const ID_TO_NAME = ["grey", "blue", "red", "green"];
@@ -22,9 +24,8 @@ const TINT_FADE = 1.0;
 // DANGER in config.js) — not a paint colour, so it can never be mistaken for
 // a paint hit, and the same amber a trap or incoming fire would use.
 
-// Body size for wall collision. Enemies have no collider of their own — the probe
-// is a ray, not a capsule — so these are the two numbers the wall test needs.
-const ENEMY_BODY = { radius: 0.4, chest: 0.9 };
+// Body size (radius, chest height) is ENEMY_BODY in config.js since #186/#187:
+// the player and the other enemies collide with the same body.
 
 // The four foot probes used before committing to a fall. A centre-only probe
 // makes an enemy step off a ledge the moment its CENTRE passes the lip, even
@@ -466,7 +467,7 @@ export class Enemy {
     this._burstTimer = 0;
     this._reloadTimer = 0;
     this._telegraphColour = new THREE.Color(DANGER.amber);
-    this.onAttack = null;                  // fired when a windup completes: (enemy) => void
+    this.onAttack = null;                  // the attack hit the player: (enemy) => void. Melee: when the windup completes; ranged: when a pellet touches (#185)
     // #129 killfeed: fired once from `_die`. `cause` is reused — read it, do not keep it.
     //   colour  'blue' | 'red' | 'green' | null (nothing coloured did it)
     //   effect  what the colour DID: 'knockback' | 'pin' | 'slip' | 'shatter',
@@ -532,6 +533,14 @@ export class Enemy {
     // level's root, so an enemy can find them without being handed them — but a
     // level may pass its own list, and a test that wants one wall passes one.
     this._blockers = sightBlockers(blockers, parent);
+    // Attack tokens (polish audit, Enemies 2): ONE pool per level, kept on its
+    // root, so a ranged enemy must hold a token to wind up and at most
+    // ENEMY_ATTACK.tokens shoot at once. Doom (2016) and Halo do this: a crowd
+    // is dangerous without five shots landing on one frame.
+    const store = parent?.userData ?? {};
+    this._tokens = store.attackTokens ??= new Set();
+    this._lastPlayer = null;   // where the player was last frame: the telegraph's falloff
+    this._burst = null;        // the death burst, while it plays
     this._raycaster = new THREE.Raycaster();
     this._eye = new THREE.Vector3();
     this._look = new THREE.Vector3();
@@ -547,7 +556,19 @@ export class Enemy {
     this._surfaceMeshes = (surfaces ?? floors ?? []).map((s) => s.mesh).filter(Boolean);
     this._muzzle = new THREE.Vector3();
     this._aim = new THREE.Vector3();
-    this._shot = new THREE.Vector3();
+
+    // Pellets (#185). An enemy with a `shotSpeed` is ranged: its shot is a
+    // pellet from the level's shared pool (enemy-shots.js), stopped by the first
+    // of these meshes it reaches — the surfaces it can grey AND the upright
+    // blockers its sight line stops at, so cover that hides you also stops the
+    // shot. Melee enemies never touch the pool.
+    this._shots = null;
+    this._shotMeshes = [];
+    if (config.shotSpeed > 0) {
+      this._shotMeshes = [...new Set([...this._surfaceMeshes, ...this._blockers])];
+      this._shots = EnemyShots.for(parent);
+      this._shots.register(this);
+    }
 
     // Climbing (#115). `config.climbsGreen` shipped as a flag with nothing behind
     // it; this is the state that reads it. It is read off the PAINT every frame
@@ -770,6 +791,10 @@ export class Enemy {
 
   /** Per-frame entry point: logic first, then animation/gait. */
   update(dt, playerPos) {
+    // The level's pellets move once per frame, on whichever registered enemy
+    // holds the pool's clock — ahead of every early return, so a dead or
+    // sleeping clock still moves the shots already in the air (#185).
+    this._shots?.tick(this, dt, playerPos);
     // Death before everything, including the sleeping early-return: a corpse
     // owes the sink and the disposal whether or not it died asleep (#123).
     if (!this.alive) {
@@ -889,6 +914,55 @@ export class Enemy {
   /** True between letting go of a face and touching floor again. */
   get falling() {
     return this._falling;
+  }
+
+  /** Horizontal radius of its body (#186, #187): Big Arm is bigger. */
+  get bodyRadius() {
+    return this.config.bodyRadius ?? ENEMY_BODY.radius;
+  }
+
+  /**
+   * True when another body cannot push it (#187): frozen (a block of ice),
+   * pinned (rooted), sleeping (a guard holds its post), and Big Arm (a boss
+   * is not jostled). The other enemy of the pair takes the whole overlap.
+   */
+  get immovable() {
+    return this.sleeping === true
+      || this._frozenTimer > 0
+      || this._pinnedTimer > 0
+      || this.type === "bigArm";
+  }
+
+  /**
+   * Be pushed by (dx, dz) by another body (#187). The push obeys the same
+   * rules as a step: refused into a wall panel, off a floor or down a drop,
+   * and retried one axis at a time as the chase does. Returns false if it was
+   * dropped entirely. Separation must never shove an enemy through cover or
+   * off its island — that is the rule that made cover real.
+   */
+  nudge(dx, dz) {
+    const x = this.position.x + dx;
+    const z = this.position.z + dz;
+    let ground = this._stepGround(x, z);
+    if (ground) {
+      this.position.x = x;
+      this.position.z = z;
+      this.position.y = ground.y;
+      return true;
+    }
+    ground = Math.abs(dx) > 1e-6 ? this._stepGround(x, this.position.z) : null;
+    if (ground) {
+      this.position.x = x;
+      this.position.y = ground.y;
+      return true;
+    }
+    ground = Math.abs(dz) > 1e-6 ? this._stepGround(this.position.x, z) : null;
+    if (ground) {
+      this.position.z = z;
+      this.position.y = ground.y;
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -1892,6 +1966,7 @@ export class Enemy {
     }
 
     this.hp -= damage;
+    if (isCriticalHit) audio.play("shatter");   // the freeze-shatter crit, the best combo
 
     if (!isTurret && !isCriticalHit && !isFrozen){
       if (colourId === PAINT_IDS.blue){
@@ -1904,6 +1979,7 @@ export class Enemy {
         }
 
         if (this._blueHitCount >= BLUE_FREEZE.hitsToFreeze){
+          audio.play("freeze");   // polish audit P1-5: the combo is heard
           this._frozenTimer = BLUE_FREEZE.critWindow;
           this._frostShell.material.uniforms.uOpacity.value = BLUE_FREEZE.shellOpacity;
           this._frostShell.visible = true;
@@ -1914,6 +1990,7 @@ export class Enemy {
           this._pinnedTimer = 0;
 
           this._windupTimer = 0;
+          this._releaseToken();
           this.mesh.scale.setScalar(1);
           this._vel.set(0,0,0);
           this._knockback.set(0,0,0);
@@ -1941,6 +2018,7 @@ export class Enemy {
 
         this._knockback.normalize().multiplyScalar(6);
       } else if (colourId === PAINT_IDS.green){
+        if (this._pinnedTimer <= 0) audio.play("pin");   // the clamp, once per pin
         this._pinnedTimer = 1.5;
         this._vel.set(0,0,0);
       }
@@ -2021,6 +2099,13 @@ export class Enemy {
     // update(), which the level runs for every enemy, alive or not.
     this._deathTimer = GAIT.deathTime;
     this._deathY = this.position.y;
+    this._releaseToken();
+    // Polish audit P1-4: the colour given back. A paint kill bursts into drops
+    // of the killing colour (main.js paints where they land). A trap kill is
+    // colourless and gets none.
+    if (colour && PAINT[colour] && colour !== "grey" && this.mesh.parent) {
+      this._burst = new DeathBurst(this.mesh.parent, this.position, PAINT[colour].hex);
+    }
 
     this._cause.colour = colour;
     this._cause.effect = effect;
@@ -2041,6 +2126,7 @@ export class Enemy {
    * writes to objects that already exist.
    */
   _sinkDeath(dt) {
+    this._burst?.update(dt);
     if (this._deathTimer <= 0) return;
     this._deathTimer -= dt;
 
@@ -2100,6 +2186,7 @@ export class Enemy {
     this._stunTimer = Math.max(this._stunTimer, seconds);
     this._stunTotal = this._stunTimer;
     this._windupTimer = 0;
+    this._releaseToken();   // a cancelled attack hands its token back
     this.mesh.scale.setScalar(1);
     this._vel.set(0, 0, 0);
     return true;
@@ -2290,15 +2377,59 @@ export class Enemy {
     // START anything new. The burst's remaining shots are not windups; they are
     // already committed, and the reload is time it does not have.
     if (this._burstLeft > 0 || this._reloadTimer > 0) return false;
+    // A ranged enemy needs a token, and waits (still aiming, still visible)
+    // while two others hold theirs. Melee (a reach under meleeReach, or a
+    // lunge) never queues: it is already limited by having to reach you.
+    if (this._usesToken && !this._takeToken()) return false;
     this._windupTotal = this.config.windup ?? DEFAULT_WINDUP;
     this._windupTimer = this._windupTotal;
     this._vel.set(0, 0, 0);          // plant: the tell has to read
-    audio.play("telegraph");
+    // The whine is heard by distance (polish audit, Enemies 3): a wave of eight
+    // winding up together was a wall of sound. Silent past `far`.
+    const gain = this._telegraphGain();
+    if (gain > 0) audio.play("telegraph", { gain });
     return true;
+  }
+
+  /** True for a ranged attacker: it shoots from range rather than reaching you. */
+  get _usesToken() {
+    const range = this.config.attackRange ?? 0;
+    return range > ENEMY_ATTACK.meleeReach && !this.config.lunges;
+  }
+
+  _takeToken() {
+    if (this._tokens.has(this)) return true;
+    if (this._tokens.size >= ENEMY_ATTACK.tokens) return false;
+    this._tokens.add(this);
+    return true;
+  }
+
+  _releaseToken() {
+    this._tokens.delete(this);
+  }
+
+  /** Does this enemy hold an attack token right now? */
+  get holdsToken() {
+    return this._tokens.has(this);
+  }
+
+  /** 1 inside `near` of the player, 0 past `far`, linear between; 1 if unknown. */
+  _telegraphGain() {
+    const p = this._lastPlayer;
+    if (!p) return 1;
+    const { near, far } = ENEMY_ATTACK.telegraphHearing;
+    const d = Math.hypot(p.x - this.position.x, p.y - this.position.y, p.z - this.position.z);
+    if (d <= near) return 1;
+    if (d >= far) return 0;
+    return 1 - (d - near) / (far - near);
   }
 
   _updateAttack(dt, playerPos) {
     if (this._attackCooldown > 0) this._attackCooldown -= dt;
+    if (playerPos && Number.isFinite(playerPos.x)) (this._lastPlayer ??= new THREE.Vector3()).copy(playerPos);
+    // The attack is over (shot, burst done) or was cancelled (a freeze, a stun):
+    // hand the token back. One catch-all, so no cancel path can leak a token.
+    if (this._windupTimer <= 0 && this._burstLeft <= 0) this._releaseToken();
 
     // The reload (#118) is not a state awareness can cancel: it is the enemy's
     // gun being empty, and it counts down whether or not it can still see you.
@@ -2381,19 +2512,26 @@ export class Enemy {
 
   /**
    * One shot of an attack (#118). Extracted from the windup-complete branch so
-   * the first shot of a burst and the ones after it cannot drift apart: the
-   * grey conversion, the lunge and the `onAttack` hook ARE the shot, and a
-   * second copy of these three lines is where they eventually would.
+   * the first shot of a burst and the ones after it cannot drift apart.
    *
-   * The shot has landed. Converting the ground is the enemy's own business, so
-   * it happens before `onAttack` — a listener that damages the player, or that
-   * is not wired up at all (which is the state today), cannot switch the
-   * territory half of the attack off (#107). A lunge is the attack (#120): it
-   * starts HERE, on the same beat, and a level that never wires `onAttack`
-   * must still get the movement.
+   * Ranged (#185): the shot is a pellet from the level's pool. Its grey and its
+   * `onAttack` happen where and if it lands — see enemy-shots.js.
+   *
+   * Melee: the attack has landed. A lunge is the attack (#120): it starts HERE,
+   * on the same beat, and a level that never wires `onAttack` must still get
+   * the movement.
    */
   _fireShot(playerPos) {
-    this._greyImpact(playerPos);
+    // #185 — a ranged enemy FIRES: the pellet greys where it lands and calls
+    // `onAttack` only if it touches the player. Aimed at the chest where the
+    // player stands NOW; nothing leads, because moving is how you dodge.
+    if (this._shots) {
+      if (!playerPos || !Number.isFinite(playerPos.x) || !Number.isFinite(playerPos.z)) return;
+      this._muzzle.set(this.position.x, this.position.y + GREY_IMPACT.muzzleHeight, this.position.z);
+      this._aim.set(playerPos.x, playerPos.y + ENEMY_SHOT.aimHeight, playerPos.z);
+      this._shots.fire(this, this._muzzle, this._aim, this.config.shotSpeed);
+      return;
+    }
     if (this.config.lunges) this._commitLunge(playerPos);
     this.onAttack?.(this);
   }
@@ -2407,59 +2545,27 @@ export class Enemy {
   /**
    * Turn the ground grey where an attack LANDS (#107).
    *
-   * WHERE IT LANDS, not where the enemy stands. The aim point is the ground
-   * under the player rather than their chest, because an enemy shooting at a
-   * horizon paints nothing and the design's manual check is "ground near the
-   * impacts should go grey" while you stand on the paint.
-   *
-   * The FIRST surface the ray reaches is the one that greys, and that single
-   * rule IS the occlusion rule: a wall, a raised deck or an unpaintable gate in
-   * the way takes the hit and nothing behind it is touched. There is no second
-   * "is this actually visible" test that could disagree with the first.
+   * Since #185 the landing is a pellet's: `enemy-shots.js` finds the first
+   * surface along its flight (or the floor under the player it hit) and hands
+   * the point here. That "first surface wins" rule IS the occlusion rule: a
+   * wall, a raised deck or an unpaintable gate in the way takes the hit and
+   * nothing behind it is touched.
    *
    * Only enemies that declare `config.greyRadius` do this — the Sprayer today.
    * The Drainer's grey is continuous and comes from eating (#80), and turrets
    * deliberately leave the ground alone, so neither of them comes through here.
    *
-   * Nothing is allocated per attack: the raycaster, the three vectors and the
-   * intersection array are all built once in the constructor.
-   *
-   * @param {THREE.Vector3} playerPos feet of the player, as passed to update()
+   * @param {THREE.Vector3} point     world point of the impact
+   * @param {PaintSurface} [surface]  the surface it landed on; a blocker that is
+   *                                  not a paint surface eats the shot
    * @returns {boolean} true if a surface took the conversion
    */
-  _greyImpact(playerPos) {
+  _greyImpact(point, surface) {
     const radius = this.config.greyRadius;
-    if (!radius) return false;
-    if (this._surfaceMeshes.length === 0) return false;
-    if (!playerPos || !Number.isFinite(playerPos.x) || !Number.isFinite(playerPos.z)) return false;
-
-    this._aim.copy(playerPos);
-    this._muzzle.set(
-      this.position.x,
-      this.position.y + GREY_IMPACT.muzzleHeight,
-      this.position.z
-    );
-    this._shot.subVectors(this._aim, this._muzzle);
-    const dist = this._shot.length();
-    if (!(dist > 1e-4)) return false;   // standing on the target: no shot to resolve
-    this._shot.divideScalar(dist);
-
-    this._raycaster.set(this._muzzle, this._shot);
-    // `far` reaches a little PAST the target, so a shot whose aim point sits
-    // exactly on the floor it lands on is still a hit rather than a graze.
-    this._raycaster.far = dist + GREY_IMPACT.reach;
-
-    this._hits.length = 0;
-    this._raycaster.intersectObjects(this._surfaceMeshes, false, this._hits);
-
-    for (let i = 0; i < this._hits.length; i++) {
-      const surface = this._hits[i].object.userData.paintSurface;
-      if (!surface) continue;
-      // `splat` refuses an unpaintable surface (a gate) by returning false,
-      // which is the behaviour we want: the shot dies on the barrier.
-      return surface.splat(this._hits[i].point, "grey", radius);
-    }
-    return false;   // the shot hit nothing: no territory changed hands
+    if (!radius || !surface || !point) return false;
+    // `splat` refuses an unpaintable surface (a gate) by returning false,
+    // which is the behaviour we want: the shot dies on the barrier.
+    return surface.splat(point, "grey", radius);
   }
 
   _endTelegraph() {
@@ -2482,6 +2588,12 @@ export class Enemy {
     // Either way the second call must be a no-op.
     if (this._disposed) return;
     this._disposed = true;
+    this._releaseToken();
+    this._burst?.dispose();
+    this._burst = null;
+    // Hand the pellet clock on; the last enemy out frees the pool (#185).
+    this._shots?.release(this);
+    this._shots = null;
 
     this._frostShell?.geometry.dispose();
     this._frostShell?.material.dispose();

@@ -188,7 +188,7 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Every mission intro pins an objective marker on its goal** ("Extraction", "Supply lift", "The Siphon"), off-white, never amber. **Outskirts' extraction gets a mast and beacon** like the other two levels' goals (levels lane: Renda to keep or move).
 - **No sergeant art yet, so none is requested:** the briefing shows its plain panel and the deployment check has no 404.
 
-## 2026-10-30 — Enemy shots are pellets (draft 066)
+## 2026-10-30 — Enemy shots are pellets (draft 070, #185)
 
 - **Renda: ranged enemies fire visible pellets, the Splatoon way.** This replaces "the shot lands when the wind-up ends", under which `onAttack` damaged the player unconditionally (noted under Big Arm above). A shot that could not be dodged or blocked made the telegraph a warning without a choice, and made the Turret's spec ("strafe, or break line of sight") false.
 - **A pellet is dark Corp grey with an amber rim and trail**, flies at 22 m/s (Sprayer, Wall-crawler) or 30 m/s (Turret), is aimed where the player stands when it fires (no leading), stops at the first surface, and greys the ground where it lands. A miss still costs ground.
@@ -202,3 +202,44 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Grey stays matte; only paint is wet.** Gloss and reflection are applied to painted cells only, so dead and alive differ in sheen as well as colour. Reflection is capped so a paint colour never reads as sky.
 - **Point lights go through a fixed pool of four** that the custom shaders read as uniforms (074). The scene light count never changes, so built-in materials never recompile mid-fight. Amber light keeps meaning danger.
 - **Music is synthesised in-game, not downloaded** (078): a Corp drone, a colour layer that follows territory, and a combat layer. No licence, all team-made.
+
+## 2026-10-30 — polish audit, shaders + enemies lane (Lethabo to approve)
+
+- **Attack tokens (Enemies 2).** A ranged enemy (an `attackRange` over `ENEMY_ATTACK.meleeReach`, not a lunger) must hold one of `ENEMY_ATTACK.tokens` (2) to wind up. The pool is per level (on the level root's `userData`), handed back when the attack or burst ends, or on a freeze, stun or death. Melee never queues: reaching you is its own limit. Doom (2016) and Halo's rule: a crowd is dangerous without five shots landing on one frame.
+- **The telegraph whine is heard by distance (Enemies 3)**: full inside 6 m, silent past 15 m (`ENEMY_ATTACK.telegraphHearing`). The visual tell is unchanged at every distance.
+- **Death bursts (Enemies 4, P1-4).** A paint kill throws drops of the killing colour (`src/enemies/death-burst.js`) over the corpse's existing 0.45 s sink. main.js paints the splat (core lane). The sink stays: it is tested and reads as weight. The burst is what was missing. A colourless (trap) kill gets no burst.
+- **The combo is heard (P1-5)**: `freeze` when blue freezes, `shatter` on the crit, `pin` once per green pin (Big Arm's step 2 too).
+- **Big Arm reports `onComboStep(boss, step)` and `onSlam(boss, point)`**, and its slam booms. Step 1 is reported only when the freeze lands, not on each build-up hit. main.js uses them for hit-stop and camera shake.
+- **Submerged is a form (Q1)** (`Avatar.setSubmerged`, `SWIM`): the body squashes to 0.15 height on its feet, a blob of the ground's colour marks it, a ring ripples on the way in and out, and wake rings trail it while it moves.
+- **No new enemy types.** Every change is to existing enemies' pacing and feedback.
+
+## 2026-10-30 — polish audit, core lane (Ozuko to approve)
+
+- **Tuning: submerged refill ×3 → ×4** (`SUBMERGE.refillMultiplier`). 32/s, a full tank in 3.1 s: the Splatoon number the audit measured against. Standing refill stays 8/s, so submerging stays *the* way to reload.
+- **Red refills you (P0-2).** A bounce off red never sets `onGround` (friction would eat the launch), and refill sat inside `if (onGround)`, so a third of your colours broke the pillar "standing in your own paint refills you". The player now reports `touchedGround` on any frame its feet met a floor, the bounce included, and refill and dry-out (`refillStep` in `src/core/feel.js`) use it. Not a change to red's physics.
+- **Hit-stop (P1-1)**: 40 ms on a kill, 80 ms on a freeze-shatter, 120 ms on a Big Arm combo step (`HIT_STOP`). The simulation steps by 0; rendering carries on.
+- **Screen shake is trauma (P1-2)** (`SHAKE`, `Trauma` in `feel.js`, on the camera rig): medium on a hit plus a small upward flinch, small on a hard red landing, large on Big Arm's slam by distance, and whatever a level hands `game.shake` (the crusher's beat, a catwalk falling). **Never on firing.** "Small on red knockback" was read as *your* hard landing on red: the player is never knocked back by anything else.
+- **A hit knows where it came from** (`takeDamage(n, from)`, `lastHurtFrom`, `lastHurtAge`, `onHurt`), for the HUD's damage arc. Contact damage passes the enemy; `onAttack` passes the attacker.
+- **Death returns colour (P1-4)**: main.js splats the killing colour (`DEATH_SPLAT.radius`) at the enemy's feet with the paint lane's existing `zoneSplat`. Player paint, so a kill is a refill pool. No paint-lane change was needed.
+- **The first frame faces the level's `spawnFacing`** when the level gives one (levels lane: the Ascent's lift beacon).
+
+## 2026-10-30 — polish audit, UI lane (Moses to approve)
+
+- **The controls list is data (`CONTROLS` in `menu.js`) and tested against the real bindings.** F = Refill is gone (there is no refill button, by design); Shift = Submerge and Q = Paintstreak are listed (P0-3).
+- **Every sound is detuned ±6% per play** (`AUDIO.pitchVariance`, P1-3), and `audio.play(name, { gain, pitch })` takes a distance gain and a pitch. Callers that pass nothing are unchanged.
+- **The HUD reads the player and gun every frame and turns changes into cues** (`src/ui/feedback.js`): a hurt thud, vignette and damage-direction arc; the low-ink warning once on the way down; Splatoon's tank-full ding; a refill bubble that rises in pitch with the tank; a splash in and out of submerge; sludge footsteps on grey. No new calls from main.js are needed for any of them.
+- **Hurt is a dark, desaturated edge, never a paint red** (red is bounce). The direction arc is danger amber, because it points at what hurt you. It reads `player.lastHurtFrom` and `player.lastHurtAge` when core sets them; without them a hit still thuds and darkens, with no arc.
+- **While submerged the screen edge takes your ground colour; on grey it is drained grey** (Q1, Q3). Grey's 0.6 slow is unchanged: this is the feedback the audit asked for, not a tuning change.
+- **The swinging blade's SFX is deleted** (the blades are cut). New recipes: vent, crush, hiss, tick, creak, hurt, submergeIn/Out, refill, tankFull, lowInk, sludge, freeze, shatter, pin, slam, siphon, solved, siphonDown. All synthesised and all quieter than a splat (tested).
+
+## 2026-10-30 — polish audit, levels lane (docs/polish-audit.md)
+
+- **Furniture never wears a rule's colour (P0-5).** Encounter-gate fields, Outskirts' and the layout levels' alike, are the Corp's grey-violet (`GATE.field`), not red: red means bounce. Not amber either, because a field blocks you and never hurts you. An opened gate's lock bar turns **marker white** (`MARKER.white`, the floodlight's colour), never paint green. Goal beacons are marker white, not the yellow that sat next to danger amber. The bar then sinks into its lintel, so the Ledge's look back is not framed by a dead door.
+- **Every trap is heard, by distance** (`src/levels/trap-sound.js`, `TRAP.hearing`): vent hiss, crusher tick/clank/hiss, catwalk creak and the `collapse` SFX. A crusher beat or catwalk fall next to you adds camera trauma through `game.shake` (core wires it).
+- **Every level starts on a spawn pad of green paint** (`SPAWN_PAD`), the audit's default for grey. **Grey's `standSlow` 0.6 (#74) is unchanged**: the pad makes the first steps fast so stepping off it is felt as a loss. Green because it grips; blue would slide you off and red would bounce you.
+- **The Primer teaches submerge in R2**: a green pool on the way round the wall, and the sergeant's `primer-submerge` line ("hold Shift") while you stand in it. A level now asks for a line until the comms bar accepts it, so a line asked while another is up is no longer lost.
+- **The Primer's R6 shows blue's answer**: a blue lane over the pit's west edge, visible from R6's entry.
+- **Outskirts B frames the Sprayer's first appearance**: it wakes alone and B's Chargers `OUTSKIRTS.sprayerFirst` (3 s) later. A hit still wakes a Charger at once. The Ascent's Crawlers were already framed (two dormant at the trailhead's edges, seen before any fight), so it is unchanged.
+- **A level may name what its first frame faces** (`spawnLook`; `spawnAim` gives yaw and clamped pitch). The Ascent faces its lift beacon, at the camera's pitch limit. main.js applies it (core lane).
+- **The Primer has a focal point per lesson and leading light**: warm tungsten lamps (`PRIMER.dressing.lamp`, not amber, not a paint colour) over the sergeant's crate desk, R1's boards and R2's wall, and on the far side of each exit. Floor grid squares are twice a wall's.
+- **The Ascent's foothills have rock scree** (prop kind `rock`, no collision, under 1.3 m, off the climbing line). **Outskirts' beacon ignores fog** so it pulls you forward from spawn. The waste was darkened away from the vent's amber.

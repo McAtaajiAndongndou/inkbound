@@ -22,6 +22,7 @@
 //   4. Landmarks are plain meshes: lit by the scene, never collided with.
 import * as THREE from 'three';
 import * as kit from './level-kit.js';
+import { MARKER } from '../config.js';
 
 const EPS = 1e-6;
 const MIN = 0.05;   // a face thinner than this is a rounding sliver, not geometry
@@ -207,7 +208,7 @@ export function buildLayout(level, layout, { cells }) {
     mesh.name = lm.id;
     level.root.add(mesh);
     if (lm.beacon) {
-      const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffd23f }));
+      const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: MARKER.white }));
       beacon.position.set(...lm.beacon);
       beacon.name = `${lm.id}-beacon`;
       level.root.add(beacon);

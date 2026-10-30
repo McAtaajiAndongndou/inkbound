@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { ANIM, PLAYER } from '../config.js';
+import { ANIM, PLAYER, SWIM } from '../config.js';
 
 const MODEL_URL = './assets/soldier-swat.glb';
 const CLIP_PREFIX = 'CharacterArmature|';
@@ -229,6 +229,14 @@ export class Avatar {
     this.handSlot = null;
     this.handGrip = null;
     this._pendingHand = [];
+
+    // Submerged (polish audit, Q1): swimming is its own FORM, not a speed
+    // modifier. The body squashes into the paint (root scale toward SWIM.squash,
+    // kept on its feet), a blob of the ground's colour sits where it went in, a
+    // ring ripples out on the way in and out, and small wake rings trail it while
+    // it moves. All unlit MeshBasicMaterial (no `uLightDir`, AGENTS rule 5),
+    // under `swim`, which dispose() frees (rule 6).
+    this._buildSwim(parent);
 
     parent.add(this.root);
 
@@ -720,7 +728,98 @@ export class Avatar {
     this.play('Death', 0.1);
   }
 
+  /** The submerged form's pieces (see the constructor). Split out so tests can build it without the loader. */
+  _buildSwim(parent) {
+    this.submerged = false;
+    this._squash = 1;          // the root's current height scale, eased
+    this._wakeTimer = 0;
+    this.swim = new THREE.Group();
+    this.swim.name = 'avatar-swim';
+    this.swim.position.y = -PLAYER.height * 0.5;
+    this._blob = new THREE.Mesh(
+      new THREE.SphereGeometry(SWIM.blobRadius, 16, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }),
+    );
+    this._blob.scale.y = SWIM.blobHeight / SWIM.blobRadius;
+    this._blob.visible = false;
+    this.swim.add(this._blob);
+    this._ringGeo = new THREE.RingGeometry(0.85, 1, 32);
+    this._ringGeo.rotateX(-Math.PI / 2);
+    this._ripples = [];
+    for (let i = 0; i < SWIM.rings; i++) {
+      const ring = new THREE.Mesh(this._ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+      ring.position.y = 0.03;
+      ring.visible = false;
+      ring.userData.age = Infinity;
+      this.swim.add(ring);
+      this._ripples.push(ring);
+    }
+    parent.add(this.swim);
+  }
+
+  /**
+   * Submerge (polish audit, Q1). Called every frame from main.js with the
+   * physics truth. Entering or leaving throws a ripple; `colour` is the paint
+   * under the player (hex), which the blob and the rings wear.
+   */
+  setSubmerged(on, colour = 0xffffff) {
+    on = !!on;
+    if (on !== this.submerged) this._ripple(SWIM.rippleMax, colour);
+    this.submerged = on;
+    if (on) {
+      this._blob.material.color.setHex(colour);
+      this._colour = colour;
+    }
+  }
+
+  /** Start the oldest free ring at the feet: `size` is its final radius. */
+  _ripple(size, colour) {
+    let ring = this._ripples[0];
+    for (const r of this._ripples) if (r.userData.age > ring.userData.age) ring = r;
+    ring.userData.age = 0;
+    ring.userData.size = size;
+    ring.material.color.setHex(colour);
+    ring.visible = true;
+  }
+
+  /** The swim pass: squash, blob, ripples, wake. Runs with or without a model. */
+  _swimPass(dt) {
+    if (!this.swim || !this.root) return;   // a test stand-in built without the constructor
+    const target = this.submerged ? SWIM.squash : 1;
+    const k = 1 - Math.exp(-SWIM.rate * dt);
+    this._squash += (target - this._squash) * k;
+    if (Math.abs(this._squash - target) < 1e-3) this._squash = target;
+    const spread = 1 + (SWIM.spread - 1) * (1 - this._squash) / (1 - SWIM.squash);
+    this.root.scale.set(spread, this._squash, spread);
+    // Keep the feet on the floor: the root's origin is the body's middle.
+    this.root.position.y = -PLAYER.height * 0.5 * (1 - this._squash);
+
+    const sunk = (1 - this._squash) / (1 - SWIM.squash);   // 0 standing .. 1 under
+    this._blob.visible = sunk > 0.02;
+    this._blob.material.opacity = SWIM.blobOpacity * sunk;
+
+    if (this.submerged && this.moving) {
+      this._wakeTimer -= dt;
+      if (this._wakeTimer <= 0) {
+        this._wakeTimer = SWIM.wakeEvery;
+        this._ripple(SWIM.wakeSize, this._colour ?? 0xffffff);
+      }
+    } else {
+      this._wakeTimer = 0;
+    }
+
+    for (const ring of this._ripples) {
+      if (!ring.visible) continue;
+      ring.userData.age += dt;
+      const t = ring.userData.age / SWIM.rippleLife;
+      if (t >= 1) { ring.visible = false; continue; }
+      ring.scale.setScalar(0.2 + ring.userData.size * t);
+      ring.material.opacity = SWIM.rippleOpacity * (1 - t);
+    }
+  }
+
   update(dt) {
+    this._swimPass(dt);
     if (!this.mixer) return;
     // Undo last frame's overlay first. The mixer only rewrites bones the active
     // clip has tracks for; for the rest, an overlay applied on top of the last
@@ -1042,5 +1141,10 @@ export class Avatar {
     this._pendingHand.length = 0;
     this.parent.remove(this.root);
     this.root.traverse(disposeNode);
+    this.parent.remove(this.swim);
+    this._blob.geometry.dispose();
+    this._blob.material.dispose();
+    this._ringGeo.dispose();
+    for (const ring of this._ripples) ring.material.dispose();
   }
 }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PLAYER, CAMERA, SUBMERGE} from '../config.js';
+import { Trauma } from './feel.js';
 
 /**
  * Three camera modes, which is most of the Viewing rubric on its own:
@@ -30,6 +31,19 @@ export class CameraRig {
 
     this._offset = new THREE.Vector3();
     this._target = new THREE.Vector3();
+
+    // Polish audit P1-2: screen shake as trauma. Events add it; see feel.js.
+    this.trauma = new Trauma();
+  }
+
+  /** Shake the camera: `amount` of trauma, 0..1 (SHAKE in config names the sizes). */
+  addTrauma(amount) {
+    this.trauma.add(amount);
+  }
+
+  /** A short upward flinch (the hurt kick, P0-4). */
+  kick(radians) {
+    this.trauma.kick(radians);
   }
 
   toggle() {
@@ -101,6 +115,16 @@ export class CameraRig {
       position.z - Math.cos(yaw) * 12,
     );
     this.camera.lookAt(this._target);
+
+    // Shake AFTER the aim, so it rattles the view without moving where you aim
+    // (the gun reads the camera, but trauma is gone in a fraction of a second).
+    const shake = this.trauma.update(dt);
+    if (shake.x || shake.y || shake.roll || shake.pitch) {
+      this.camera.position.x += shake.x;
+      this.camera.position.y += shake.y;
+      this.camera.rotateZ(shake.roll);
+      this.camera.rotateX(shake.pitch);
+    }
 
     // minimap follows the player from above
     this.minimap.position.set(position.x, 60, position.z);

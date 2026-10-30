@@ -22,7 +22,7 @@
 // AXES. x east, y up, z SOUTH. The player arrives in the south (+z) by the
 // Ascent's supply lift and walks north (−z) to the Siphon.
 // BOXES are [x0, x1, y0, y1, z0, z1], metres, axis-aligned.
-import { PAINT_GRID } from '../../config.js';
+import { PAINT_GRID, SPAWN_PAD } from '../../config.js';
 
 /** Solid rock, steel and concrete. `top: true` means a walkable top. */
 const solids = [
@@ -326,11 +326,16 @@ const doc = {
     { name: 'overview', label: 'Overview (from the south-east)', pos: [70, 75, 115], target: [0, 2, 12], fov: 55, caption: 'One axis, south to north: lift, hangar, corridor, the Core — and the Siphon at the end of it.' },
     { name: 'top', label: 'Top-down plan', pos: [0, 260, 8.01], target: [0, 0, 8], fov: 40, caption: 'Plan view. Floors are coloured by room.' },
     { name: 'core', label: 'The Core from above', pos: [46, 48, -2], target: [0, 2, -36], fov: 55, caption: 'The Core: the Siphon in the middle, the ring balcony, the three wave bays behind their gates.' },
-    { name: 'corridor', label: 'The corridor from above', pos: [22, 26, 48], target: [0, 2, 14], fov: 55, caption: 'The corridor: the alcove turret, the pillars, the flanking walkway over the laser grid.' },
+    { name: 'corridor', label: 'The corridor from above', pos: [22, 26, 48], target: [0, 2, 14], fov: 55, caption: 'The corridor: the alcove turret, the pillars, the cargo crusher and the flanking walkway beside it.' },
   ],
 };
 
+/** Paint on the floor at load: the spawn pad on the lift landing (polish audit). */
+const prepaint = [
+  { id: 'spawn-pad', room: 'R0', colour: SPAWN_PAD.colour, y: 3, rect: [0 - SPAWN_PAD.half, 0 + SPAWN_PAD.half, 86 - SPAWN_PAD.half, 86 + SPAWN_PAD.half], note: 'First steps at full speed' },
+];
+
 export const LAST_COLOUR = {
-  id: 'last-colour', name: 'Last Colour', cells: PAINT_GRID.level3Cells,
+  id: 'last-colour', name: 'Last Colour', cells: PAINT_GRID.level3Cells, prepaint,
   solids, slabs: [], strips, kerbs: [], landmarks, gates, traps, props, targets, spill, enemies, routes, rooms, win, doc,
 };
