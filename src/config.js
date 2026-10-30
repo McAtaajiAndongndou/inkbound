@@ -642,7 +642,10 @@ export const PLACED_LIGHTS = {
 
 export const PAINT_GUN = {
   range: 30,
-  radius: 1.4,
+  radius: 1.4,           // a splat's radius: aimed shots, and anything that paints 'one shot's worth'
+  // Loop pass step 7c (quality plan §3.2, Renda): hip-fire is the painter, so
+  // its splats cover more ground; aiming keeps `radius` and stays the duellist.
+  hipRadius: 1.8,
   // Loop pass step 3 (quality plan §3.1): was 4, so a full tank emptied in
   // ~3.5 s of trigger and each second of firing cost ~3.5 s standing still.
   // At 2 it lasts ~7 s. Refill rates are unchanged: submerge stays the reload.

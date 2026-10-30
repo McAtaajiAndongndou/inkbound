@@ -285,7 +285,9 @@ export class PaintGun {
       // Read the ground BEFORE the splat overwrites it. Optional: a surface
       // that cannot report its paint just never counts as claimed.
       const before = p.surface.paintIdAtWorld?.(p.target) ?? PAINT_IDS[p.colour];
-      if (p.surface.splat(p.target, p.colour, PAINT_GUN.radius)) {
+      // Hip-fire paints wider than aiming (step 7c): the painter vs the duellist.
+      const radius = p.aiming ? PAINT_GUN.radius : (PAINT_GUN.hipRadius ?? PAINT_GUN.radius);
+      if (p.surface.splat(p.target, p.colour, radius)) {
         if (!this.lastSplat) this.lastSplat = { point: new THREE.Vector3(), colour: p.colour, age: 0 };
         this.lastSplat.point.copy(p.target);
         this.lastSplat.colour = p.colour;
