@@ -58,8 +58,9 @@ test('grey still refills nothing, and an empty tank on grey still dries you out'
   assert.equal(player.dead, true);
 });
 
-test('submerged refills four times the standing rate: a full tank in about 3 s', () => {
-  assert.equal(SUBMERGE.refillMultiplier, 4);
+// Loop pass step 4a raised the multiplier 4 -> 5; the rule is the ratio and the time.
+test('submerged refills refillMultiplier times the standing rate: a full tank in under 3.2 s', () => {
+  assert.ok(SUBMERGE.refillMultiplier >= 4, 'submerge must stay the fast reload');
   const green = floor(SURFACE.green, 3);
   const standing = new Player([green], new THREE.Vector3(0, 0, 0));
   const g1 = { ammo: 0, maxAmmo: 100 };
@@ -68,7 +69,7 @@ test('submerged refills four times the standing rate: a full tank in about 3 s',
   const g2 = { ammo: 0, maxAmmo: 100 };
   play(sunk, g2, 1, { isDown: (k) => k === SUBMERGE.key, aiming: false });
   assert.ok(sunk.submerged);
-  assert.ok(Math.abs(g2.ammo / g1.ammo - 4) < 0.15, `${g2.ammo} vs ${g1.ammo}`);
+  assert.ok(Math.abs(g2.ammo / g1.ammo - SUBMERGE.refillMultiplier) < 0.15, `${g2.ammo} vs ${g1.ammo}`);
   assert.ok(100 / (PAINT_GUN.refillRate * SUBMERGE.refillMultiplier) < 3.2, 'empty to full under 3.2 s');
 });
 
