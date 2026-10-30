@@ -1,6 +1,9 @@
 import * as THREE from "three";
 
 import { DANGER, ENEMY_SHOT, GREY_IMPACT, PLAYER } from "../config.js";
+import { intersectTwoSided } from "./two-sided.js";
+
+const FACE_NORMAL = new THREE.Vector3();   // reused: a hit's world-space face normal
 
 /**
  * Enemy pellets (#185; DECISIONS 2026-10-30 "Enemy shots are pellets").
@@ -220,7 +223,9 @@ export class EnemyShots {
         this._raycaster.set(p.prev, this._dir);
         this._raycaster.far = len;
         this._hits.length = 0;
-        this._raycaster.intersectObjects(meshes, false, this._hits);
+        // Two-sided (#220): a pellet rising into a floor's underside stops
+        // there; a one-sided floor let it through to the player standing on it.
+        intersectTwoSided(this._raycaster, meshes, this._hits);
         if (this._hits.length > 0) {
           surfaceHit = this._hits[0];
           surfaceT = surfaceHit.distance / len;
@@ -241,8 +246,13 @@ export class EnemyShots {
         continue;
       }
       if (surfaceHit) {
+        // From behind (the underside of a floor), the shot just stops: the
+        // paint is on the other side, and greying it would grey the player's
+        // floor from beneath.
         this._hitPoint.copy(surfaceHit.point);
-        p.owner._greyImpact(this._hitPoint, surfaceHit.object.userData.paintSurface);
+        if (!surfaceHit.face || FACE_NORMAL.copy(surfaceHit.face.normal).transformDirection(surfaceHit.object.matrixWorld).dot(this._dir) < 0) {
+          p.owner._greyImpact(this._hitPoint, surfaceHit.object.userData.paintSurface);
+        }
         this._retire(p);
         continue;
       }

@@ -285,7 +285,7 @@ test('The Ascent: no tree hides the beacon from any room eye, and the budget hol
   // A loaded variant is one draw call per material (base and tint).
   const trees = Object.values(ASCENT_KINDS).reduce((n, k) => n + k.maxVariants * 2, 0);
   assert.ok(level.dressing.meshes.length + trees <= DRESSING.maxDrawCalls, `${level.dressing.meshes.length} + ${trees} draw calls`);
-  // The range sits behind the base, never in front of it, from the summit.
+  // Nothing in the dressing stands in front of the base from the summit.
   const R7 = AS.rooms.find((r) => r.id === 'R7').eye.pos;
   const base = AS.landmarks.find((l) => l.id === 'the-base-stack').box;
   assert.equal(clearSight(R7, [(base[0] + base[1]) / 2, base[3] - 2, (base[4] + base[5]) / 2], level.dressing.meshes), null);
@@ -393,4 +393,15 @@ test("The Primer: chalk stencils on R0's wall, flat to it, out of the lamp, free
   for (const m of meshes) { m.geometry.addEventListener('dispose', () => { freed++; }); m.material.addEventListener('dispose', () => { freed++; }); }
   level.dispose();
   assert.equal(freed, meshes.length * 2);
+});
+
+// Renda (30 Oct) on the 3D peaks: "the execution sucks". The Ascent's distant
+// mountains are its sky ridges (ASCENT.mood.hills), not grey lumps of geometry.
+test('The Ascent: no 3D range; the far mountains are drawn into the sky', async () => {
+  assert.equal(AS.dressing.items.filter((i) => i.kind === 'range').length, 0, 'a 3D peak is back in the dressing');
+  assert.equal(DRESSING.kinds.range, undefined, 'the range kind is gone with its peaks');
+  const level = await loaded(Level02);
+  assert.equal(level.dressing.meshes.filter((m) => m.name.startsWith('dressing:lump|silhouette')).length, 0);
+  assert.equal(level.atmosphere.getObjectByName('sky-dome').material.uniforms.uHills.value.x, 1, 'the sky ridges stand in for them');
+  level.dispose();
 });

@@ -34,9 +34,11 @@ function arena(level) {
   const charger = level.enemies.find((e) => e.config === ENEMY.charger);
   const sprayer = level.enemies.find((e) => e.type === 'sprayer');
   // Island B's arena sleeps until the player lands in it (#012); these tests
-  // place the player there by hand, so wake it the way landing would.
-  charger.wake();
-  sprayer.wake();
+  // place the player there by hand, so un-sleep it. Not `wake()`: since #216 a
+  // wake also turns the enemy on the player for `AWARENESS.fireAlert`, and these
+  // tests time sight and reload windows from a plain awake enemy.
+  charger.sleeping = false;
+  sprayer.sleeping = false;
   const floor = level.surfaces.find((s) => s.isFloor
     && s.mesh.position.z < 0 && s.mesh.position.z > -5);
 
@@ -242,7 +244,10 @@ test('the other enemies never enter the state (#76)', async () => {
 function placedSprayer(level) {
   const { y, zMid } = arena(level);
   const sprayer = level.enemies.find((e) => e.type === 'sprayer');
-  sprayer.wake();
+  // Awake, NOT woken: since #216 a level wake turns an enemy on the player for
+  // `AWARENESS.fireAlert`, which would keep it alert through the "player gone"
+  // half of the reload test. These tests want a plain awake Sprayer.
+  sprayer.sleeping = false;
   // 2 m out: inside the 12 m attack range, outside `stopDistance`, which is
   // where a Sprayer actually gets to shoot from.
   sprayer.position.set(0, y, zMid + 2);

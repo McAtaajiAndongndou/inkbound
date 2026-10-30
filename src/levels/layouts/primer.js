@@ -206,9 +206,11 @@ const traps = [
 ];
 
 const enemies = [
-  // B5: +3 s so the sergeant's line (asked past the pit, ~1 s from the door at
-  // a sprint) is up for its readable minimum before the Charger's wake clears it.
-  { id: 'r7-charger', type: 'charger', pos: [0, 8, -40], room: 'R7', wave: 1, wake: 'enter:R7+3' },
+  // B5 + #217: +8 s, so BOTH of R6's lines are read before the fight clears the
+  // bar — the trap warning (~6 s on screen), then "One of theirs" (asked past
+  // the pit, ~1 s from the door at a sprint). The Charger waits dormant and
+  // visible meanwhile: time to read it and paint the ground it will cross.
+  { id: 'r7-charger', type: 'charger', pos: [0, 8, -40], room: 'R7', wave: 1, wake: 'enter:R7+8' },
 ];
 
 const routes = {

@@ -59,7 +59,7 @@ export const PAINT = {
 //   restitution > 0 makes the surface a trampoline (see PLAYER.minBounce)
 //   climbable   walls of this colour can be climbed
 export const SURFACE = {
-  grey: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: false, standSlow: 0.6 }, // Corrupt Corp's territory — live penalty (#74)
+  grey: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: false, standSlow: 0.85 }, // Corrupt Corp's territory — live penalty (#74). Loop pass step 5: 0.6 -> 0.85 (5.95 m/s, not 4.2); the plan's two greys (#235) would keep 0.6 for fresh enemy grey
   blue: { friction: 0.4, traction: 0.5, speedScale: 1.6, restitution: 0.0, climbable: false, standSlow: 1.0 }, // ice: slide, hard to steer
   red: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.9, climbable: false, standSlow: 1.0 }, // bounce
   green: { friction: 14.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: true, standSlow: 1.0 }, // grip + climb
@@ -162,12 +162,12 @@ export const CAMERA = {
   minHeightAboveFeet: 1.1, // camera never dips below player.position.y + this
 
   adsFov: 45,
-  normalFov: 70,           // first person (V), not aiming
+  normalFov: 78,           // first person (V), not aiming. Loop pass step 8 (quality plan §5): was 70, kept at 78; third person has its own tpvFov (#225)
   adsTransitionSpeed: 10,
 
   // #225 (quality plan §5): a camera welded to the player sent every step and
   // landing straight to the screen, and walls stood between you and yourself.
-  tpvFov: 78,              // third person: wider than first, the shooter norm
+  tpvFov: 78,              // third person (the loop pass kept 78, step 8); first person is normalFov
   submergeFovBoost: 8,     // + while submerged AND moving: the speed reads
   followTime: 0.06,        // s, the critically damped follow of the player's position. ROTATION is never damped: aim stays 1:1 with the mouse
   snapDistance: 6,         // m the player moves in one frame that counts as a teleport (load, respawn): snap, do not sweep
@@ -221,6 +221,9 @@ export const FROST = {
   fullCover: 0.55,       // uOpacity at which the shell fully takes over the view (BLUE_FREEZE.shellOpacity)
   glowUnder: 0.5,        // how much the rim glow is dimmed where the refraction shows
   bodyRadius: 0.9,       // m, an enemy's half-height: kept in the copy if this close behind ice on screen
+  // #223: a frozen enemy read as a flat 2D cut-out. Two causes, two numbers:
+  centreCover: 0.3,      // how much of the view the shell takes over HEAD-ON (1 at the rim): the body shows through, lit
+  bodyTint: 0.3,         // the hit flash's strength on a frozen body (1 = flat paint blue); the shell already says "frozen"
 };
 
 // #195 — point lights the custom shaders can see (src/shaders/point-lights.js).
@@ -527,7 +530,46 @@ export const ASCENT = {
     fogFar:  170,        // the far side of the mountain is haze, the tower is not
     fillColour: 0x9fb4d6,
     fillIntensity: 0.6,
-    skyRadius: 450,      // past the base (~245 m), so the dome is behind it
+    // Past the base (its farthest corner is ~308 m out), so the dome is behind
+    // it, but INSIDE the game camera's reach (camera-rig.js far: 400) from
+    // anywhere on the climb (<= 76 m out). At 450 the dome was cut off past
+    // 400 m and the void showed through as a black disc (Renda: "the black sun").
+    skyRadius: 310,
+    // Far ridges drawn into the sky dome (quality plan §8.4 item 6; Renda: the
+    // grey 3D peaks "are meant to be mountains … the execution sucks"). The
+    // Outskirts hills, made mountains: taller and three layers deep, each
+    // farther one lighter and bluer (pulled toward the zenith), so distance
+    // reads from colour alone. Land fills under the near crest, as in Outskirts.
+    hills: {
+      // Renda (30 Oct): "I don't want them to be too similar to the hills in L1".
+      // Outskirts rolls; the Ascent is jagged: pointed peaks, sharp notches,
+      // taller and with more rise and fall between them.
+      jag: 1,            // 0 = Outskirts' rolling crest, 1 = all-ridged mountain peaks
+      height: 0.062,     // mean crest, band units above the horizon (0.5); ~7 degrees
+      swell: 0.036,      // crests rise and dip this much: peaks up to ~11 degrees
+      farShade: 0.1,     // the far range: barely off the horizon colour
+      midShade: 0.28,    // the middle range
+      nearShade: 0.5,    // the near range: darkest, it reads as closest
+      midDrop: 0.011,    // the middle crests sit this much lower than the far ones
+      nearDrop: 0.022,   // and the near ones lower again (height - swell - nearDrop > 0: no gaps)
+      farTint: 0.4,      // share of the zenith's blue in the far range
+      midTint: 0.22,
+      nearTint: 0.06,
+      soft: 0.0015,
+      groundFloor: 0.1,  // the land under the near crest darkens to the void only by here
+    },
+    // The dawn sun (Renda, 30 Oct: "do something about the sun"): there was no
+    // sun to see. Drawn low, on the same side as the scene light (so lit faces
+    // still face it), just over the ridges so a peak can hide part of it. The
+    // Corp's grey smothers it; painting the climb lets it through (#197).
+    sun: {
+      elevation: 8,      // degrees above the horizon: among the peaks (they reach ~11)
+      size: 2.4,         // degrees, the disc's radius: big and soft, not a pin-prick
+      glow: 0.55,        // the halo's strength at the disc's edge
+      glowTight: 260,    // higher = a tighter halo (a power of the angle's cosine)
+      colour: 0xffe2bf,  // pale warm dawn: the one warm thing in a cold sky
+      drained: 0.25,     // share of the sun showing through a drained sky
+    },
   },
   // The collapsing catwalk (#102): "can you cross before it drops?"
   catwalk: {
@@ -609,9 +651,6 @@ export const DRESSING = {
     stack:    { colour: SILHOUETTE, shape: 'round', look: 'silhouette', hazed: true },
     window:   { colour: 0xaaa4c2, shape: 'box', look: 'silhouette' },        // Corp lights: GATE.field's violet, lifted and greyed (the grey-only rule); never hazed
     smoke:    { colour: 0x8d9094, shape: 'lump', look: 'haze' },
-    // The Ascent's distant range: a shade lighter than its base (ASCENT.base),
-    // so the nearer base still reads in front of the farther mountains.
-    range:    { colour: 0x4a4f57, shape: 'lump', look: 'silhouette' },
     strata:   { colour: 0x5c5a55, shape: 'box', look: 'toon' },   // rock bands: a warm stone, so they read as rock, not as slots
     // Story clusters
     crate:    { colour: LAST_COLOUR.props.crate, shape: 'box', look: 'toon' },
@@ -652,10 +691,25 @@ export const PLACED_LIGHTS = {
 
 export const PAINT_GUN = {
   range: 30,
-  radius: 1.4,
-  cost: 4,
+  radius: 1.4,           // a splat's radius: aimed shots, and anything that paints 'one shot's worth'
+  // Loop pass step 7c (quality plan §3.2, Renda): hip-fire is the painter, so
+  // its splats cover more ground; aiming keeps `radius` and stays the duellist.
+  hipRadius: 1.8,
+  // Loop pass step 3 (quality plan §3.1): was 4, so a full tank emptied in
+  // ~3.5 s of trigger and each second of firing cost ~3.5 s standing still.
+  // At 2 it lasts ~7 s. Refill rates are unchanged: submerge stays the reload.
+  cost: 2,
+  // Loop pass step 3b (Renda's idea, #240): a shot that hits an enemy used to
+  // paint nothing. It now drips a small splat of its colour on the floor just
+  // PAST the enemy along the shot (not under its feet, so the floor colour
+  // does not slide or pin it on every hit). Kills still leave the big pool.
+  hitDrip: 0.6,          // m, the drip's radius (DEATH_SPLAT is 1.8)
+  hitDripOffset: 1.2,    // m from the enemy's CENTRE along the shot (any model): twice the drip radius, so its edge clears the feet
   fireDelay: 0.14,
-  hipSpread: 0.025,
+  // Loop pass step 7 (quality plan §3.2): hip-fire was nearly as tight as
+  // aiming (0.025 vs 0.005), so the two modes felt the same. Wider hip-fire
+  // paints a broader road; aiming stays the precise, duelling mode.
+  hipSpread: 0.06,
   adsSpread: 0.005,
   refillRate: 8,
 
@@ -855,7 +909,7 @@ export const STALKER = {
 export const AMMO = {
   primer: 100,          // tutorial: same as Outskirts, explicitly
   outskirts: 100,       // plentiful
-  ascent: 60,           // starved — 15 shots, every room tuned against it
+  ascent: 60,           // starved — 30 shots at cost 2 (was 15 at 4; loop pass step 3), every room tuned against it
   'last-colour': 80,    // contested
 };
 
@@ -1213,10 +1267,15 @@ export const DRY_OUT = {
 // All numbers live here so the tuning dial is one file.
 export const SUBMERGE = {
   key: 'ShiftLeft',          // hold this key to submerge (coordinate with team)
-  speedMultiplier: 1.4,      // faster than normal walking — the reward for committing
-  refillMultiplier: 4,       // 4× the base PAINT_GUN.refillRate: 32/s, a full tank in 3.1 s (polish audit; was 3)
+  speedMultiplier: 1.9,      // faster than walking — the reward for committing (loop pass step 4b; was 1.4). Splatoon's swim is roughly double the walk
+  refillMultiplier: 5,       // 5× the base PAINT_GUN.refillRate: 40/s, a full tank in 2.5 s, so a dive is a reload (loop pass step 4a; was 4, polish audit; was 3)
   cameraOffset: 0.9,         // metres the TPV camera drops, so you read as "in" the paint
-  maxAngle: 1.1,             // radians — how far the camera tilts down while submerged
+  maxAngle: 1.1,             // metres the aim point dips while submerged (camera-rig.js; not radians)
+  // Loop pass step 1 (issue 079): the drop and dip glide in and out instead of
+  // cutting on the frame Shift goes down. Share of the remaining gap closed per
+  // second, like CAMERA.adsTransitionSpeed: ~a quarter on the first frame at
+  // 60 fps, ~95% by 0.2 s.
+  cameraBlendSpeed: 14,
 };
 // Submerged form (polish audit, Q1; shaders/avatar.js). The body squashes into
 // the paint, a blob of its colour marks the spot, rings ripple in and out.
@@ -1262,7 +1321,9 @@ export const SHAKE = {
 // Death returns colour (polish audit P1-4): a killed enemy bursts into a splat
 // of the colour that killed it, as player paint — a kill becomes a refill pool.
 export const DEATH_SPLAT = {
-  radius: 1.8,
+  // Loop pass step 6 (quality plan §3.1): 1.8 -> 2.5 m, so a kill leaves a
+  // pool you can actually dive into (and swim, now 1.9x) rather than a puddle.
+  radius: 2.5,
 };
 
 // Mantle (#157). A green climb ends by pulling the player onto the top

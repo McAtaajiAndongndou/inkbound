@@ -252,3 +252,9 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 ## 2026-10-30 — spawn pads removed (Renda, quality-plan QA)
 
 - **No level starts on paint.** The polish audit's green spawn pad (`SPAWN_PAD`, 30 Oct, above) is removed from all four levels, and the `SPAWN_PAD` config with it. Renda's call after QA. The trade-off is known: grey's `standSlow` 0.6 (#74, unchanged) now applies from the first step, so the opening seconds run at 4.2 m/s until the player paints, which was the audit's reason for the pad. The player's first paint is now their own. Tested: `every level starts on grey` in `tests/polish-audit-levels.test.js`.
+
+## 2026-10-30 — grey's slow 0.6 → 0.85 (loop pass step 5, Renda)
+
+- **`SURFACE.grey.standSlow` is 0.85, not 0.6** (#74, ADR-0002's number). On grey the player walks at 5.95 m/s, not 4.2, and now outpaces a Charger (5). Grey is still a live penalty and still refills nothing.
+- **Why:** in the loop-pass playtest Renda never noticed the 40% slow at all ("it felt the same"), so the harsher number only cost pace. The real gap is feedback: #244 makes the grey/paint contrast felt (camera, sound, footfalls). Once it lands, the number can be retuned.
+- **Not yet:** the plan's two greys (fresh enemy grey staying at 0.6) is #235.

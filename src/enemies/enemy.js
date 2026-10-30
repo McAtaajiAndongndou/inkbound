@@ -2,10 +2,11 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_ATTACK, ENEMY_BODY, ENEMY_NAV, ENEMY_SHOT, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, POINT_LIGHTS, STALKER } from "../config.js";
+import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_ATTACK, ENEMY_BODY, ENEMY_NAV, ENEMY_SHOT, FROST, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, POINT_LIGHTS, STALKER } from "../config.js";
 import { pointLights } from "../shaders/point-lights.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { EnemyShots } from "./enemy-shots.js";
+import { intersectTwoSided } from "./two-sided.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
 import { createFrostMaterial } from "../shaders/frost/frost-material.js";
@@ -132,6 +133,19 @@ export function resetPlayerSignal() {
  * pairs of eyes; keeping it would only let a ray that grazes the ground report
  * occlusion that a player looking at the same scene would never see.
  */
+/** The floors a climber's sight line is tested against (#220). */
+function floorMeshes(list, parent) {
+  const meshes = [];
+  if (list) {
+    for (const s of list) if (s?.isFloor && s.mesh) meshes.push(s.mesh);
+    return meshes;
+  }
+  parent?.traverse?.((obj) => {
+    if (obj.userData?.paintSurface?.isFloor) meshes.push(obj);
+  });
+  return meshes;
+}
+
 function sightBlockers(explicit, parent) {
   const meshes = [];
   if (explicit) {
@@ -527,6 +541,7 @@ export class Enemy {
     this._lastKnown = new THREE.Vector3();  // where it last SAW you
     this._forgetTimer = 0;                  // Search -> Dormant countdown
     this._fireTimer = 0;                    // Alert bought by your last shot
+    this._provoked = false;                 // #216: hit or level-woken; alert on the next update
     this._seenShots = PLAYER_SIGNAL.shots;  // the shot count this enemy knows of
 
     // Sight lines are tested against UPRIGHT surfaces only. A floor is a
@@ -536,6 +551,13 @@ export class Enemy {
     // level's root, so an enemy can find them without being handed them — but a
     // level may pass its own list, and a test that wants one wall passes one.
     this._blockers = sightBlockers(blockers, parent);
+    // #220: the exception to "a floor never blocks sight". A climber can be
+    // UNDER a floor — on the face below a deck — and one shot the player
+    // standing on it, seeing them through it. For a climber, floors block
+    // sight (tested two-sided: a floor faces up, the climber is below). Only
+    // climbers: a balcony turret looking down past its own balcony edge is
+    // tuned as it is (Last Colour, wave three).
+    this._sightFloors = config.climbsGreen ? floorMeshes(surfaces ?? floors, parent) : [];
     // Attack tokens (polish audit, Enemies 2): ONE pool per level, kept on its
     // root, so a ranged enemy must hold a token to wind up and at most
     // ENEMY_ATTACK.tokens shoot at once. Doom (2016) and Halo do this: a crowd
@@ -831,8 +853,14 @@ export class Enemy {
     this._gait(dt);
   }
 
-  /** Stop being dormant. Idempotent: the level may call it every frame on a trigger. */
+  /**
+   * Stop being dormant. Idempotent: the level may call it every frame on a
+   * trigger. The first call — the moment it wakes — also turns it on the player
+   * (#216): a level wake used to clear `sleeping` and leave awareness dormant,
+   * so a woken Charger 20 m from the door stood still until you walked closer.
+   */
   wake() {
+    if (this.sleeping) this._provoked = true;
     this.sleeping = false;
   }
 
@@ -1950,8 +1978,10 @@ export class Enemy {
     const name = ID_TO_NAME[colourId];
     if (!name || colourId === PAINT_IDS.grey) return false;
 
-    // A hit wakes a dormant enemy: no free kills.
+    // A hit wakes a dormant enemy, and turns it on you at any range (#216):
+    // being hurt is the loudest signal there is. No free kills.
     this.sleeping = false;
+    this._provoked = true;
 
     // Feedback first, so a killing hit still reads as coloured.
     this._tintTarget.setHex(PAINT[name].hex);
@@ -2066,6 +2096,7 @@ export class Enemy {
   takeDamage(damage) {
     if (!this.alive || !(damage > 0)) return false;
     this.sleeping = false;   // a trap that hurts you also wakes you
+    this._provoked = true;   // ...and turns you on the player (#216)
     this.hp -= damage;
     if (this.hp <= 0) {
       // Still being thrown by red (#129): the knockback put it in the trap, so
@@ -2161,9 +2192,13 @@ export class Enemy {
     this._tintTimer -= dt;
     // At t=0 the lerp lands exactly on the base colour, so the last write
     // before the timer expires is already the resting state — no snap.
+    // #223: frozen, the flash is capped. Full paint blue on the emissive washed
+    // out every bit of shading for half the freeze — a flat blue cut-out — and
+    // the shell already says "frozen".
+    const strength = Math.max(0, this._tintTimer / TINT_FADE);
     this._tintBlend
       .copy(this._baseColour)
-      .lerp(this._tintTarget, Math.max(0, this._tintTimer / TINT_FADE));
+      .lerp(this._tintTarget, this._frozenTimer > 0 ? Math.min(strength, FROST.bodyTint) : strength);
     this._setColour(this._tintBlend);
   }
 
@@ -2326,6 +2361,19 @@ export class Enemy {
       return;
     }
 
+    // 0. Provoked (#216): hit, hurt, or woken by the level. Alert toward the
+    // player at ANY range and with no sight check, for as long as a shot buys
+    // (rule 3 below holds it), then Search and Dormant as usual. An enemy
+    // nobody touched keeps the stealth rules exactly as they were.
+    if (this._provoked) {
+      this._provoked = false;
+      this._awareness = "alert";
+      this._lastKnown.copy(playerPos);
+      this._fireTimer = AWARENESS.fireAlert;
+      this._forgetTimer = AWARENESS.forget;
+      return;
+    }
+
     const dx = playerPos.x - this.position.x;
     const dz = playerPos.z - this.position.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
@@ -2383,7 +2431,7 @@ export class Enemy {
    * Allocation-free; the raycaster, vectors and hit array are built once.
    */
   _canSee(playerPos) {
-    if (this._blockers.length === 0) return true;
+    if (this._blockers.length === 0 && this._sightFloors.length === 0) return true;
 
     // Raycasting reads `matrixWorld`, and in a headless run NOTHING refreshes it:
     // the renderer does that once per frame in the browser, so the walls are
@@ -2399,6 +2447,9 @@ export class Enemy {
     for (let i = 0; i < this._blockers.length; i++) {
       this._blockers[i].updateWorldMatrix(true, false);
     }
+    for (let i = 0; i < this._sightFloors.length; i++) {
+      this._sightFloors[i].updateWorldMatrix(true, false);
+    }
 
     this._eye.set(this.position.x, this.position.y + AWARENESS.eyeHeight, this.position.z);
     this._look.set(playerPos.x, playerPos.y + AWARENESS.eyeHeight, playerPos.z);
@@ -2411,6 +2462,8 @@ export class Enemy {
     this._raycaster.far = d - 0.25;       // the player is not behind themselves
     this._hits.length = 0;
     this._raycaster.intersectObjects(this._blockers, false, this._hits);
+    if (this._hits.length > 0) return false;
+    if (this._sightFloors.length > 0) intersectTwoSided(this._raycaster, this._sightFloors, this._hits);   // #220
     return this._hits.length === 0;
   }
 
