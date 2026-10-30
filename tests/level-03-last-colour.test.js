@@ -17,10 +17,11 @@ async function loaded(onWin = null) {
 const boxOf = (s) => new THREE.Box3().setFromObject(s.mesh);
 const normalOf = (s) => new THREE.Vector3(0, 0, 1).applyQuaternion(s.mesh.quaternion);
 
-test('the package: 30 enemies built, Big Arm placed but not spawned, four gates', async () => {
+test('the package: 30 enemies, then Big Arm and its two Drainers, four gates', async () => {
   const level = await loaded();
   assert.equal(level.enemies.length, L.enemies.filter((e) => !e.planned).length);
-  assert.equal(level.enemies.length, 30);
+  assert.equal(level.enemies.length, 33);
+  assert.equal(level.bigArm?.type, 'bigArm', 'Big Arm is built by its own class');
   assert.ok(!level.roster.some((r) => r.data.planned), 'a planned enemy must not spawn as a stand-in');
   assert.equal(level.gates.length, L.gates.length);
   assert.ok(level.extraction instanceof THREE.Box3);
@@ -36,7 +37,10 @@ test('every climb strip is built as paint at exactly its size, and no other wall
     const want = (strip.span[1] - strip.span[0]) * (strip.y[1] - strip.y[0]);
     assert.ok(Math.abs(area - want) < 1e-6, `${strip.id}: built ${area} m², the data says ${want}`);
   }
-  assert.ok(paintable.every((s) => s.strip), 'a paintable wall that is not a strip is a climb nobody designed');
+  // The Siphon's plates (#100) are the other designed paint: one per target.
+  const plates = paintable.filter((s) => s.siphon);
+  assert.deepEqual(plates.map((s) => s.siphon).sort(), L.targets.map((t) => t.id).sort());
+  assert.ok(paintable.every((s) => s.strip || s.siphon), 'a paintable wall that is not a strip is a climb nobody designed');
   level.dispose();
 });
 
@@ -156,17 +160,18 @@ test("Big Arm's gate pulses for 12 s once wave three is gone, then drops", async
   level.dispose();
 });
 
-test('the placeholder win: the Siphon intake, once the Core is clear, exactly once', async () => {
+test('reaching the intake is no longer the win: a clear Core starts the Siphon instead', async () => {
   let wins = 0;
   const level = await loaded(() => { wins++; });
   freeze(level);
   const intake = level.extraction.getCenter(new THREE.Vector3()).toArray();
   at(level, intake);
-  assert.equal(wins, 0, 'not while the Core still holds its waves');
+  assert.equal(level.siphon.phase, 'dormant', 'not while the Core still holds its waves');
   kill(level, (d) => d.room === 'R3');
   at(level, intake);
   at(level, intake);
-  assert.equal(wins, 1);
+  assert.equal(wins, 0, 'the old placeholder win is gone (#100)');
+  assert.equal(level.siphon.phase, 'intake', 'the exam has begun');
   level.dispose();
 });
 

@@ -26,8 +26,11 @@ test('ammo tanks are ordered by level pressure (L1 plentiful, L2 starved)', () =
   assert.equal(AMMO.primer, AMMO.outskirts);
 });
 
-test('one enemy class, six configs — not six systems', () => {
-  assert.deepEqual(Object.keys(ENEMY).sort(), ['charger', 'drainer', 'sprayer', 'stalker', 'turret', 'wallCrawler']);
+test('one enemy class, six configs — not six systems (plus the one boss)', () => {
+  // Big Arm (#99) is the only exception, and a decided one (DECISIONS
+  // 2026-10-06 and 2026-10-30): a boss subclass in src/enemies/boss.js. Any
+  // other new key here is a new enemy type, which needs a DECISIONS entry.
+  assert.deepEqual(Object.keys(ENEMY).sort(), ['bigArm', 'charger', 'drainer', 'sprayer', 'stalker', 'turret', 'wallCrawler']);
   assert.equal(ENEMY.charger.canShoot, false);
   assert.equal(ENEMY.wallCrawler.climbsGreen, true);
   assert.equal(ENEMY.turret.canMove, false);

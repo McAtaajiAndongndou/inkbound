@@ -93,7 +93,7 @@ const solids = [
   { id: 'balcony-nw', room: 'R3', box: [-26, -6, 0, 5, -62, -56], top: true, kind: 'pocket', lips: { '+z': 0.3 } },
   { id: 'balcony-ne', room: 'R3', box: [6, 26, 0, 5, -62, -56], top: true, kind: 'pocket', lips: { '+z': 0.3 } },
   // The Siphon: 10 x 10 x 22 m in the middle of the room. Architecture and cover
-  // during the waves; the final exam after (#100). Its phases are not built here.
+  // during the waves; the final exam after (#100, src/levels/siphon.js).
   { id: 'siphon', room: 'R3', box: [-5, 5, 0, 22, -41, -31], kind: 'siphon' },
   // Floor cover: two low walls (hop them) and two blocks (fight round them).
   { id: 'core-low-wall-w', room: 'R3', box: [-14, -8, 0, 1, -24, -23.4], kind: 'cover' },
@@ -203,8 +203,8 @@ const props = [
 ];
 
 /**
- * Not walkable: things to see. The Siphon's three phase targets are markers
- * for #100 — where the intake, the arms and the core will be.
+ * Not walkable: things to see. The Siphon's three phase targets (below) are
+ * where src/levels/siphon.js builds the intake, the arms and the core (#100).
  */
 const landmarks = [
   // The Siphon's mast and beacon, 27 m up. The Siphon itself (22 m) is in view
@@ -214,13 +214,16 @@ const landmarks = [
   // the wall. From the hangar floor it is down the corridor axis only.
   { id: 'siphon-mast', box: [-1, 1, 22, 26, -37, -35], beacon: [0, 27, -36] },
 ];
+// `face` is the side of the Siphon the plate looks out of (src/levels/siphon.js).
 const targets = [
-  { id: 'siphon-intake', pos: [0, 3, -30.8], note: 'Phase 1 — blue freezes it' },
-  { id: 'siphon-arm-w', pos: [-5.2, 8, -36], note: 'Phase 2 — green pins it' },
-  { id: 'siphon-arm-e', pos: [5.2, 8, -36], note: 'Phase 2 — green pins it' },
-  { id: 'siphon-arm-n', pos: [0, 8, -41.2], note: 'Phase 2 — green pins it' },
-  { id: 'siphon-core', pos: [0, 16, -30.8], note: 'Phase 3 — red knocks it into the machine' },
+  { id: 'siphon-intake', pos: [0, 3, -30.8], face: '+z', note: 'Phase 1 — blue freezes it' },
+  { id: 'siphon-arm-w', pos: [-5.2, 8, -36], face: '-x', note: 'Phase 2 — green pins it' },
+  { id: 'siphon-arm-e', pos: [5.2, 8, -36], face: '+x', note: 'Phase 2 — green pins it' },
+  { id: 'siphon-arm-n', pos: [0, 8, -41.2], face: '-z', note: 'Phase 2 — green pins it' },
+  { id: 'siphon-core', pos: [0, 16, -30.8], face: '+z', note: 'Phase 3 — red knocks it into the machine' },
 ];
+/** The leak (#100): where the Siphon spills each phase's colour, [x, z] on the Core floor. */
+const spill = [0, -26];
 
 /** Enemies. `planned` ones (Big Arm) are placed but not spawned until they exist. */
 const enemies = [
@@ -255,8 +258,15 @@ const enemies = [
   { id: 'w3-charger-e', type: 'charger', pos: [31, 0, -31], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
   { id: 'w3-turret-nw', type: 'turret', pos: [-23, 5, -59], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
   { id: 'w3-turret-ne', type: 'turret', pos: [23, 5, -59], room: 'R3', wave: 3, wake: 'cleared:R3.2+8' },
-  // Big Arm (#99, a cut candidate): its bay is built, it is not.
-  { id: 'big-arm', type: 'bigArm', pos: [0, 0, -68], room: 'R4', wave: 1, wake: 'cleared:R3.3+12', planned: true },
+  // Big Arm (#99, src/enemies/boss.js): the Core's fourth wave, out of the
+  // north bay when its gate drops. Room R3, so "the Core is clear" — which the
+  // Siphon waits for — includes it. The bay floor is part of R3.
+  { id: 'big-arm', type: 'bigArm', pos: [0, 0, -68], room: 'R3', wave: 4, wake: 'cleared:R3.3+12' },
+  // The two Drainers it calls in phase 2. They exist from load (the paint gun
+  // takes its target list once), dormant and visible at the back of the bay;
+  // `summon` is a rule nothing satisfies, so only Big Arm (or a hit) wakes them.
+  { id: 'ba-drainer-w', type: 'drainer', pos: [-3.5, 0, -72], room: 'R3', wave: 5, wake: 'summon' },
+  { id: 'ba-drainer-e', type: 'drainer', pos: [3.5, 0, -72], room: 'R3', wave: 5, wake: 'summon' },
 ];
 
 /** Routes. The main route walks the floor; the flank takes the walkway. */
@@ -288,17 +298,18 @@ const rooms = [
     eye: { pos: [0, 1.5, -9.5], target: [0, 8, -36] },
     question: 'Can I hold ground and fight at the same time?' },
   // dwell: the 12 s warning while Big Arm's gate pulses (decision 1).
-  { id: 'R4', name: 'Big Arm', act: 3, intensity: 10, fightSeconds: 90, dwellSeconds: 12, planned: true,
+  { id: 'R4', name: 'Big Arm', act: 3, intensity: 10, fightSeconds: 90, dwellSeconds: 12,
     eye: { pos: [-23, 6.5, -20], target: [0, 2, -66] },
     question: 'Can you beat it by understanding it, not by shooting it?' },
-  { id: 'R5', name: 'The Siphon', act: 3, intensity: 8, fightSeconds: 60, planned: true,
+  { id: 'R5', name: 'The Siphon', act: 3, intensity: 8, fightSeconds: 60,
     eye: { pos: [0, 1.5, -24], target: [0, 10, -36] },
     question: 'Do you know the order?' },
 ];
 
 /**
- * The win. PLACEHOLDER until the Siphon's phases exist (#100): reach the
- * intake once the Core is clear. #100 replaces this with "phase three done".
+ * The win volume is the OBJECTIVE MARKER at the intake. The win itself is the
+ * Siphon's (#100): its exam begins once `requires` is clear, and the level
+ * wins when phase three is done (Level03.scriptedWin, src/levels/siphon.js).
  */
 const win = { box: [-3, 3, -0.5, 3, -31, -28], requires: 'R3' };
 
@@ -321,5 +332,5 @@ const doc = {
 
 export const LAST_COLOUR = {
   id: 'last-colour', name: 'Last Colour', cells: PAINT_GRID.level3Cells,
-  solids, slabs: [], strips, kerbs: [], landmarks, gates, traps, props, targets, enemies, routes, rooms, win, doc,
+  solids, slabs: [], strips, kerbs: [], landmarks, gates, traps, props, targets, spill, enemies, routes, rooms, win, doc,
 };

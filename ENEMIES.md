@@ -153,7 +153,7 @@ These apply to every enemy unless a section says otherwise:
 - **Model:** zombie 3, "Big arm" https://poly.pizza/m/KaVJET0WHx (CC-BY)
 - **Role:** the **wave-three arena boss**, not the finale. High HP pool,
   **repaints the arena grey** (takes your territory), spawns waves, and dies to
-  one scripted colour combo (sequence TBD).
+  one colour combo — blue freeze → green pin → red knockdown — landed once per phase, three times (`src/enemies/boss.js`).
 - **Then the level still has to end:** after Big Arm falls, the **Siphon** is the
   final exam — a structure dismantled with blue, green and red in sequence. No
   health bar, no rig and no new animation set.

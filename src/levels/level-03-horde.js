@@ -2,23 +2,25 @@
 // L3 — "LAST COLOUR". One axis to the Siphon: hangar, corridor, the Core.
 // WHAT THIS LEVEL DOES THAT THE OTHERS DO NOT: the enemies EAT your paint,
 // so your safe painted ground shrinks while you fight. The player is DROWNING.
-// Enemies: Drainer, Charger, Turret, Stalker (30); Big Arm is placed, not built
-// (#99). Trap: the cargo crusher (crusher.js); the laser grid is parked.
+// Enemies: Drainer, Charger, Turret, Stalker (30), then Big Arm and the two
+// Drainers it calls (#99, src/enemies/boss.js). Trap: the cargo crusher (crusher.js); the laser grid is parked.
 //
 // Status: BLOCKOUT of design v2, plus polish pass 1 (amber mood, the Corp prop
-// kit, the crusher). Every number comes from the layout DATA —
+// kit, the crusher), plus the Siphon's three-colour exam (#100, siphon.js). Every number comes from the layout DATA —
 // src/levels/layouts/last-colour.js — the same file the design doc's plan,
 // sections, pacing and 3D massing model are generated from
 // (docs/levels/03-last-colour.md). The behaviour (waves, gates, the win) is
-// LayoutLevel's, shared with the Ascent. The win is a PLACEHOLDER until the
-// Siphon's phases exist (#100): reach its intake with the Core clear.
+// LayoutLevel's, shared with the Ascent. The win is the Siphon's: its exam
+// begins when the Core is clear and the level is won when phase three is done.
 import * as THREE from 'three';
 import { LayoutLevel } from './layout-level.js';
 import { LAST_COLOUR } from './layouts/last-colour.js';
-import { LAST_COLOUR as TUNING } from '../config.js';
+import { LAST_COLOUR as TUNING, ENEMY } from '../config.js';
 import { applyMood } from './mood.js';
 import { buildProps, setLamp } from './prop-kit.js';
 import { CargoCrusher } from './crusher.js';
+import { Siphon } from './siphon.js';
+import * as kit from './level-kit.js';
 
 export class Level03 extends LayoutLevel {
   // Viewer shots: the design doc's "what you see" frames, one per room, from
@@ -33,11 +35,50 @@ export class Level03 extends LayoutLevel {
 
   get layout() { return LAST_COLOUR; }
 
+  /** The Siphon calls the win, not the intake volume. */
+  get scriptedWin() { return true; }
+
   async load() {
     await super.load();
     applyMood(this, TUNING.mood);
     this.props = buildProps(this, LAST_COLOUR.props);
     this._crushers();
+    this.siphon = new Siphon(this, {
+      targets: LAST_COLOUR.targets,
+      spill: LAST_COLOUR.spill,
+      beacon: this.root.getObjectByName('siphon-mast-beacon'),
+      onDone: () => {
+        if (this._complete) return;
+        this._complete = true;
+        this.game.onWin?.();
+      },
+    });
+    this._bigArm();
+    // The Siphon's plates are paint material built after LayoutLevel's light
+    // pass: aim them too (AGENTS rule 5).
+    kit.aimCustomShading(this.surfaces, [], this.sunDir.toArray());
+  }
+
+  /**
+   * Big Arm's hooks (#99). Its slam's hit goes through `onAttack` like every
+   * attack (main.js wires it); the grab and the summon are the level's to do.
+   */
+  _bigArm() {
+    const entry = this.roster.find((r) => r.data.type === 'bigArm');
+    this.bigArm = entry?.enemy ?? null;
+    if (!this.bigArm) return;
+    const grab = ENEMY.bigArm.grab;
+    this.bigArm.onGrab = (boss) => {
+      const p = this._player;
+      if (!p) return;
+      p.takeDamage?.(grab.damage);
+      // Pulled in: toward it, and off your feet.
+      const pull = new THREE.Vector3().subVectors(boss.position, p.position).setY(0);
+      if (pull.lengthSq() > 1e-6 && p.velocity) p.velocity.addScaledVector(pull.normalize(), grab.pull);
+    };
+    this.bigArm.onSummon = () => {
+      for (const r of this.roster) if (r.data.wake === 'summon') r.enemy.wake();
+    };
   }
 
   /** The layout's built trap zones: each crusher in the floor it sits on. */
@@ -53,9 +94,16 @@ export class Level03 extends LayoutLevel {
   }
 
   update(dt, player) {
+    this._player = player;
     super.update(dt, player);
     for (const c of this.crushers) c.update(dt, [player, ...this.enemies]);
     // The lamps over the bay gates blink while their wave's breath counts down.
     for (const lamp of this.props.lamps) setLamp(lamp, this._rule(lamp.rule, player), this._clock);
+    this.siphon.update(dt, this._cleared(LAST_COLOUR.win.requires));
+    // #112 — the sergeant's line on arrival at the base.
+    if (!this._saidBase && this.inRoom('R0', player.position)) {
+      this._saidBase = true;
+      this.game.say?.('last-colour-base');
+    }
   }
 }

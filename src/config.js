@@ -296,6 +296,9 @@ export const LAST_COLOUR = {
     pipe: 0x46494d,
     rail: 0x6c6f73,
     lightOff: 0x4a4430,  // an amber lamp that is not lit
+    // A Corp work light: cold white, NOT amber. Amber means "this hurts"
+    // across the campaign; a floodlight only says "here", so it marks a route.
+    floodlight: 0xe6eeff,
     blinkRate: 6,        // rad/s: the warning lamps' on/off rhythm
     maxFloorHeight: 1.2, // no prop on an arena floor hides a Drainer at 20 m
   },
@@ -309,6 +312,59 @@ export const LAST_COLOUR = {
     headHeight: 2.4,     // the head's own height; it rises to the box's top
     hurtHeight: 2.2,     // the hurting region, from the floor up
   },
+  // The Siphon (#100): the final exam. Three phases, one colour each, read by
+  // the share of a plate in that colour — never by damage (docs/levels/03-last-colour.md, R5).
+  siphon: {
+    revealFor: 2.0,      // seconds a target shows its colour and refuses paint: the tell before the test
+    need: 0.5,           // share of a plate's samples in the right colour that solves it
+    samples: 4,          // a samples x samples grid per plate; one centred shot covers 12 of 16
+    pulseRate: 8,        // rad/s: the frame's pulse while a target is open
+    frameMargin: 0.35,   // metres the coloured frame shows round each plate
+    intake: { size: 3, vaneSpin: 6 },
+    arm: { size: 2, reach: 3, beam: 0.5, thrashAmp: 1.6, thrashRate: 2.2 },
+    core: { size: 2.5, shutterRise: 3.2 },
+    spillRadius: 3.5,    // the pool of the phase's colour it leaks at its foot (the refill, and a second tell)
+    finaleFor: 2.5,      // seconds the core takes to sink into the machine before the win
+    knockDepth: 2.5,     // metres it sinks
+    frost: 0xe8f6ff,     // a frozen intake's frame
+    dim: 0x3a3d42,       // a frame between pulses, and a solved arm's
+    vane: 0x2e3135,
+  },
+};
+
+// The Ascent (polish pass 1): cold dawn, the collapsing catwalk (#102), and the
+// base on the horizon.
+export const ASCENT = {
+  // Cold dawn (#125): thin, clear mountain air. The fog is FAR, because this
+  // level is about seeing the goal — the lift beacon is 76 m from the trailhead
+  // and has to read the whole climb. Same sun as every level (the scene light is
+  // core's), so the dawn is the sky and the fill, not a moved sun.
+  mood: {
+    horizon: 0xc9c2c4,   // pale rose-grey: first light, nothing warm yet
+    zenith:  0x4c5c74,   // cold slate blue overhead
+    void:    0x1d2129,   // the drop below the ridges
+    fogNear: 30,         // the room you are in is crisp
+    fogFar:  170,        // the far side of the mountain is haze, the tower is not
+    fillColour: 0x9fb4d6,
+    fillIntensity: 0.6,
+    skyRadius: 450,      // past the base (~245 m), so the dome is behind it
+  },
+  // The collapsing catwalk (#102): "can you cross before it drops?"
+  catwalk: {
+    // A segment goes this long after you first step on it, whether or not you
+    // are still there. At PLAYER.maxSpeed a 4 m segment takes 0.57 s, so a run
+    // always makes it and a stop to shoot never does.
+    delay: 0.9,
+    reformAfter: 5,      // seconds until a fallen segment is back (the scree-return climb takes longer)
+    shake: 0.05,         // metres of jitter while it is going: the tell
+    flashOpacity: 0.55,  // the amber flash over the walking surface; see-through so paint still reads
+    fallGravity: 26,     // m/s² the falling slab drops with (PLAYER.gravity's size)
+    fallFor: 1.2,        // seconds the falling slab is drawn before it hides
+    standBand: 0.35,     // feet within this above a segment count as standing on it
+  },
+  // The base: a silhouette on the summit horizon, unfogged so it stays a shape
+  // against the dawn instead of dissolving into it.
+  base: { silhouette: 0x262b35 },
 };
 
 export const PAINT_GUN = {
@@ -623,6 +679,37 @@ export const ENEMY = {
     attackRange: 3,
     attackCooldown: 2.5,
     stopDistance: HEALTH.contactRange + 0.2,
+  },
+
+  // BIG ARM (#99): Last Colour's arena boss (DECISIONS 2026-10-06: "L3 = zombies
+  // + Big Arm"; 2026-10-30 for the design). Built in src/enemies/boss.js.
+  //
+  // DAMAGE DOES NOT KILL IT. `hp` counts COMBOS LEFT: blue freeze → green pin →
+  // red knockdown, landed three times, one per phase. Each phase entry below
+  // overrides the top-level numbers while that phase runs.
+  bigArm: {
+    hp: 3,
+    speed: 1.6,
+    canShoot: false,
+    canMove: true,
+    climbsGreen: false,
+    drainsPaint: false,
+    contactDamage: 20,
+    attackDamage: 30,     // a slam that lands
+    windup: 1.0,          // the slam's tell (algorithms.md: 1.0 s)
+    attackRange: 4.0,     // it starts a slam with you inside this
+    attackCooldown: 2.5,
+    stopDistance: 2.6,
+    slamRadius: 4.0,      // the grey it leaves, and the reach of the hit
+    slamReach: 1.5,       // metres in front of it the slam lands
+    pinFor: 3.0,          // combo step 2: seconds on one knee, waiting for red
+    downFor: 2.5,         // combo step 3: seconds flat before the next phase
+    grab: { range: 2.6, windup: 0.6, cooldown: 4.0, damage: 15, pull: 9 },
+    phases: [
+      {},                                                                   // 1: slow, the slam
+      { speed: 2.6, windup: 0.9, attackCooldown: 2.0, grabs: true },        // 2: faster, the grab, two Drainers
+      { speed: 3.2, windup: 0.7, attackCooldown: 0.4, grabs: true, ignoresPaint: true }, // 3: enraged
+    ],
   },
 
   // THE STALKER (#120). The only enemy that attacks the loop from the other

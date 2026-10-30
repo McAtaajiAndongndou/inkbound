@@ -148,16 +148,65 @@ This is an arena level: 115 m of route and almost all of its time is fighting. *
 
 ![The Core from above](last-colour/frames/core-from-above.png)
 
-### R4 — Big Arm *(planned, #99, a cut candidate)*
+### R4 — Big Arm · *the arena boss (#99)*
 
 ![R4](last-colour/frames/eye-r4-big-arm.png)
 
-- Enters from the north bay **12 s after wave three is gone**, while its gate field pulses as the warning. Its behaviour (slam that greys 4 m, grab, enrage, dies to a three-colour combo) is #99. **The bay is built either way.** If Big Arm is cut, the bay stays shut and the Siphon follows wave three directly.
+- Enters from the north bay **12 s after wave three is gone**, while its gate field pulses as the warning. Built in `src/enemies/boss.js`, tuning in `ENEMY.bigArm`, tested in `tests/big-arm.test.js`. In the data it's the Core's **wave 4** (room R3, whose floor includes the bay), so the Siphon's "Core clear" waits for it, and for its two Drainers (wave 5, dormant at the back of the bay until phase 2).
 
-### R5 — The Siphon *(planned, #100)*
+#### Design, 30 Oct 2026. Status: decided (Renda): three combos, one per phase; built in `src/enemies/boss.js` with Lethabo's agreement
 
-- Phase targets are placed: the **intake** (low on the south face: blue), three **arms** (west, east, north: green), and the **core** (high on the south face: red).
-- **Blockout placeholder:** the win fires when you reach the intake with the Core clear. #100 replaces that with "phase three done".
+- **Question:** *can you hold your nerve for three colours in a row while it takes your floor?* The Siphon asks whether you *know* the colours. Big Arm asks whether you can *chain* them under pressure. Same verbs, different test, so the two finales don't repeat each other.
+- **Its job is territory, not damage** (#99). Every slam greys 4 m of floor. The arena gets smaller the longer you take, which is the level's identity (drowning) turned up to a boss.
+- **Damage doesn't kill it.** Plain hits only stagger it. It dies to **the combo, landed three times**, and each combo ends a phase:
+
+| Phase | Behaviour (#99) | Ends when |
+|---|---|---|
+| 1 | Slow advance; ground slam with a 1.0 s tell; greys a 4 m radius | combo 1 |
+| 2 | Faster; adds a grab; calls 2 Drainers out of the bays | combo 2 |
+| 3 | Enraged: back-to-back slams, paint no longer slows it | combo 3 = death |
+
+- **The combo, in order: blue → green → red.** All three are effects every enemy already has, so the player is never taught anything new:
+  1. **Blue freezes it.** Three blue hits, the game's existing freeze (`BLUE_FREEZE`: frozen for 2 s, frost shell).
+  2. **Green, while it's frozen, pins its arm.** It drops to one knee for 3 s, with green shackles. Green on an unfrozen Big Arm does nothing special.
+  3. **Red, while it's pinned, knocks it flat.** It stays down for a beat and the phase ends.
+
+  Miss a window and the chain resets: frost and shackles break, it roars, it carries on. That's the "committed" part: you need ink for all three colours and the nerve to switch while it's in reach.
+- **Every step has its own tell**, so a failed attempt teaches the next one (#99: "dodgeable on the second attempt"): a frost shell (step 1 done), green shackles (step 2 done), and a crack of red light when it's knocked down.
+- **Why high ground still matters:** the slam greys the **floor only**. The 5 m balconies are out of its reach, so the hangar's lesson ("raised paint is safe paint") is the refill plan. But the combo needs you in range of it, so you have to come down to finish each phase. That push and pull is the fight.
+- **The manual check (#99):** a painted arena means short walks to refill between combos, so it should be winnable. A bare arena means every combo is a long walk to ink, so it should be much harder but still winnable from the balconies.
+- **After it dies:** the Siphon's exam starts (the Core counts as clear only once Big Arm is gone).
+- **Alternatives:**
+  - (B) **One combo kills it, and phases advance by time** (40 s each). Shorter and harder, and the combo is learnt under the most pressure.
+  - (C) **Cut it** and keep today's build, where the Siphon follows wave three. The fallback #99 itself names.
+
+**Who builds what (lanes):**
+
+| Part | Lane | Files |
+|---|---|---|
+| Movement, slam and its grey, grab, enrage, the combo state machine and its tells, an `onDefeated` hook | Enemies (Lethabo, per #99) | `src/enemies/boss.js` (a stub today) |
+| Waking it, its Drainer calls, the Siphon waiting for it, the arena | Levels (Renda) | `level-03-horde.js`, the layout's `big-arm` entry |
+| Tuning | shared | a `BIG_ARM` block in `src/config.js` |
+| Boss name and combo readout | UI (Moses) | `hud.js` already has `BIG ARM` |
+
+### R5 — The Siphon · *the final exam (#100)*
+
+- **Question:** *do you know what each colour does?* Not "do you have enough paint", and not "can you out-damage a health bar". Three colours, in the order the campaign taught them, no new verb.
+- **When:** the moment the Core is clear (wave three gone; Big Arm stays cut, so the bay stays shut). No enemies during the exam: it's the low after three minutes at 9, and a player under fire can't think about colour.
+- **The three phases**, each a paintable plate on the Siphon that reads by **share of the plate in the right colour**, like Outskirts' vent. Damage does nothing, and nor does the wrong colour:
+
+| Phase | Target | Colour | What solving it looks like |
+|---|---|---|---|
+| 1 · Intake | 3 × 3 m plate, low on the south face (y 1.5–4.5), pulling | **Blue** freezes it | the vanes stop, the frame goes frost-white |
+| 2 · Arms | three 2 × 2 m plates on beams (west, east, north, y 8), **thrashing** up and down | **Green** pins each | that arm stops dead; all three pinned ends the phase |
+| 3 · Core | 2.5 × 2.5 m plate high on the south face (y 16), behind a shutter until now | **Red** knocks it | the core is driven back into the machine, the beacon dies, then the win |
+
+- **Give the tell, then the test** (the issue's design note). Each phase opens with a **reveal**: the target appears (the shutter lifts, the arms swing out) and its frame pulses **in the colour it wants** for 2 s, while it refuses paint. Then it accepts paint. A target never exists before its phase, so the exam can't be done out of order or pre-painted.
+- **The leak: knowledge, not ammunition.** As each phase opens, the Siphon **spills a pool of that phase's colour** at its foot: the colour it's choking on, coming back out. Standing in it refills you (any of your paint does), and it's a second, louder tell of which colour comes next. A player who arrives dry can still finish. This is the same principle as Splatoon's ink refill points in a final stage, used as a hint.
+- **Forgetting a colour can't soft-lock you:** a wrong colour is just paint over the plate. Shoot it again in the right one. No timer, no fail state.
+- **The finale:** phase three done → the core slides back into the Siphon over 2.5 s and the beacon on the mast goes dark → `game.onWin()`, once. That replaces the blockout's placeholder ("reach the intake with the Core clear").
+- **Alternatives considered:** (a) the cheap stand-in (the Siphon greys out as you reach it): no test, no payoff for learning the colours; (b) arms that deal contact damage: adds pressure, but punishes standing still to aim, which is the one thing the exam asks for. Parked; add it only if a playtest says phase 2 is too easy.
+- Built in `src/levels/siphon.js`, tuning in `LAST_COLOUR.siphon` (`src/config.js`), tested in `tests/siphon.test.js`.
 
 ---
 
@@ -169,9 +218,9 @@ This is an arena level: 115 m of route and almost all of its time is fighting. *
 | Corridor | 2 turrets + 1 Charger | T1 by the Core door, T2 in the alcove, Charger mid-corridor | turrets always; Charger when you enter |
 | Wave 2 (Core) | 8 Drainers, 2 Chargers, 1 Stalker | west and east bays, behind gate fields | you enter the Core (the bay gates drop) |
 | Wave 3 (Core) | 6 Drainers, 2 Chargers, 2 turrets | back of the same bays; turrets on the north balcony | 8 s after wave 2 is gone |
-| Big Arm *(planned)* | 1 | north bay | 12 s after wave 3 is gone (the north gate pulses, then drops) |
+| Big Arm | 1, then 2 Drainers | north bay; the Drainers dormant at its back | 12 s after wave 3 is gone (the north gate pulses, then drops); the Drainers when it reaches phase 2 |
 
-**30 enemies built, plus Big Arm.** Types: Drainer, Charger, Turret, Stalker. No new enemy types (Stalker is #120, merged).
+**33 enemies built: 30, Big Arm, and its two Drainers.** Types: Drainer, Charger, Turret, Stalker. No new enemy types (Stalker is #120, merged).
 
 **Gates** (`layout-level.js`, shared with the Ascent): corridor gate on `cleared:R1.1`, side bays on `enter:R3`, north bay on `cleared:R3.3+12`. The `+12` is new: **a rule can wait**, and a gate pulses while it counts down. "Gone" means dead or knocked out of the room, the same soft-lock guard the Ascent needed.
 
@@ -181,7 +230,7 @@ This is an arena level: 115 m of route and almost all of its time is fighting. *
 
 `tests/last-colour-layout.test.js`, 10 tests on the data: every climb is taller than a jump, starts on a floor and tops out on a lip · every climb is on a real face · no boxes overlap · cover beats a red bounce and low walls are hop-able · **the level is sealed** · every enemy and route point stands on a floor · **the pocket rule**, with only climbs reachable *during that fight* counted (the first version let the hangar borrow the corridor's climb, behind a shut gate) · **the Siphon is in view from every room** · **the beacon clears the hangar wall from anywhere on the landing** · both traps can be passed the ways the design says.
 
-`tests/level-03-last-colour.test.js`, 10 tests on the **built** level: 30 enemies with Big Arm not spawned · every strip built as paint at exactly its size, and no other wall takes paint · no two surfaces share a plane · no wall faces into steel · every walkable top is a floor · the hangar wakes on entry and its gate holds until it's clear · the bays open as you walk in and wave 3 waits its 8 s · Big Arm's gate visibly pulses for 12 s, then drops · the placeholder win fires once, only with the Core clear · ten reloads leak nothing.
+`tests/level-03-last-colour.test.js`, 10 tests on the **built** level: 30 enemies with Big Arm not spawned · every strip built as paint at exactly its size, and no other wall takes paint · no two surfaces share a plane · no wall faces into steel · every walkable top is a floor · the hangar wakes on entry and its gate holds until it's clear · the bays open as you walk in and wave 3 waits its 8 s · Big Arm's gate visibly pulses for 12 s, then drops · a clear Core starts the Siphon instead of winning · ten reloads leak nothing. `tests/siphon.test.js`, 10 tests: every acceptance criterion of #100, including the real paint gun solving the intake and the core from the floor.
 
 **Sightlines to the Siphon** (generated, `last-colour/timings.json`): R0 117 m ✅ · R1 110 m ✅ · R2 71 m ✅ · R3 24 m ✅ · R4 26 m ✅ · R5 12 m ✅.
 
@@ -206,7 +255,7 @@ Pass question: *does it read as a Corrupt Corp facility, and does losing your pa
 
 1. **#155, tank per level.** Last Colour's 80 ink isn't wired; every level gets 100.
 2. **#156, paintable surfaces readable.** The six balcony climbs and three pockets are the level's whole defence, and in the game they look like the steel around them.
-3. **#99 Big Arm** and **#100 the Siphon**: their spaces are built here, their mechanics are theirs.
+3. **#99 Big Arm**: its bay is built, it is not (a cut candidate). **#100 the Siphon** is built (R5).
 4. **The laser grid** (#33) is parked; the crusher is built (polish pass 1).
 
 ---
@@ -217,7 +266,7 @@ Pass question: *does it read as a Corrupt Corp facility, and does losing your pa
 2. **The Core stays open behind you.** Retreating means walking back under two turrets.
 3. **Wave 3 stands visible behind wave 2.**
 4. **Big Arm's bay is built now**; the cut is decided in the campaign pass.
-5. **The placeholder win** (reach the intake with the Core clear) stays until #100.
+5. **The placeholder win** (reach the intake with the Core clear) stayed until #100. **Superseded 30 Oct:** the Siphon is built and the win is phase three (R5).
 
 ## What building it caught
 
