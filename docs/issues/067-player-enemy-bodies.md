@@ -2,7 +2,7 @@
 **Priority:** MUST. A playtest bug: the player walks straight through enemies
 **PRD:** none. Fixes something every shooter is assumed to have
 **Cost:** S
-**Depends on:** nothing. Pairs with 068 (enemies push each other apart); either can land first
+**Depends on:** nothing. Pairs with #187 (enemies push each other apart); either can land first
 
 ### Context
 
@@ -28,7 +28,7 @@ Why it matters:
 | Vertical | Only when the heights overlap: `|dy| < HEALTH.contactHeight` (1.7 m) | You on a ledge above, the enemy below, don't push each other |
 | Who is solid | Every enemy that is `alive !== false`, **including sleeping ones** | A dormant guard is still standing there. Corpses are not solid |
 | Not solid | A wall-crawler **on a face** (`_climbing`) | Its body is held off the wall; the wall already stops you |
-| Who moves | **Only the player**, fully out along the horizontal line between centres | Pushing enemies would let the player shove them through walls or off ledges, which the enemy nav forbids. Enemy-vs-enemy is 068 |
+| Who moves | **Only the player**, fully out along the horizontal line between centres | Pushing enemies would let the player shove them through walls or off ledges, which the enemy nav forbids. Enemy-vs-enemy is #187 |
 | Exactly on top (dist ≈ 0) | Push along the player's facing reversed | Avoids a divide by zero and a random direction |
 
 **Contact damage keeps working.** `HEALTH.contactRange` is 1.0 m and the push-out keeps you at 0.8 m, so an enemy pressed against you is still "touching" and still hurts. Don't change `contactRange`. **The one edge case is Big Arm** (`contactDamage: 20`). Pressed against it you sit at exactly 1.0 m, right on the contact boundary, so floating-point error decides whether it hurts. Fix it in `checkEnemyContact`: the touch range per enemy becomes `max(HEALTH.contactRange, PLAYER.radius + bodyRadius + 0.2)`. That's 1.0 m for soldiers (unchanged) and 1.2 m for Big Arm. Add a test for it.
@@ -43,7 +43,7 @@ After pushing, run `this._resolveWalls()` again, so an enemy can't shove you int
 
 `ENEMY_BODY = { radius: 0.4, chest: 0.9 }` is a local constant at the top of `src/enemies/enemy.js`. Move it into `src/config.js` as an export (AGENTS rule 4), and add `bodyRadius: 0.6` to `ENEMY.bigArm`. The player reads `enemy.config.bodyRadius ?? ENEMY_BODY.radius`.
 
-`enemy.js` keeps working unchanged until 068 switches it to the import; the duplicate is one line and 068 removes it. Tell Lethabo in the group chat that the block has moved.
+`enemy.js` keeps working unchanged until #187 switches it to the import; the duplicate is one line and #187 removes it. Tell Lethabo in the group chat that the block has moved.
 
 ### Scope — files you may touch
 
@@ -54,7 +54,7 @@ After pushing, run `this._resolveWalls()` again, so an enemy can't shove you int
 
 ### Out of scope
 
-- **Enemies pushing each other apart** (068, enemies lane).
+- **Enemies pushing each other apart** (#187, enemies lane).
 - **Standing on an enemy's head.** You'll slide off: enemies are not floors. Fine for now.
 - **Knockback when an enemy hits you.** That's feel (audit P1), not collision.
 

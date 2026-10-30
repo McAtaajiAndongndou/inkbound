@@ -164,9 +164,9 @@ Ranked by player-visible change per hour, with grading in mind (visuals and inte
 
 | Finding | Where it's written | Status |
 |---|---|---|
-| **Green climbs never finish.** The mantle probes behind the player, so it pulls them back down, or does nothing on walls over ~5.6 m. Regression from #157. | `docs/issues/065-mantle-probes-wrong-side.md` (core, Ozuko) | Draft, not published |
-| **Enemy shots become pellets** (the design for P0-1): they fly, can be dodged, stop at walls and grey where they land. | `docs/issues/066-enemy-pellets.md` (enemies, Lethabo), plus the `DECISIONS.md` entry | Draft, not published |
-| **Bodies pass through enemies.** The player only collides with walls (`checkEnemyContact` only applies damage, never pushes the player out), and enemies never separate from each other, so a wave stacks into one blob. Fix: a player-vs-enemy push-out in core, and a separation step between enemies in the enemies lane. | `docs/issues/067-player-enemy-bodies.md` (core, Ozuko) and `068-enemy-separation.md` (enemies, Lethabo; two wiring lines are yours) | Draft, not published |
+| **Green climbs never finish.** The mantle probes behind the player, so it pulls them back down, or does nothing on walls over ~5.6 m. Regression from #157. | `docs/issues/065-mantle-probes-wrong-side.md` (core, Ozuko) | Published, #184 |
+| **Enemy shots become pellets** (the design for P0-1): they fly, can be dodged, stop at walls and grey where they land. | `docs/issues/066-enemy-pellets.md` (enemies, Lethabo), plus the `DECISIONS.md` entry | Published, #185 |
+| **Bodies pass through enemies.** The player only collides with walls (`checkEnemyContact` only applies damage, never pushes the player out), and enemies never separate from each other, so a wave stacks into one blob. Fix: a player-vs-enemy push-out in core, and a separation step between enemies in the enemies lane. | `docs/issues/067-player-enemy-bodies.md` (core, Ozuko) and `068-enemy-separation.md` (enemies, Lethabo; two wiring lines are yours) | Published, #186 and #187 |
 | **Only Outskirts has real environment models.** The Primer, the Ascent and Last Colour are procedural boxes. Last Colour needs military props. | `docs/ASSETS.md`, "Environment candidates" (licences checked, nothing downloaded) | Shortlist |
 | **Enemies need a dedicated polish pass** (Renda's playtest). The "Enemies" section above is the starting list; attack tokens, telegraph spam and death feedback are the core of it. | This file | **Not started** |
 

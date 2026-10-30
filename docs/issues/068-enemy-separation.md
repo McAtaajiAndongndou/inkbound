@@ -2,7 +2,7 @@
 **Priority:** SHOULD. Waves stack into one blob, which hides how many enemies there are and makes the fight unreadable
 **PRD:** none
 **Cost:** S
-**Depends on:** 067 moves `ENEMY_BODY` into `src/config.js`. If 068 lands first, do the move here instead, and 067 drops that part
+**Depends on:** #186 moves `ENEMY_BODY` into `src/config.js`. If #187 lands first, do the move here instead, and #186 drops that part
 
 ### Context
 
@@ -22,7 +22,7 @@ Why it matters:
 
 | Choice | Value | Why |
 |---|---|---|
-| Shape | Horizontal circles, radius `enemy.config.bodyRadius ?? ENEMY_BODY.radius` (0.4 m; Big Arm 0.6 m) | The same body 067 makes solid to the player |
+| Shape | Horizontal circles, radius `enemy.config.bodyRadius ?? ENEMY_BODY.radius` (0.4 m; Big Arm 0.6 m) | The same body #186 makes solid to the player |
 | Vertical | Only pairs within `ENEMY_SEPARATION.heightTolerance` (1.2 m) of each other | A crawler on a ledge above a Sprayer isn't touching it |
 | Split | Each enemy takes **half** the overlap | Neither wins |
 | Immovable | Frozen, pinned, **sleeping**, and Big Arm | The other one takes the full overlap. A frozen enemy is a block of ice, a pinned one is rooted, a sleeping guard holds its post, and a boss doesn't get jostled. Two immovables: skip the pair |
@@ -47,7 +47,7 @@ export const ENEMY_SEPARATION = {
 };
 ```
 
-Switch `enemy.js` from its local `ENEMY_BODY` to the config export (067 adds it), and delete the local copy.
+Switch `enemy.js` from its local `ENEMY_BODY` to the config export (#186 adds it), and delete the local copy.
 
 ### Scope — files you may touch
 
@@ -61,7 +61,7 @@ Switch `enemy.js` from its local `ENEMY_BODY` to the config export (067 adds it)
 
 ### Out of scope
 
-- **The player against enemies** (067, core).
+- **The player against enemies** (#186, core).
 - **Flocking or flanking.** This keeps bodies apart; it doesn't plan routes. Spreading out to surround the player is a behaviour question for later.
 - **Attack tokens** (audit, Enemies item 2). Separate change.
 
