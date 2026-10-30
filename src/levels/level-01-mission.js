@@ -12,6 +12,7 @@ import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
 import { PaintVent } from './paint-vent.js';
 import { separateEnemies } from '../enemies/separation.js';
+import { SkyProbe } from '../shaders/sky-probe.js';
 
 /**
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
@@ -729,6 +730,8 @@ export class Level01 extends LevelBase {
     // camera ever clips the dome — the minimap's far plane, for instance.
     this.game.scene.background = new THREE.Color(MOOD.void);
     this._groundFog();
+    // #194: the sky that wet paint mirrors, photographed once now the dome exists.
+    this.skyProbe = new SkyProbe({ atmosphere: this.atmosphere, renderer: this.game.renderer });
   }
 
   /**

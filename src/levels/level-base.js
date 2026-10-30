@@ -46,6 +46,9 @@ export class LevelBase {
     // the top-down view is not washed out. Levels with no atmosphere leave it
     // null, and main.js tolerates that.
     this.atmosphere = null;
+    // The cube map wet paint reflects (#194). Built after the sky exists
+    // (mood.js / Outskirts' _mood); disposed first in dispose().
+    this.skyProbe = null;
   }
 
   /**
@@ -61,6 +64,10 @@ export class LevelBase {
   update(dt, player) { /* subclasses override to tick enemies / check win */ }
 
   dispose() {
+    // The probe's cube target is not under root, so the walk below cannot see it.
+    this.skyProbe?.dispose();
+    this.skyProbe = null;
+
     // Traverse every object under root, freeing geometry, materials and any
     // textures held in uniforms (uPaintMap) or material.map.
     this.root.traverse((obj) => {
@@ -74,7 +81,11 @@ export class LevelBase {
         if (mat.uniforms) {
           for (const key of Object.keys(mat.uniforms)) {
             const value = mat.uniforms[key]?.value;
-            if (value && value.isTexture) value.dispose();
+            // A render target's texture belongs to its target, whose owner
+            // disposes it (the sky probe above). The paint's uEnvMap is SHARED
+            // with the next level's surfaces, so freeing it here would blank
+            // the level that is loading.
+            if (value && value.isTexture && !value.isRenderTargetTexture) value.dispose();
           }
         }
         if (mat.map && mat.map.isTexture) mat.map.dispose();
