@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_ATTACK, ENEMY_BODY, ENEMY_NAV, ENEMY_SHOT, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, POINT_LIGHTS, STALKER } from "../config.js";
+import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_ATTACK, ENEMY_BODY, ENEMY_NAV, ENEMY_SHOT, FROST, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, POINT_LIGHTS, STALKER } from "../config.js";
 import { pointLights } from "../shaders/point-lights.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { EnemyShots } from "./enemy-shots.js";
@@ -2161,9 +2161,13 @@ export class Enemy {
     this._tintTimer -= dt;
     // At t=0 the lerp lands exactly on the base colour, so the last write
     // before the timer expires is already the resting state — no snap.
+    // #223: frozen, the flash is capped. Full paint blue on the emissive washed
+    // out every bit of shading for half the freeze — a flat blue cut-out — and
+    // the shell already says "frozen".
+    const strength = Math.max(0, this._tintTimer / TINT_FADE);
     this._tintBlend
       .copy(this._baseColour)
-      .lerp(this._tintTarget, Math.max(0, this._tintTimer / TINT_FADE));
+      .lerp(this._tintTarget, this._frozenTimer > 0 ? Math.min(strength, FROST.bodyTint) : strength);
     this._setColour(this._tintBlend);
   }
 
