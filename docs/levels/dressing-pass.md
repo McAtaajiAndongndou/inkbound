@@ -128,3 +128,9 @@ The builder is `src/levels/dressing.js`. Each item is a box with a kind, and eac
 - **The range.** Two ridges of overlapping peaks, to the north and the east, inside the sky dome. They are a shade lighter than the base, so the base still reads in front of them from the summit (tested).
 - **Strata.** Warm stone bands set into the big faces, starting at least 3 m above the floor at their foot and kept clear of the climb strips.
 - **Budget:** +8 draw calls at most, with every tree model loaded. Frame time was +0.4 ms at the R0 eye on best-of-runs and +0.7 ms on the median, measured A/B. The trees are the heavy part.
+
+### Outskirts (step 4)
+
+- **Skyline.** The same blocks and stacks as Last Colour, placed past the tower (z −106 to −175) and wide of the axis, so the beacon is still the thing you look at. Positions are in `L1.dressing`.
+- **The billboard.** A 12 × 6 m Corp board with the pill and stripes on it, fallen back on the east forest shelf beside island C, on one held leg and one buckled one. Its pieces are rotated as one thing about the board's foot. A new `decorAvoid` rect keeps the backdrop forest from growing through it. It is out of the walk: nothing sits over a non-shelf floor (tested), and it is across 8 m of lethal lake.
+- **Budget:** +5 draw calls, and +0.3 ms at most on best-of-runs.

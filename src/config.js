@@ -582,6 +582,7 @@ export const DRESSING = {
     stencil:  { colour: GATE.field, shape: 'box', look: 'toon' },      // Corp signage: the one accent
     sign:     { colour: GATE.field, shape: 'capsule', look: 'toon' },  // the pill icon, on a panel
     panel:    { colour: 0x3a3d41, shape: 'box', look: 'toon' },
+    board:    { colour: 0x8a8c8f, shape: 'box', look: 'toon' },      // a billboard's face: bleached Corp grey
     glass:    { colour: 0xaab4b8, shape: 'round', look: 'glass' },
     specimen: { colour: 0x2b2d30, shape: 'capsule', look: 'toon' },    // a failed test subject, a shadow in the tube
     deck:     { colour: 0x55585c, shape: 'box', look: 'toon' },
