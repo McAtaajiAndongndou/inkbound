@@ -16,7 +16,7 @@
 //
 // AXES. x east, y up, z SOUTH; the player starts in the south and walks north.
 // BOXES are [x0, x1, y0, y1, z0, z1], metres, axis-aligned.
-import { PAINT_GRID, SPAWN_PAD } from '../../config.js';
+import { PAINT_GRID } from '../../config.js';
 
 /** Floors, walls, steps and blocks. */
 const solids = [
@@ -174,8 +174,6 @@ const markings = [
  * `y` is the floor; the rect is x0, x1, z0, z1.
  */
 const prepaint = [
-  // Polish audit: the spawn pad (SPAWN_PAD in config).
-  { id: 'spawn-pad', room: 'R0', colour: SPAWN_PAD.colour, y: 0, rect: [0 - SPAWN_PAD.half, 0 + SPAWN_PAD.half, 89.5 - SPAWN_PAD.half, 89.5 + SPAWN_PAD.half], note: 'First steps at full speed' },
   // Polish audit: the game's refill verb was in none of the nine rooms. A pool
   // on R2's way round the wall, and the sergeant says "hold Shift" in it. Green,
   // because it grips: a blue pool would slide you out before you sank.

@@ -248,3 +248,7 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 
 - **`SKY.from`/`SKY.to` are 0.02/0.2, not the issue's 0.05/0.5.** Coverage is the HUD's number: the mean of `surface.coverage()` over *every* surface, walls and sealed faces included. Measured on the built levels, painting every paintable floor reaches only 0.31–0.37, so a `to` of 0.5 could never be reached and the sky would never finish restoring. 0.02 starts the warm-up with the first island; 0.2 is most of a level's floor. The coverage definition is unchanged, so the sky, the HUD and the music (#199) read one number.
 - **"While the Siphon drains" is its exam** (phases intake → arms → core): the sky is pulled to drained while you work, and the finale restores it within `SKY.finale` for good.
+
+## 2026-10-30 — spawn pads removed (Renda, quality-plan QA)
+
+- **No level starts on paint.** The polish audit's green spawn pad (`SPAWN_PAD`, 30 Oct, above) is removed from all four levels, and the `SPAWN_PAD` config with it. Renda's call after QA. The trade-off is known: grey's `standSlow` 0.6 (#74, unchanged) now applies from the first step, so the opening seconds run at 4.2 m/s until the player paints, which was the audit's reason for the pad. The player's first paint is now their own. Tested: `every level starts on grey` in `tests/polish-audit-levels.test.js`.
