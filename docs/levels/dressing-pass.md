@@ -107,3 +107,17 @@ Its look is right for a training course. **One addition:** rebel graffiti stenci
 1. **Downloads.** *Default: none.* Everything above can be procedural, plus the MegaKit we already ship. Alternative: Quaternius' Sci-Fi Essentials or Kenney's Conveyor Kit for the pill line and gantries (both CC0 on their pack pages per ASSETS.md). That looks better, but costs a validation pass per model and needs your OK for each download.
 2. **The hangar roof.** *Default: trusses only* (structure, no lid), so the sky and its #197 warm-up stay visible. Alternative: a full roof with skylights, which reads more "indoors" but hides the dynamic sky in R1.
 3. **Signage text.** *Default: no words.* Use the Corp's pill icon and stripes only: no font asset, and it reads at any distance. Alternative: canvas-texture slogans ("LIVE FOREVER"), which are funnier but small.
+
+## Build log
+
+The open decisions were built at their defaults: **no downloads**, **trusses only**, **no words** (the pill icon and grey-violet stripes). Renda can still overturn any of them.
+
+The builder is `src/levels/dressing.js`. Each item is a box with a kind, and each kind's colour, shape and look live in `DRESSING.kinds` in `config.js`. Items are instanced by shape and look, with the kind's colour set per instance, so a level's whole dressing costs four to six draw calls. Tests: `tests/dressing.test.js`.
+
+### Last Colour (steps 1 and 2)
+
+- **Wall breakup.** Ribs and cornices are computed from the layout's walls (`wallBreakup`), so they follow when a wall moves. A rib starts 3 m above whatever top sits at its foot, so behind a 5 m gantry it starts at 8 m. High pipes and cable trays run along the hangar and the Core.
+- **Trusses.** Full spans sit at z 64, 70 and 76 only. Further north, the R0 and R1 beacon lines and the intro camera cross the hangar at truss height, so the trusses at z 46, 52 and 58 stop 9 m short of the axis. This leaves a slot down the middle, and the landing test checks the beacon from every point on the landing.
+- **Skyline.** Five blocks, two plant rooms and two stacks. Every top is under the mast (27 m, tested). The north blocks sit close behind the Core so they clear its 14 m wall from the R3 eye.
+- **Clusters:** as the doc lists them, with one change. **R5 has no drain puddles.** A decal on the floor hides the paint underneath it, so the Siphon's pipes end in low elbows (under 1.2 m) instead. The corner pipes are `mount: 'siphon'`: they hug the Siphon, so they hide nothing it does not already hide (tested within 0.6 m).
+- **Budget:** +6 draw calls at most (R0/R1 eyes; four to six from other eyes). Frame time is within noise: the worst eye (R2) measured +0.3 ms on best-of-runs, A/B with the dressing hidden and shown in the same session.

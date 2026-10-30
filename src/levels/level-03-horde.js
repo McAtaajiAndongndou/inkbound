@@ -15,10 +15,11 @@
 import * as THREE from 'three';
 import { LayoutLevel } from './layout-level.js';
 import { LAST_COLOUR } from './layouts/last-colour.js';
-import { LAST_COLOUR as TUNING, ENEMY, TRAP, CURVES, PLACED_LIGHTS } from '../config.js';
+import { LAST_COLOUR as TUNING, ENEMY, TRAP, CURVES, PLACED_LIGHTS, DRESSING } from '../config.js';
 import { cables, lathe } from './curves.js';
 import { applyMood } from './mood.js';
 import { buildProps, setLamp } from './prop-kit.js';
+import { buildDressing, wallBreakup } from './dressing.js';
 import { CargoCrusher } from './crusher.js';
 import { Siphon } from './siphon.js';
 import * as kit from './level-kit.js';
@@ -56,6 +57,7 @@ export class Level03 extends LayoutLevel {
     });
     this._bigArm();
     this._curves();
+    this._dressing();
     this._lights();
     // The Siphon's plates are paint material built after LayoutLevel's light
     // pass: aim them too (AGENTS rule 5).
@@ -104,6 +106,19 @@ export class Level03 extends LayoutLevel {
     this.root.add(this.tank, ...this.vats);
     this.hoses = cables(this, C.hoses.map((h) => ({ ...h, radius: CURVES.hoseRadius })), CURVES.hoseColour, 'hoses');
     this.cables = cables(this, C.cables, CURVES.colour);
+  }
+
+  /**
+   * The dressing pass (docs/levels/dressing-pass.md): ribs and cornices on
+   * every wall, high pipes and trays, the hangar's roof trusses, the skyline
+   * and the story clusters. Positions are layout data (LAST_COLOUR.dressing).
+   */
+  _dressing() {
+    const D = LAST_COLOUR.dressing;
+    this.dressing = buildDressing(this, [
+      ...wallBreakup(LAST_COLOUR.solids, { ...DRESSING.walls, skip: D.walls.skip }),
+      ...D.items,
+    ]);
   }
 
   /**

@@ -361,8 +361,184 @@ const curves = {
   cables: [58, 62, 66].map((z) => ({ points: [[-23.6, 11.6, z], [23.6, 11.6, z]], sag: 1.2 })),
 };
 
+/**
+ * The dressing pass (docs/levels/dressing-pass.md, src/levels/dressing.js).
+ * Set pieces you cannot paint, never on the arena floor and never colliding.
+ * Keep-outs are tested (tests/dressing.test.js): off every strip and route
+ * point, out of every room eye's view of the beacon and the intro camera's path.
+ *
+ *   walls    ribs every 6 m from 3 m over the floor at their foot, and a cornice
+ *            on every wall top — computed from the walls above, so they follow
+ *   pipes    a second high run and a cable tray along the hangar's and the
+ *            Core's long walls, 9-12 m
+ *   trusses  the hangar's roof frame at 12 m: structure, no lid (open decision 2),
+ *            so the sky stays. Full spans only at z 64+, where the intro camera
+ *            has dropped below them; further north they stop 9 m short of the
+ *            axis, which is where the beacon lines and the intro run
+ *   skyline  the facility outside: dark blocks and two stacks past the Core,
+ *            sunk below the floor so they rise out of the dark. Lower than the
+ *            Siphon's mast (27 m), which stays the tallest thing
+ */
+const lamps = props.filter((p) => p.kind === 'light').map((p) => p.box);
+const near = (a, b, m) => a[0] - m < b[1] && a[1] + m > b[0] && a[2] - m < b[3] && a[3] + m > b[2] && a[4] - m < b[5] && a[5] + m > b[4];
+
+/** One roof truss across the hangar at `z`, from x `x0` to `x1`: chords, posts every 4 m, diagonals between. */
+function truss(z, x0, x1) {
+  const [lo, hi] = [12.3, 14.2];   // bottom chord sits on the cornice; 1.9 m deep
+  const out = [
+    { kind: 'truss', room: 'R1', box: [x0, x1, lo, lo + 0.3, z - 0.15, z + 0.15] },
+    { kind: 'truss', room: 'R1', box: [x0, x1, hi - 0.3, hi, z - 0.15, z + 0.15] },
+  ];
+  const bays = Math.round((x1 - x0) / 4);
+  const step = (x1 - x0) / bays;
+  const rise = hi - lo - 0.6;
+  const slant = Math.atan2(rise, step);
+  for (let i = 0; i <= bays; i++) {
+    const x = x0 + i * step;
+    out.push({ kind: 'truss', room: 'R1', box: [x - 0.1, x + 0.1, lo + 0.3, hi - 0.3, z - 0.1, z + 0.1] });
+    if (i === bays) continue;
+    const len = Math.hypot(rise, step);
+    const cx = x + step / 2;
+    out.push({ kind: 'truss', room: 'R1', box: [cx - len / 2, cx + len / 2, (lo + hi) / 2 - 0.08, (lo + hi) / 2 + 0.08, z - 0.08, z + 0.08], tilt: [0, 0, i % 2 ? slant : -slant] });
+  }
+  return out;
+}
+
+/**
+ * Story clusters: one per room, each a landmark you can name. Out of reach (the
+ * line, the rack and the cage hang 3.5 m+ over the floor) or low (the crates).
+ *   R0  a delivery of pill crates waiting at the lift, Corp-stencilled
+ *   R1  a dead pill production line on the north wall, and the Corp's pill
+ *       sign over the corridor door
+ *   R2  a specimen rack over the corridor: failed test subjects in glass. The
+ *       last tube is empty and its glass is gone
+ *   R3  a gantry along the north wall-top between the vats, striped
+ *   R4  Big Arm's containment cage over its bay, the bars bent out
+ *   R5  pipes from the Siphon's corners down into the floor
+ */
+const STRIPE = 0.6;   // rad: a hazard stripe's lean
+const stripes = (x0, x1, y0, y1, z0, z1, step) => Array.from({ length: Math.floor((x1 - x0) / step) }, (_, i) => {
+  const x = x0 + (i + 0.5) * step;
+  return { kind: 'stencil', box: [x - step / 5, x + step / 5, y0, y1, z0, z1], tilt: [0, 0, STRIPE] };
+});
+const pillCrates = [
+  // [x, y, z]: the corner of each 1.2 x 0.6 x 1.2 crate. Two layers: 1.2 m, the floor rule.
+  [3.4, 3, 88.6], [4.6, 3, 88.6], [3.4, 3, 87.4], [4.6, 3, 87.4], [3.4, 3.6, 88.6], [4.6, 3.6, 88.6], [4.0, 3.6, 87.4],
+  [-5.8, 3, 80.4], [-5.8, 3, 81.6], [-5.8, 3.6, 81.0],
+];
+const R1_LINE = { x: [-23, -9], z: 40, bed: 5.4 };
+const RACK_TUBES = [28.3, 29.7, 31.1, 32.5, 33.9];
+const CAGE_BARS = [-3.6, -2.8, -2.0, -1.2, 1.2, 2.0, 2.8, 3.6];
+const SIPHON_CORNERS = [[-5, -41], [5, -41], [-5, -31], [5, -31]];
+const clusters = [
+  // --- R0: the delivery ------------------------------------------------------
+  ...pillCrates.flatMap(([x, y, z]) => [
+    { kind: 'crate', room: 'R0', box: [x, x + 1.2, y, y + 0.6, z, z + 1.2] },
+    { kind: 'sign', room: 'R0', box: [x + 0.3, x + 0.9, y + 0.2, y + 0.4, z - 0.03, z + 0.02] },
+  ]),
+  // --- R1: the production line, on wall brackets (no legs: the floor is the arena) --
+  { kind: 'machine', room: 'R1', box: [R1_LINE.x[0], R1_LINE.x[1], R1_LINE.bed, R1_LINE.bed + 0.4, 40.1, 41.5] },
+  { kind: 'belt', room: 'R1', box: [R1_LINE.x[0], R1_LINE.x[1], R1_LINE.bed + 0.4, R1_LINE.bed + 0.5, 40.2, 41.4] },
+  ...R1_LINE.x.map((x) => ({ kind: 'drum', room: 'R1', box: [x - 0.3, x + 0.3, R1_LINE.bed, R1_LINE.bed + 0.5, 40.1, 41.5] })),
+  ...[-22, -19, -16, -13, -10].flatMap((x) => [
+    { kind: 'machine', room: 'R1', box: [x - 0.1, x + 0.1, R1_LINE.bed - 0.2, R1_LINE.bed, 40, 41.5] },
+    { kind: 'machine', room: 'R1', box: [x - 0.08, x + 0.08, R1_LINE.bed - 1.1, R1_LINE.bed - 0.9, 39.85, 41.6], tilt: [-0.7, 0, 0] },
+  ]),
+  // Two hoppers over the belt, each on a neck.
+  ...[-20, -15.5].flatMap((x) => [
+    { kind: 'machine', room: 'R1', box: [x - 1, x + 1, 7, 8.8, 40.1, 41.7] },
+    { kind: 'drum', room: 'R1', box: [x - 0.35, x + 0.35, R1_LINE.bed + 0.6, 7, 40.55, 41.25] },
+  ]),
+  // The capping machine at the end, three capping heads under its hood.
+  { kind: 'machine', room: 'R1', box: [-12.6, -9.4, 7, 8.2, 40.1, 41.9] },
+  { kind: 'panel', room: 'R1', box: [-12.6, -9.4, R1_LINE.bed + 0.5, 7, 40.1, 40.4] },
+  ...[-12, -11, -10].map((x) => ({ kind: 'drum', room: 'R1', box: [x - 0.2, x + 0.2, R1_LINE.bed + 0.9, 7, 40.75, 41.15] })),
+  // Pills left on the belt when it stopped: grey, like everything it made.
+  ...[-22.2, -21.3, -18.4, -17.5, -14.2, -13.4].flatMap((x, i) => [
+    { kind: 'pill', room: 'R1', box: [x, x + 0.42, R1_LINE.bed + 0.5, R1_LINE.bed + 0.68, 40.5 + (i % 2) * 0.4, 40.68 + (i % 2) * 0.4] },
+  ]),
+  // The Corp's sign over the corridor door: a lintel, a panel, the pill, stripes.
+  { kind: 'machine', room: 'R1', box: [-6, 6, 10, 11, 38.5, 40] },
+  { kind: 'panel', room: 'R1', box: [-2.6, 2.6, 10.1, 10.9, 40, 40.08] },
+  { kind: 'sign', room: 'R1', box: [-1.1, 1.1, 10.3, 10.7, 40.06, 40.16] },
+  ...stripes(-5.8, -2.8, 10.15, 10.85, 40, 40.06, 0.6),
+  ...stripes(2.8, 5.8, 10.15, 10.85, 40, 40.06, 0.6),
+
+  // --- R2: the specimen rack ---------------------------------------------------
+  { kind: 'panel', room: 'R2', box: [-6, -5.9, 3.4, 7.8, 28, 35.2] },
+  { kind: 'machine', room: 'R2', box: [-6, -4.9, 7.2, 7.8, 28, 35.2] },
+  { kind: 'machine', room: 'R2', box: [-6, -4.9, 3.4, 4.0, 28, 35.2] },
+  ...RACK_TUBES.slice(0, -1).flatMap((z, i) => [
+    { kind: 'glass', room: 'R2', box: [-5.85, -4.95, 4.0, 7.2, z, z + 0.9] },
+    { kind: 'specimen', room: 'R2', box: [-5.6, -5.2, 4.2, 5.9 + (i % 2) * 0.3, z + 0.25, z + 0.65] },
+    { kind: 'specimen', room: 'R2', box: [-5.55, -5.25, 5.9 + (i % 2) * 0.3, 6.25 + (i % 2) * 0.3, z + 0.3, z + 0.6] },
+  ]),
+  // The last tube: broken, empty. Something got out.
+  { kind: 'glass', room: 'R2', box: [-5.85, -4.95, 4.0, 4.6, RACK_TUBES.at(-1), RACK_TUBES.at(-1) + 0.9] },
+
+  // --- R3: the gantry between the vats, on the north wall-top -----------------
+  { kind: 'deck', room: 'R3', box: [-25, 25, 14.35, 14.55, -64.8, -61.6] },
+  ...[-61.7, -64.7].map((z) => ({ kind: 'rail', room: 'R3', box: [-25, 25, 15.35, 15.45, z - 0.05, z + 0.05] })),
+  ...Array.from({ length: 17 }, (_, i) => -24 + i * 3).flatMap((x) => [-61.7, -64.7].map((z) => (
+    { kind: 'rail', room: 'R3', box: [x - 0.05, x + 0.05, 14.55, 15.4, z - 0.05, z + 0.05] }))),
+  { kind: 'panel', room: 'R3', box: [-25, 25, 14.05, 14.35, -61.65, -61.55] },
+  ...stripes(-25, 25, 14.07, 14.33, -61.56, -61.5, 1.2),
+
+  // --- R4: Big Arm's cage, on the north bay's back wall ------------------------
+  { kind: 'machine', room: 'R4', box: [-4.2, 4.2, 12.4, 13, -74, -72.2] },
+  { kind: 'machine', room: 'R4', box: [-4.2, 4.2, 7, 7.6, -74, -72.2] },
+  ...CAGE_BARS.map((x) => ({ kind: 'bar', room: 'R4', box: [x - 0.07, x + 0.07, 7.6, 12.4, -72.47, -72.33] })),
+  // The two middle bars, bent out from the bottom; the two between, gone.
+  ...[-0.4, 0.4].map((x) => ({ kind: 'bar', room: 'R4', box: [x - 0.07, x + 0.07, 8, 12.8, -71.6, -71.46], tilt: [-0.45, 0, x * 0.6] })),
+
+  // --- R5: the Siphon's pipes, down its corners into the floor -----------------
+  ...SIPHON_CORNERS.flatMap(([x, z]) => [
+    { kind: 'pipe', room: 'R5', mount: 'siphon', box: [x - 0.4, x + 0.4, 0, 18, z - 0.4, z + 0.4] },
+    // ...and its elbow out into the floor drain, under the 1.2 m rule.
+    { kind: 'pipe', room: 'R5', box: [...[x + Math.sign(x) * 0.4, x + Math.sign(x) * 1.4].sort((a, b) => a - b), 0, 0.6, z - 0.3, z + 0.3] },
+  ]),
+];
+
+const dressing = {
+  // Ribs stay off the lamps and out from behind the clusters.
+  walls: {
+    skip: (box) => lamps.some((l) => near(box, l, 0.5))
+      || clusters.some((c) => c.kind !== 'pipe' && near(box, c.box, 0.1)),
+  },
+  items: [
+    ...clusters,
+    // --- Wall breakup: high pipe runs and cable trays -----------------------
+    ...[-1, 1].flatMap((s) => [
+      { kind: 'pipe', room: 'R1', box: [s * 23.65 - 0.25, s * 23.65 + 0.25, 10.9, 11.4, 40, 78] },
+      { kind: 'tray', room: 'R1', box: s < 0 ? [-24, -23.2, 10.2, 10.35, 40, 78] : [23.2, 24, 10.2, 10.35, 40, 78] },
+      { kind: 'pipe', room: 'R3', box: [s * 25.6 - 0.25, s * 25.6 + 0.25, 9.2, 9.7, -64, -42] },
+      { kind: 'pipe', room: 'R3', box: [s * 25.6 - 0.25, s * 25.6 + 0.25, 9.2, 9.7, -30, -10] },
+      { kind: 'tray', room: 'R3', box: s < 0 ? [-26, -25.2, 8.4, 8.55, -64, -42] : [25.2, 26, 8.4, 8.55, -64, -42] },
+      { kind: 'tray', room: 'R3', box: s < 0 ? [-26, -25.2, 8.4, 8.55, -30, -10] : [25.2, 26, 8.4, 8.55, -30, -10] },
+    ]),
+    // --- The hangar's roof trusses -------------------------------------------
+    ...[64, 70, 76].flatMap((z) => truss(z, -24, 24)),
+    ...[46, 52, 58].flatMap((z) => [...truss(z, -24, -9), ...truss(z, 9, 24)]),
+    // --- Skyline: the facility outside ---------------------------------------
+    // North, close behind the Core so they clear its 14 m wall from the R3 eye;
+    // off the axis, where the Siphon would hide them anyway.
+    { kind: 'block', box: [-46, -16, -40, 24, -100, -78] },
+    { kind: 'block', box: [16, 44, -40, 22, -96, -78] },
+    { kind: 'block', box: [-12, 12, -40, 25, -134, -112] },
+    // Plant rooms on the roofs, so the skyline is not one straight edge.
+    { kind: 'block', box: [-40, -34, 24, 26, -90, -84] },
+    { kind: 'block', box: [30, 36, 22, 25.5, -88, -82] },
+    { kind: 'block', box: [-96, -62, -40, 18, -64, -30] },
+    { kind: 'block', box: [62, 92, -40, 20, -76, -40] },
+    { kind: 'block', box: [56, 84, -40, 15, 20, 64] },
+    { kind: 'block', box: [-84, -56, -40, 17, 10, 52] },
+    { kind: 'stack', box: [-31, -26, -40, 26.5, -92, -87] },
+    { kind: 'stack', box: [24, 28.5, -40, 26, -106, -101.5] },
+  ],
+};
+
 export const LAST_COLOUR = {
   id: 'last-colour', name: 'Last Colour', cells: PAINT_GRID.level3Cells, prepaint,
   solids, slabs: [], strips, kerbs: [], landmarks, gates, traps, props, targets, spill, enemies, routes, rooms, win, doc,
-  curves,
+  curves, dressing,
 };
