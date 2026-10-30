@@ -26,6 +26,16 @@ import { LAST_COLOUR, DANGER } from '../config.js';
  */
 const ROUND = new Set(['pipe', 'rail']);
 
+/**
+ * A `rock` is a low-poly lump (an icosahedron) scaled to its box and turned by
+ * a fixed per-prop angle, so a row of them reads as scree, not as a stack of
+ * the same stone. The Ascent's foothills use it to break its box silhouettes
+ * (polish audit, Level visuals).
+ */
+const LUMPY = new Set(['rock']);
+
+const UP = new THREE.Vector3(0, 1, 0);
+
 export function buildProps(level, props) {
   const cfg = LAST_COLOUR.props;
   const groups = new Map();
@@ -45,7 +55,9 @@ export function buildProps(level, props) {
 
   for (const [key, list] of groups) {
     const kind = list[0].kind;
-    const geo = ROUND.has(kind) ? new THREE.CylinderGeometry(0.5, 0.5, 1, 10) : new THREE.BoxGeometry(1, 1, 1);
+    const geo = ROUND.has(kind) ? new THREE.CylinderGeometry(0.5, 0.5, 1, 10)
+      : LUMPY.has(kind) ? new THREE.IcosahedronGeometry(0.62, 0)
+        : new THREE.BoxGeometry(1, 1, 1);
     const mat = kind === 'light'
       ? new THREE.MeshBasicMaterial({ color: list[0].rule ? cfg.lightOff : DANGER.amber })
       : kind === 'floodlight'
@@ -63,6 +75,9 @@ export function buildProps(level, props) {
         if (sz >= sx && sz >= sy) { q.copy(zAxisToY); scale.set(sx, sz, sy); }
         else if (sx >= sy) { q.copy(xAxisToY); scale.set(sy, sx, sz); }
         else { q.identity(); scale.set(sx, sy, sz); }
+      } else if (LUMPY.has(kind)) {
+        q.setFromAxisAngle(UP, i * 2.39996);   // golden angle: no two neighbours alike
+        scale.set(sx, sy, sz);
       } else {
         q.identity();
         scale.set(sx, sy, sz);

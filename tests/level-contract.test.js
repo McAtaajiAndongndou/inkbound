@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { Level01 } from '../src/levels/level-01-mission.js';
 import { Enemy } from '../src/enemies/enemy.js';
 import { Player } from '../src/core/player.js';
-import { ENEMY, HEALTH, PLAYER, SURFACE } from '../src/config.js';
+import { ENEMY, HEALTH, PLAYER, SURFACE, OUTSKIRTS } from '../src/config.js';
 
 function makeGame() {
   return { scene: new THREE.Scene(), onWin: null };
@@ -183,9 +183,15 @@ test('enemies hold their spawn until the player enters their arena (#012)', asyn
       'a sleeping enemy must not walk to the lip before the jump');
   });
 
-  // Land in B: the arena wakes, and the fight starts where it was placed.
-  level.update(1 / 60, { position: new THREE.Vector3(0, 0, 3) });
-  assert.ok(b.every((e) => e.sleeping === false), 'landing in B must wake its arena');
+  // Land in B: the arena wakes, and the fight starts where it was placed. The
+  // Sprayer first and alone (polish audit: its first appearance is framed),
+  // the Chargers OUTSKIRTS.sprayerFirst seconds later — even if you step back.
+  const inB = { position: new THREE.Vector3(0, 0, 3) };
+  level.update(1 / 60, inB);
+  assert.equal(b.find((e) => e.type === 'sprayer').sleeping, false, 'landing in B wakes its Sprayer');
+  assert.ok(b.filter((e) => e.type === 'charger').every((e) => e.sleeping), 'the Chargers wait their beat');
+  for (let t = 0; t < OUTSKIRTS.sprayerFirst + 0.1; t += 1 / 60) level.update(1 / 60, atA);
+  assert.ok(b.every((e) => e.sleeping === false), 'then the whole arena is awake');
 });
 
 /**

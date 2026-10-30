@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { LevelBase } from './level-base.js';
 import { PaintSurface } from '../paint/paint-surface.js';
-import { PAINT_GRID, OUTSKIRTS, GATE } from '../config.js';
+import { PAINT_GRID, OUTSKIRTS, GATE, SPAWN_PAD } from '../config.js';
 import { audio } from '../audio/audio-manager.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
@@ -247,8 +247,12 @@ const L1 = {
     // deck instead of arriving at the lip. DORMANT until the player lands in B:
     // enemies walk from load, so without this they pile up at B's edge and the
     // player jumps the Gap into a wall of Chargers.
-    { x: -3,  y: 0,   z: -3,   type: 'charger', sleeping: true, wakeOn: 'B' },
-    { x: 2,   y: 0,   z: -4,   type: 'charger', sleeping: true, wakeOn: 'B' },
+    // The Sprayer's first appearance is framed (polish audit, Enemies 5): it
+    // wakes alone, and the Chargers `OUTSKIRTS.sprayerFirst` seconds after,
+    // so B opens as one enemy at a distance, on the deck its answer is about.
+    // A hit still wakes a Charger at once (DECISIONS 24 Oct).
+    { x: -3,  y: 0,   z: -3,   type: 'charger', sleeping: true, wakeOn: 'B', wakeDelay: OUTSKIRTS.sprayerFirst },
+    { x: 2,   y: 0,   z: -4,   type: 'charger', sleeping: true, wakeOn: 'B', wakeDelay: OUTSKIRTS.sprayerFirst },
     { x: 7,   y: 4.6, z: -4,   type: 'sprayer', sleeping: true, wakeOn: 'B' },
     // island C — three in the arena, deeper now that the room is 14 m: the
     // player lands with 10 m of floor and a block between them and contact.
@@ -638,6 +642,7 @@ export class Level01 extends LevelBase {
     this._ascent();
     this._shoulders();
     this._extraction();
+    this._spawnPad();
     this._mood();
     this._waste();
     this._light();
@@ -1014,13 +1019,16 @@ export class Level01 extends LevelBase {
   }
 
   update(dt, player) {
+    this._clock = (this._clock ?? 0) + dt;
     // Dormant enemies wake when the player ENTERS their arena, not on a distance
     // radius (#54 has none). Until then they hold their spawn — see `_spawnEnemies`.
     for (let i = 0; i < this.sleepers.length; i++) {
       const s = this.sleepers[i];
-      if (s.enemy.sleeping && this._inIsland(s.wakeOn, player.position)) {
-        s.enemy.wake();
-      }
+      if (!s.enemy.sleeping) continue;
+      // The clock starts on the first step in and keeps running if you leave:
+      // a delayed wake is a beat, not a condition.
+      if (s.enteredAt === undefined && this._inIsland(s.wakeOn, player.position)) s.enteredAt = this._clock;
+      if (s.enteredAt !== undefined && this._clock - s.enteredAt >= s.wakeDelay) s.enemy.wake();
     }
 
     // Pass the position, not the player: Enemy.update does arithmetic on what
@@ -1490,6 +1498,13 @@ export class Level01 extends LevelBase {
     audio.play('gate'); // #113 — the arena is won; you hear the way open
   }
 
+  /** The spawn pad (polish audit, SPAWN_PAD): first steps at full speed, grey felt as a loss. */
+  _spawnPad() {
+    const { x, z } = L1.spawn;
+    const h = SPAWN_PAD.half;
+    kit.paintRect(this, [x - h, x + h, z - h, z + h], 0, SPAWN_PAD.colour);
+  }
+
   /**
    * The win volume (Box3) at the back of the tower's top deck, plus a faint white
    * marker box showing it.
@@ -1521,7 +1536,10 @@ export class Level01 extends LevelBase {
     const mast = new THREE.Mesh(new THREE.BoxGeometry(0.6, height, 0.6), new THREE.MeshToonMaterial({ color: b.mastColour }));
     mast.position.set(b.x, b.mastFrom + height / 2, b.z);
     mast.name = 'extraction-mast';
-    const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: b.colour }));
+    // Unfogged (polish audit): fog closes at 46 m and the beacon is 67 m from
+    // spawn, so it was hidden exactly where it had to pull you forward. The
+    // Ascent's base-silhouette trick: the light ignores the fog, the mast does not.
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: b.colour, fog: false }));
     beacon.position.set(b.x, b.top + 1.2, b.z);
     beacon.name = 'extraction-beacon';
     this.root.add(mast, beacon);

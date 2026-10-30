@@ -267,6 +267,17 @@ export const TRAP = {
   },
 };
 
+// The spawn pad (polish audit; grey's 0.6 slow, #74, is settled and unchanged).
+// Grey is the whole level at load, so every level's first minute was spent at
+// 4.2 m/s and its first impression was "this game is slow". A square of the
+// player's paint under the spawn makes the first steps fast, so stepping off it
+// is felt as a loss. Green: it grips (blue would slide you off, red would bounce
+// you), and you can submerge in it.
+export const SPAWN_PAD = {
+  colour: 'green',
+  half: 2.5,           // metres from the spawn to the pad's edge: a 5 m square
+};
+
 // Outskirts' grey-world mood (polish pass 1). DRAINED, NOT DARK: a pale, bleached
 // overcast with low contrast, so the grey reads as colour taken away rather than
 // as a night scene. The level file explains what each band does.
@@ -276,6 +287,9 @@ export const OUTSKIRTS = {
   // Ascent's lift tower and Last Colour's Siphon carry. Behind the ledge, so it
   // is never in the walk; it has no collider.
   beacon: { x: 0, z: -46.5, mastFrom: 0, top: 19.5, mastColour: 0x4a5058, colour: MARKER.white },
+  // Polish audit (Enemies 5): island B is the Sprayer's first appearance, so it
+  // wakes alone and B's two Chargers this many seconds later (a hit wakes one at once).
+  sprayerFirst: 3,
   mood: {
     horizon: 0x9ba1a6,   // the haze; matches the sky's horizon band and the mist
     zenith:  0x4d5560,   // overhead: washed out, not navy
@@ -323,6 +337,11 @@ export const PRIMER = {
     chalk: 0xd9cfb6,
     lineWidth: 0.15,
     crate: 0x8a6a45,     // rebel timber
+    // Polish audit: the course read as one debug texture with no focal point.
+    lamp: 0xffd2a0,      // warm tungsten: the rebels' light. Not amber (danger), not a paint colour
+    glow: 0.6,           // the soft halo round a lamp (additive), so it reads as LIT, not as a sticker
+    glowSize: 3.4,       // m across a hero lamp's halo; a lead lamp's is 1.5x
+    floorGrid: 2,        // floor grid squares are this many times a wall's: floor and wall stop being one texture
   },
 };
 
@@ -346,6 +365,7 @@ export const LAST_COLOUR = {
     pipe: 0x46494d,
     rail: 0x6c6f73,
     lightOff: 0x4a4430,  // an amber lamp that is not lit
+    rock: 0x5b6066,      // the Ascent's scree (the kit is shared): a cold rock grey, darker than its faces
     // A Corp work light: cold white, NOT amber. Amber means "this hurts"
     // across the campaign; a floodlight only says "here", so it marks a route.
     floodlight: MARKER.white,

@@ -70,25 +70,10 @@ export class LayoutLevel extends LevelBase {
 
   /**
    * Paint already on the floor at load: the layout's `prepaint` rects (the
-   * Primer's blue strip and red pad). Splatted on a grid fitted to each rect —
-   * spacing at most 1 m — with a 0.75 m radius, just over half a cell's
-   * diagonal, so the corners are covered. (A fixed 1 m grid left the far edge
-   * of the 2.5 m red pad bare; the built-level test caught it.)
+   * Primer's blue strip and red pad, every level's spawn pad). See kit.paintRect.
    */
   _prepaint() {
-    const point = new THREE.Vector3();
-    for (const p of this.layout.prepaint ?? []) {
-      const [x0, x1, z0, z1] = p.rect;
-      const nx = Math.ceil(x1 - x0);
-      const nz = Math.ceil(z1 - z0);
-      for (let i = 0; i < nx; i++) {
-        for (let j = 0; j < nz; j++) {
-          point.set(x0 + (x1 - x0) * (i + 0.5) / nx, p.y, z0 + (z1 - z0) * (j + 0.5) / nz);
-          const floor = this.surfaces.find((s) => s.isFloor && Math.abs(s.mesh.position.y - p.y) < 1e-6 && s.worldToCell(point));
-          floor?.splat(point, p.colour, 0.75);
-        }
-      }
-    }
+    for (const p of this.layout.prepaint ?? []) kit.paintRect(this, p.rect, p.y, p.colour);
   }
 
   /** Every enemy in the data that exists in the game (`planned` ones do not yet). */

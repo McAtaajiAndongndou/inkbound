@@ -22,7 +22,7 @@
 // AXES. x east, y up, z SOUTH. The player arrives in the south (+z) by the
 // Ascent's supply lift and walks north (−z) to the Siphon.
 // BOXES are [x0, x1, y0, y1, z0, z1], metres, axis-aligned.
-import { PAINT_GRID } from '../../config.js';
+import { PAINT_GRID, SPAWN_PAD } from '../../config.js';
 
 /** Solid rock, steel and concrete. `top: true` means a walkable top. */
 const solids = [
@@ -330,7 +330,12 @@ const doc = {
   ],
 };
 
+/** Paint on the floor at load: the spawn pad on the lift landing (polish audit). */
+const prepaint = [
+  { id: 'spawn-pad', room: 'R0', colour: SPAWN_PAD.colour, y: 3, rect: [0 - SPAWN_PAD.half, 0 + SPAWN_PAD.half, 86 - SPAWN_PAD.half, 86 + SPAWN_PAD.half], note: 'First steps at full speed' },
+];
+
 export const LAST_COLOUR = {
-  id: 'last-colour', name: 'Last Colour', cells: PAINT_GRID.level3Cells,
+  id: 'last-colour', name: 'Last Colour', cells: PAINT_GRID.level3Cells, prepaint,
   solids, slabs: [], strips, kerbs: [], landmarks, gates, traps, props, targets, spill, enemies, routes, rooms, win, doc,
 };

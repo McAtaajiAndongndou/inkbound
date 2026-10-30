@@ -19,7 +19,7 @@
 // west ledge → summit.
 //
 // BOXES are [x0, x1, y0, y1, z0, z1], metres, axis-aligned.
-import { PAINT_GRID } from '../../config.js';
+import { PAINT_GRID, SPAWN_PAD } from '../../config.js';
 
 /** Solid rock. `top: true` means its top face is walkable floor. */
 const solids = [
@@ -181,6 +181,16 @@ const props = [
   ...MASTS.flatMap(({ z }) => MAST_X.map((x) => ({ kind: 'floodlight', room: 'R5', box: [x - 0.35, x + 0.35, 44.3, 44.8, z - 0.35, z + 0.35] }))),
   { kind: 'floodlight', room: 'R5', box: [1.85, 2.15, 24, 24.6, -36, -35.7] },
   { kind: 'floodlight', room: 'R5', box: [1.85, 2.15, 28, 28.6, -31, -30.7] },
+  // Scree (polish audit): rock lumps at the foot of the south faces and round
+  // the trailhead's rim, so the mountain stops reading as stacked boxes from
+  // the first frame. Low (under 1.3 m), off the climbing line (|x| ≥ 6 at the
+  // faces) and clear of wave 2's dormant Crawlers at (±15, 0, 60).
+  ...[
+    [-17, 48.9, 1.3], [-13.5, 48.7, 0.9], [-10, 49.1, 1.2], [-7, 48.8, 0.8],
+    [7, 48.8, 1.0], [10.5, 49.2, 1.3], [14, 48.7, 0.9], [17, 49, 1.2],
+    [-19, 66, 1.1], [-19.2, 72, 0.8], [19, 69, 1.2], [19.3, 75, 0.9],
+    [-17, 78.8, 1.0], [-11, 79.2, 0.7], [11, 79, 0.9], [17.5, 78.6, 1.2],
+  ].map(([x, z, h]) => ({ kind: 'rock', room: 'R0', box: [x - h, x + h, -0.2, h * 0.9, z - h * 0.8, z + h * 0.8] })),
 ];
 
 /**
@@ -287,6 +297,12 @@ const doc = {
   ],
 };
 
+/** Paint on the floor at load. */
+const prepaint = [
+  // Polish audit: the spawn pad (SPAWN_PAD in config).
+  { id: 'spawn-pad', room: 'R0', colour: SPAWN_PAD.colour, y: 0, rect: [0 - SPAWN_PAD.half, 0 + SPAWN_PAD.half, 74 - SPAWN_PAD.half, 74 + SPAWN_PAD.half], note: 'First steps at full speed' },
+];
+
 /**
  * What the first frame faces (polish audit): the lift tower's beacon, the goal
  * you can see. Facing -z, level, the frame was R1's grey face and nothing else.
@@ -297,6 +313,6 @@ const doc = {
 const spawnLook = landmarks.find((l) => l.id === 'lift-tower').beacon;
 
 export const ASCENT = {
-  id: 'ascent', name: 'The Ascent', cells: PAINT_GRID.level2Cells, spawnLook,
+  id: 'ascent', name: 'The Ascent', cells: PAINT_GRID.level2Cells, spawnLook, prepaint,
   solids, slabs, strips, kerbs, landmarks, props, enemies, routes, rooms, win, doc,
 };

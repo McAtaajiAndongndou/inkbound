@@ -198,3 +198,76 @@ test('spawnAim matches the player convention: forward is (-sin yaw, -cos yaw)', 
   assert.ok(Math.abs(spawnAim(from, new THREE.Vector3(-10, 0, 0)).yaw - Math.PI / 2) < 1e-9);
   assert.ok(Math.abs(spawnAim(from, new THREE.Vector3(0, 1, -10)).pitch - Math.atan(0.1)) < 1e-9);
 });
+
+// --- the Siphon is heard -------------------------------------------------------
+
+test('the Siphon sounds each reveal, each solved target, and its fall', async () => {
+  const level = new Level03({ scene: new THREE.Scene(), onWin: () => {} });
+  await level.load();
+  level.root.updateMatrixWorld(true);
+  for (const e of level.enemies) e.update = () => {};
+  for (const r of level.roster) r.enemy.alive = false;
+  const at = { position: new THREE.Vector3(0, 0, -20) };
+  const heard = await listen(() => {
+    const tick = (s) => { for (let t = 0; t < s - 1e-9; t += 1 / 60) level.update(1 / 60, at); };
+    tick(1 / 60);
+    for (const kind of ['intake', 'arm', 'core']) {
+      tick(LAST_COLOUR.siphon.revealFor + 1 / 60);
+      for (const t of level.siphon.byKind(kind)) {
+        t.surf.splat(t.surf.mesh.getWorldPosition(new THREE.Vector3()), t.colour, 1.4);
+      }
+      tick(2 / 60);
+    }
+  });
+  const n = names(heard);
+  assert.equal(n.filter((x) => x === 'siphon').length, 3, 'one reveal per phase');
+  assert.equal(n.filter((x) => x === 'solved').length, 5, 'intake, three arms, core');
+  assert.equal(n.filter((x) => x === 'siphonDown').length, 1);
+  level.dispose();
+});
+
+// --- spawn pads ----------------------------------------------------------------
+
+test('every level starts on a pad of the player\'s paint, so its first steps are fast', async () => {
+  const { createLevel, LEVELS } = await import('../src/levels/index.js');
+  const { SPAWN_PAD, SURFACE } = await import('../src/config.js');
+  for (const { id } of LEVELS) {
+    const level = createLevel(id, { scene: new THREE.Scene(), onWin: null, say: () => true });
+    await level.load();
+    level.root.updateMatrixWorld(true);
+    const feet = level.spawn.clone();
+    const floor = level.surfaces
+      .filter((s) => s.isFloor && s.mesh.position.y <= feet.y + 1e-6 && s.worldToCell(feet.clone().setY(s.mesh.position.y)))
+      .sort((a, b) => b.mesh.position.y - a.mesh.position.y)[0];
+    assert.ok(floor, `${id}: a floor under the spawn`);
+    const ground = feet.clone().setY(floor.mesh.position.y);
+    assert.ok(floor.isPlayerPaintAtWorld(ground), `${id}: the spawn is on player paint`);
+    assert.deepEqual(floor.surfaceAtWorld(ground), SURFACE[SPAWN_PAD.colour], `${id}: the pad is ${SPAWN_PAD.colour}`);
+    const edge = ground.clone().add(new THREE.Vector3(SPAWN_PAD.half + 1.5, 0, 0));
+    if (floor.worldToCell(edge)) assert.equal(floor.isPlayerPaintAtWorld(edge), false, `${id}: past the pad it is grey again`);
+    level.dispose();
+  }
+});
+
+// --- the Primer teaches submerge -----------------------------------------------
+
+test('the Primer has a submerge pool in R2, and the sergeant says "hold Shift" in it, after the first line', async () => {
+  const { Level00 } = await import('../src/levels/level-00-the-primer.js');
+  const { PRIMER } = await import('../src/levels/layouts/primer.js');
+  const said = [];
+  let busy = false;
+  const level = new Level00({ scene: new THREE.Scene(), onWin: null, say: (id) => { if (busy) return false; said.push(id); return true; } });
+  await level.load();
+  const pool = PRIMER.prepaint.find((p) => p.id === 'r2-pool');
+  assert.ok(pool && pool.room === 'R2', 'the pool is in R2');
+  const [x0, x1, z0, z1] = pool.rect;
+  const inPool = { position: new THREE.Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2), velocity: new THREE.Vector3(), takeDamage() {} };
+  busy = true;   // the bar is still showing the first-splat line
+  level.update(1 / 60, inPool);
+  assert.deepEqual(said, [], 'a refused line is asked again, not lost');
+  busy = false;
+  level.update(1 / 60, inPool);
+  level.update(1 / 60, inPool);
+  assert.deepEqual(said, ['primer-splat', 'primer-submerge']);
+  level.dispose();
+});
