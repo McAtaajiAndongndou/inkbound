@@ -15,6 +15,10 @@ import { LAST_COLOUR, DANGER } from '../config.js';
  *     lights, so nothing joins the `uLightDir` pass (AGENTS rule 5)
  *   - under `level.root`, so the dispose walk frees them (AGENTS rule 6)
  *
+ * A `floodlight` is a cold-white Corp work light: unlit, never blinks, and
+ * marks a route rather than a danger (amber stays the danger colour). The
+ * Ascent's chain scaffold uses it.
+ *
  * A prop is `{ kind, box: [x0,x1,y0,y1,z0,z1], room, rule? }`. Pipes and rails
  * are cylinders along their box's longest axis; everything else is a box. A
  * lamp's `rule` is a wake/open rule (layout-level.js): the lamp blinks while
@@ -44,7 +48,9 @@ export function buildProps(level, props) {
     const geo = ROUND.has(kind) ? new THREE.CylinderGeometry(0.5, 0.5, 1, 10) : new THREE.BoxGeometry(1, 1, 1);
     const mat = kind === 'light'
       ? new THREE.MeshBasicMaterial({ color: list[0].rule ? cfg.lightOff : DANGER.amber })
-      : new THREE.MeshToonMaterial({ color: cfg[kind] });
+      : kind === 'floodlight'
+        ? new THREE.MeshBasicMaterial({ color: cfg.floodlight })
+        : new THREE.MeshToonMaterial({ color: cfg[kind] });
     const mesh = new THREE.InstancedMesh(geo, mat, list.length);
     list.forEach((p, i) => {
       const [x0, x1, y0, y1, z0, z1] = p.box;

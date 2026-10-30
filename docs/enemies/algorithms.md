@@ -221,7 +221,7 @@ Last Colour, wave three.
 | 2 | Adds a grab, faster advance, spawns 2 Drainers | Kill the Drainers or lose the floor |
 | 3 | Enraged, continuous slam, ignores paint | Everything you have |
 
-Dies to a **committed combo**, not to damage-over-time — the exact sequence is still to be designed, but it must use all three colours in order.
+Dies to a **committed combo**, not to damage-over-time: **blue freeze (3 hits) → green pin (while frozen) → red knockdown (while pinned)**, landed once per phase; the third kills it. A missed window resets the chain. Built in `src/enemies/boss.js`, tuning in `ENEMY.bigArm` (DECISIONS 30 Oct).
 
 ---
 

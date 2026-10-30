@@ -40,6 +40,12 @@ export class LayoutLevel extends LevelBase {
   /** Subclasses return their layout data. */
   get layout() { throw new Error('a LayoutLevel must name its layout'); }
 
+  /**
+   * True when the level calls `game.onWin()` itself (Last Colour's Siphon) and
+   * the win volume is only the objective marker, not the trigger.
+   */
+  get scriptedWin() { return false; }
+
   async load() {
     const L = this.layout;
     buildLayout(this, L, { cells: L.cells });
@@ -182,7 +188,7 @@ export class LayoutLevel extends LevelBase {
         gate.field.material.opacity = 0.35 + 0.3 * Math.sin(this._clock * 8);
       }
     }
-    if (!this._complete && this.extraction.containsPoint(player.position) && this._cleared(this.layout.win.requires)) {
+    if (!this._complete && !this.scriptedWin && this.extraction.containsPoint(player.position) && this._cleared(this.layout.win.requires)) {
       this._complete = true;
       this.game.onWin?.();
     }
