@@ -622,9 +622,6 @@ export const DRESSING = {
     stack:    { colour: SILHOUETTE, shape: 'round', look: 'silhouette', hazed: true },
     window:   { colour: 0xaaa4c2, shape: 'box', look: 'silhouette' },        // Corp lights: GATE.field's violet, lifted and greyed (the grey-only rule); never hazed
     smoke:    { colour: 0x8d9094, shape: 'lump', look: 'haze' },
-    // The Ascent's distant range: a shade lighter than its base (ASCENT.base),
-    // so the nearer base still reads in front of the farther mountains.
-    range:    { colour: 0x4a4f57, shape: 'lump', look: 'silhouette' },
     strata:   { colour: 0x5c5a55, shape: 'box', look: 'toon' },   // rock bands: a warm stone, so they read as rock, not as slots
     // Story clusters
     crate:    { colour: LAST_COLOUR.props.crate, shape: 'box', look: 'toon' },
