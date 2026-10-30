@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER, HEALTH, CAMERA, SUBMERGE,MANTLE } from '../config.js';
+import { PLAYER, HEALTH, CAMERA, SUBMERGE, MANTLE, ENEMY_BODY } from '../config.js';
 
 const ID_TO_NAME = ['grey', 'blue', 'red', 'green'];
 
@@ -166,10 +166,69 @@ export class Player {
       const dx = enemy.position.x - this.position.x;
       const dz = enemy.position.z - this.position.z;
       const dy = enemy.position.y - this.position.y;
-      if (dx * dx + dz * dz > HEALTH.contactRange * HEALTH.contactRange) continue;
+      // #186 — bodies are solid, so a big one holds you further off than the
+      // contact range. Touching is "pressed against it", whatever its size.
+      const range = Math.max(HEALTH.contactRange,
+        PLAYER.radius + (enemy.config.bodyRadius ?? ENEMY_BODY.radius) + HEALTH.contactSlack);
+      if (dx * dx + dz * dz > range * range) continue;
       if (Math.abs(dy) > HEALTH.contactHeight) continue;
       if (this.takeDamage(enemy.config.contactDamage ?? 0, enemy.position)) return; // one hit per frame
     }
+  }
+
+  /**
+   * Enemies are solid (#186). Each live enemy is a vertical cylinder of radius
+   * `bodyRadius ?? ENEMY_BODY.radius`; a player inside one is pushed straight
+   * out along the line between centres. Only the player moves: pushing enemies
+   * would let you shove them through walls or off ledges, which their nav
+   * forbids (enemy-vs-enemy is #187).
+   *
+   * Called after the level has moved its enemies this frame (main.js), so the
+   * push is out of where they are now. Then the walls run again, so an enemy
+   * cannot shove you into or through a panel; a wall that pushes you back into
+   * an enemy settles next frame.
+   *
+   * Solid: anything alive, including a sleeping guard — it is still standing
+   * there. Not solid: corpses, an enemy on a face (its body is held off the
+   * wall, and the wall already stops you), and one a storey above or below.
+   */
+  resolveEnemyBodies(enemies) {
+    if (this.dead) return;
+    let pushed = false;
+    for (let i = 0; i < enemies.length; i++) {
+      const enemy = enemies[i];
+      if (enemy.alive === false || !enemy.position) continue;
+      if (enemy.climbing === true) continue;
+      const dy = enemy.position.y - this.position.y;
+      if (Math.abs(dy) >= HEALTH.contactHeight) continue;
+
+      const reach = PLAYER.radius + (enemy.config?.bodyRadius ?? ENEMY_BODY.radius);
+      let nx = this.position.x - enemy.position.x;
+      let nz = this.position.z - enemy.position.z;
+      const d2 = nx * nx + nz * nz;
+      if (d2 >= reach * reach) continue;
+
+      const d = Math.sqrt(d2);
+      if (d > 1e-6) {
+        nx /= d;
+        nz /= d;
+      } else {
+        // Exactly on top: back out the way you came (facing, reversed).
+        nx = Math.sin(this.yaw);
+        nz = Math.cos(this.yaw);
+      }
+      this.position.x = enemy.position.x + nx * reach;
+      this.position.z = enemy.position.z + nz * reach;
+
+      // kill velocity heading into the body, as the walls do
+      const into = this.velocity.x * nx + this.velocity.z * nz;
+      if (into < 0) {
+        this.velocity.x -= nx * into;
+        this.velocity.z -= nz * into;
+      }
+      pushed = true;
+    }
+    if (pushed) this._resolveWalls();
   }
 
   look(dx, dy, aiming = false) {
@@ -444,11 +503,13 @@ export class Player {
       if (wall && wall.topY != null) {
         const belowTop = wall.topY - this.position.y;
         if (!this.onGround && belowTop > 0 && belowTop <= MANTLE.reach) {
-          // Probe just past the wall's face, at the top edge. The inward
-          // offset uses the wall normal so a wall facing -Z gets the floor
-          // on its -Z side, and a wall facing +Z on its +Z side.
-          const probeX = this.position.x + wall.normal.x * (PLAYER.radius + MANTLE.inward);
-          const probeZ = this.position.z + wall.normal.z * (PLAYER.radius + MANTLE.inward);
+          // Probe just past the wall's top edge, on the far side. #184:
+          // `wall.normal` points out of the wall toward the climber (it is
+          // built from the side the player is on), so "past the edge" is
+          // AGAINST the normal. Adding it probed behind the climber's back
+          // and mantled them down onto the floor they climbed from.
+          const probeX = this.position.x - wall.normal.x * (PLAYER.radius + MANTLE.inward);
+          const probeZ = this.position.z - wall.normal.z * (PLAYER.radius + MANTLE.inward);
           const probeY = wall.topY + 0.1;    // just above the edge
           const topFloor = this._probeGroundAt(probeX, probeY, probeZ);
           if (topFloor) {

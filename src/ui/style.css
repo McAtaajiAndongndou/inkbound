@@ -783,6 +783,46 @@ canvas {
   #streak.full #streak-fill { animation: none; box-shadow: 0 0 6px 1px rgba(255, 255, 255, .7); }
 }
 
+/* --- Polish audit: what just happened to you (src/ui/feedback.js) ------------ */
+/* The screen edge in your ground colour while submerged, drained grey on grey. */
+#screen-edge {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  --edge: #585e54;
+  box-shadow: inset 0 0 18vmin 4vmin var(--edge);
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+/* Hurt (P0-4): a dark, desaturated edge, never a paint red (red is bounce). */
+#hurt-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(18, 14, 16, 0.55) 65%, rgba(18, 14, 16, 0.92) 100%);
+  opacity: 0;
+}
+/* Where the hit came from (CoD's indicator): an amber arc on a ring round the
+   crosshair, turned toward the source. Amber because it is the danger colour. */
+#hurt-arc {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 26vmin;
+  height: 26vmin;
+  border-radius: 50%;
+  border: 0.9vmin solid transparent;
+  border-top-color: #ffe600;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 0.6vmin rgba(0, 0, 0, 0.6));
+}
+/* The tank visibly filling. */
+#ammo-bar.filling {
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.45);
+}
+
 /* Mission intro (G4, docs/mission-intro.md). The title card, bottom-left, over
    the camera move — CoD's mission card. Above the HUD, below the pause menu
    (15). Off-white on a dark band: never amber (danger) or telegraph yellow.
@@ -876,3 +916,4 @@ body.in-intro #hud { visibility: hidden; }
   from { transform: rotate(45deg) scale(1);    opacity: 1; }
   to   { transform: rotate(45deg) scale(1.35); opacity: .55; }
 }
+

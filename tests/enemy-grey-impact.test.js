@@ -26,7 +26,10 @@ import { ENEMY, PAINT, PAINT_IDS, SURFACE } from '../src/config.js';
  */
 
 const FRAME = 1 / 60;
-const WINDUP_FRAMES = Math.ceil((ENEMY.sprayer.windup / FRAME) + 2); // 0.6 s + slack
+// The wind-up, the burst, and the pellets' flight (#185): a shot greys where
+// its pellet LANDS, 11 m away at most here, so 0.7 s covers the burst and the
+// furthest flight with slack.
+const WINDUP_FRAMES = Math.ceil(((ENEMY.sprayer.windup + 0.7) / FRAME) + 2);
 
 /** Flat ground on the XZ plane at y = `y`, one metre of paint per grid square. */
 function makeSurface({ width = 40, height = 40, cells = 4, y = 0, unpaintable = false } = {}) {
@@ -206,17 +209,32 @@ test('a wall between the two takes the shot, not the ground behind it', () => {
 });
 
 test('a raised surface takes the hit instead of the floor underneath it', () => {
-  const step = makeSurface({ width: 20, height: 2, y: 0.7 });
-  step.splat(new THREE.Vector3(0, 0.7, 0), 'blue', 12);   // the whole step, painted
+  // #185: the pellet is aimed at the player's chest, so a knee-high step no
+  // longer sits in its path. The same rule from above: a shooter on a 4 m
+  // ledge fires down at the player, and a deck between them takes the pellet.
+  const floor = makeSurface();
+  const target = new THREE.Vector3(0, 0, 6);
+  floor.splat(target, 'blue', 6);
+  const ledge = makeSurface({ width: 4, height: 4, y: 4 });
+  ledge.mesh.position.z = -5;
+  ledge.mesh.updateMatrixWorld(true);
+  // The flight crosses y = 2.5 about 2 m short of the player: a deck there.
+  const deck = makeSurface({ width: 20, height: 4, y: 2.5 });
+  deck.mesh.position.z = 2;
+  deck.mesh.updateMatrixWorld(true);
+  deck.splat(new THREE.Vector3(0, 2.5, 2), 'blue', 12);   // the whole deck, painted
 
-  const { floor, enemy, target } = scenario({ at: [0, 0, -5], extra: [step] });
+  const enemy = spawn(ENEMY.sprayer, [0, 4, -5], {
+    floors: [floor, ledge, deck],
+    surfaces: [floor, ledge, deck],
+  });
   run(enemy, target, WINDUP_FRAMES);
 
   assert.equal(floor.paintIdAtWorld(target), PAINT_IDS.blue,
-    'the shot reached the floor through the step');
-  // Every grey cell on a fully painted step is a cell the shot converted.
-  assert.ok(greyCells(step, new THREE.Vector3(0, 0.7, 0), 3) > 0,
-    'the step is what the ray reached, so the step is what greys');
+    'the shot reached the floor through the deck');
+  // Every grey cell on a fully painted deck is a cell the shot converted.
+  assert.ok(greyCells(deck, new THREE.Vector3(0, 2.5, 2), 3) > 0,
+    'the deck is what the pellet reached, so the deck is what greys');
 });
 
 test('an unpaintable gate refuses the conversion; the same wall without the flag takes it', () => {

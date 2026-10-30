@@ -16,7 +16,7 @@
 //
 // AXES. x east, y up, z SOUTH; the player starts in the south and walks north.
 // BOXES are [x0, x1, y0, y1, z0, z1], metres, axis-aligned.
-import { PAINT_GRID } from '../../config.js';
+import { PAINT_GRID, SPAWN_PAD } from '../../config.js';
 
 /** Floors, walls, steps and blocks. */
 const solids = [
@@ -105,6 +105,35 @@ const solids = [
   { id: 'r7-crate-c', room: 'R7', box: [9.8, 11.6, 8, 9.2, -46, -44.2], kind: 'crate' },
   { id: 'r7-board-w', room: 'R7', box: [-10, -6, 9, 11.5, -49.5, -49.3], kind: 'board' },
   { id: 'r7-board-e', room: 'R7', box: [6, 10, 9, 11.5, -49.5, -49.3], kind: 'board' },
+  // R0's hero prop (polish audit): the sergeant's crate desk, against the west
+  // wall where the briefing happens. A crate and a plank top; the lamp over it
+  // is in `lamps`.
+  { id: 'r0-desk', room: 'R0', box: [-6.8, -4.6, 0, 1.0, 87.5, 89.5], kind: 'crate' },
+  { id: 'r0-desk-top', room: 'R0', box: [-6.8, -4.6, 1.0, 1.12, 87.5, 89.5], kind: 'crate' },
+];
+
+/**
+ * Warm lamps (polish audit, Level visuals). Two jobs, one prop:
+ *   hero     lights the room's one focal thing (the desk, the boards, the
+ *            first-splat wall), so the eye has somewhere to land
+ *   lead     hangs on the far side of the room's exit, so the next doorway is
+ *            always warmer than the room you are in (Half-Life 2's leading light)
+ * `at` is the lamp's centre; it faces +z, toward a player walking the course.
+ * Unlit and no collision: built by level-00-the-primer.js.
+ */
+const lamps = [
+  { id: 'r0-desk-lamp', room: 'R0', role: 'hero', at: [-5.7, 3.2, 88.5] },
+  { id: 'r1-board-w-lamp', room: 'R1', role: 'hero', at: [-4.5, 3.6, 70.9] },
+  { id: 'r1-board-e-lamp', room: 'R1', role: 'hero', at: [4.5, 3.6, 70.9] },
+  { id: 'r2-target-lamp', room: 'R2', role: 'hero', at: [0, 5.7, 59.2] },
+  { id: 'lead-r1-r2-w', room: 'R1', role: 'lead', at: [-2.6, 4.2, 70.7] },
+  { id: 'lead-r1-r2-e', room: 'R1', role: 'lead', at: [2.6, 4.2, 70.7] },
+  { id: 'lead-r3-r4-w', room: 'R3', role: 'lead', at: [-2.6, 4.2, 30.7] },
+  { id: 'lead-r3-r4-e', room: 'R3', role: 'lead', at: [2.6, 4.2, 30.7] },
+  { id: 'lead-r6-r7-w', room: 'R6', role: 'lead', at: [-2.6, 12.2, -19.3] },
+  { id: 'lead-r6-r7-e', room: 'R6', role: 'lead', at: [2.6, 12.2, -19.3] },
+  { id: 'lead-r7-r8-w', room: 'R7', role: 'lead', at: [-4.6, 12.2, -49.3] },
+  { id: 'lead-r7-r8-e', room: 'R7', role: 'lead', at: [4.6, 12.2, -49.3] },
 ];
 
 /**
@@ -145,7 +174,17 @@ const markings = [
  * `y` is the floor; the rect is x0, x1, z0, z1.
  */
 const prepaint = [
+  // Polish audit: the spawn pad (SPAWN_PAD in config).
+  { id: 'spawn-pad', room: 'R0', colour: SPAWN_PAD.colour, y: 0, rect: [0 - SPAWN_PAD.half, 0 + SPAWN_PAD.half, 89.5 - SPAWN_PAD.half, 89.5 + SPAWN_PAD.half], note: 'First steps at full speed' },
+  // Polish audit: the game's refill verb was in none of the nine rooms. A pool
+  // on R2's way round the wall, and the sergeant says "hold Shift" in it. Green,
+  // because it grips: a blue pool would slide you out before you sank.
+  { id: 'r2-pool', room: 'R2', colour: 'green', y: 0, rect: [3, 7, 60, 65], note: 'Submerge: "hold Shift" — sink in your own paint, refill fast' },
   { id: 'r3-blue-strip', room: 'R3', colour: 'blue', y: 0, rect: [-2, 2, 44, 56], note: '"A blue strip leading to the edge"' },
+  // Polish audit (Traps): show blue's answer in the frame. A trainee's blue lane
+  // runs over the pit's west edge, so from R6's entry the solution is visible:
+  // the pit spares that lane and only that lane. The rest of the pit stays grey.
+  { id: 'r6-blue-lane', room: 'R6', colour: 'blue', y: 8, rect: [-7, -5, -14, -6], note: 'The pit answer, seen before you need it' },
   { id: 'r4-red-pad', room: 'R4', colour: 'red', y: 0, rect: [-2, 2, 16.5, 19], note: '"A red pad at the base"' },
   { id: 'r8-blue-lane', room: 'R8', colour: 'blue', y: 8, rect: [-10, -6, -76, -54], note: 'Free play: slide' },
   { id: 'r8-red-pad', room: 'R8', colour: 'red', y: 8, rect: [5, 9, -68, -64], note: 'Free play: bounce onto the platform' },
@@ -222,6 +261,6 @@ const doc = {
 
 export const PRIMER = {
   id: 'primer', name: 'The Primer', cells: PAINT_GRID.level0Cells,
-  solids, slabs: [], strips, kerbs: [], landmarks: [], gates, traps, targets: [], prepaint, markings,
+  solids, slabs: [], strips, kerbs: [], landmarks: [], gates, traps, targets: [], prepaint, markings, lamps,
   enemies, routes, rooms, win, doc,
 };

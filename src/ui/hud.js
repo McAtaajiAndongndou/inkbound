@@ -1,4 +1,5 @@
 import { PAINT,DRY_OUT } from '../config.js';
+import { FeedbackCues } from './feedback.js';
 const HINTS = {
   Grey: 'Dead ground: slow, no refill',
   Ice: 'Slide: low friction',
@@ -152,6 +153,9 @@ export class Hud {
   constructor(root) {
     this.root = root;
     root.innerHTML = `
+      <div id="screen-edge" aria-hidden="true"></div>
+      <div id="hurt-vignette" aria-hidden="true"></div>
+      <div id="hurt-arc" aria-hidden="true"></div>
       <div id="crosshair"></div>
       <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
       <ol id="killfeed" aria-live="polite">${'<li class="hidden"></li>'.repeat(KILLFEED.maxLines)}</ol>
@@ -225,6 +229,13 @@ export class Hud {
 
     this._coverageTimer = 0;
     this._coverageValue = 0;
+
+    // Polish audit: hurt, submerge, grey, the tank — the cues (feedback.js)
+    // and the three overlays they drive.
+    this.cues = new FeedbackCues();
+    this.screenEdge = root.querySelector('#screen-edge');
+    this.hurtVignette = root.querySelector('#hurt-vignette');
+    this.hurtArc = root.querySelector('#hurt-arc');
   }
 
   onColourClick(handler) {
@@ -330,6 +341,7 @@ export class Hud {
     // last one's territory is not ground being lost.
     this._territoryTrend.reset();
     this._coverageTimer = 0; // a restarted level reads its own coverage on the next frame
+    this.cues.reset();       // a fresh tank is not a refill, a fresh body not a heal
   }
 
   // Coverage is the HUD's own readout value, not a second scan of the level.
@@ -342,8 +354,23 @@ export class Hud {
     stat('dry').textContent = pct(stats.time > 0 ? stats.dryTime / stats.time : 0);
   }
 
+  /** The cues' overlays: the hurt vignette and arc, and the screen-edge tint. */
+  _renderCues(dt, gun, player) {
+    const c = this.cues;
+    const filling = c._ammo !== null && gun.ammo > c._ammo && gun.ammo < gun.maxAmmo;
+    c.update(dt, { player, gun });
+    this.hurtVignette.style.opacity = c.hurt.toFixed(3);
+    this.hurtArc.style.opacity = c.arc.toFixed(3);
+    this.hurtArc.style.transform = `translate(-50%, -50%) rotate(${c.arcAngle}rad)`;
+    this.screenEdge.style.opacity = c.edge ? String(c.edge.alpha) : '0';
+    if (c.edge) this.screenEdge.style.setProperty('--edge', c.edge.colour);
+    // The tank visibly filling (Q2): the bar glows while it rises.
+    this.ammoBar.classList.toggle('filling', filling);
+  }
+
   update(dt, { gun, player, surfaces, streak }) {
     this._renderKillfeed(dt);
+    this._renderCues(dt, gun, player);
     const pct = gun.ammo / gun.maxAmmo;
 
     // Paintstreak (#131): a line under the ammo bar, not a fifth element — it is

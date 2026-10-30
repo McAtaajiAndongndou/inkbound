@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { LAST_COLOUR, PAINT, PAINT_IDS } from '../config.js';
 import * as kit from './level-kit.js';
+import { audio } from '../audio/audio-manager.js';
 
 /**
  * The Siphon (#100): Last Colour's final exam. Not an enemy and not a health
@@ -187,10 +188,18 @@ export class Siphon {
     }
   }
 
+  /**
+   * The exam is heard as well as seen (polish audit: the Siphon's phases and
+   * win were silent): `siphon` as each phase's target is revealed, `solved` as
+   * a target takes its colour, `siphonDown` as the core sinks. Full volume, not
+   * by distance: the whole room is the Siphon's.
+   */
   _enter(phase) {
     this.phase = phase;
     this._t = 0;
+    if (phase === 'finale') audio.play('siphonDown');
     if (phase === 'finale' || phase === 'done') return;
+    audio.play('siphon');
     const kind = phase === 'arms' ? 'arm' : phase;
     for (const t of this.byKind(kind)) {
       this._place(t);
@@ -242,6 +251,7 @@ export class Siphon {
         this._wipe(t);
       } else if (!t.solved && this.share(t) >= cfg.need) {
         t.solved = true;
+        audio.play('solved');
       }
       // The frame: its colour pulsing while it waits, then what solving it looks like.
       const pulse = Math.sin(this.clock * cfg.pulseRate) > 0;

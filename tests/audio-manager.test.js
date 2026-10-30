@@ -90,7 +90,7 @@ function fakeContext() {
 }
 
 const { SFX } = await import('../src/audio/audio-manager.js');
-const NEW_SOUNDS = ['claim', 'charge', 'gate', 'jump', 'land', 'spike', 'collapse', 'blade'];
+const NEW_SOUNDS = ['claim', 'charge', 'gate', 'jump', 'land', 'spike', 'collapse'];
 
 /** Summed envelope peaks: a rough "how loud is this recipe". */
 function loudness(name) {

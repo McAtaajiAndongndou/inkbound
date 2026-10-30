@@ -471,6 +471,9 @@ function simulate(dt, elapsed, actions, mouse) {
   avatar.update(dt);
 
   level.update(dt, player);
+  // #186 — enemies are solid: push the player out of where they stand NOW,
+  // after they have moved and before contact damage is judged.
+  player.resolveEnemyBodies(level.enemies);
   // #124 — `checkEnemyContact` reports a hit by moving health rather than by
   // returning one, and the player's own hurt cooldown already de-dupes, so the
   // difference is exactly one flinch per hit.
