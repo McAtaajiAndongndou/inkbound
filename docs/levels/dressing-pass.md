@@ -1,0 +1,109 @@
+# Dressing pass — making the levels look finished
+
+**Lane:** levels (Renda). **Status:** design, 30 Oct 2026. Build follows in its own session.
+**Pass question:** *from every room's eye shot, does this look like a place, or like a blockout?*
+
+## What's wrong (the diagnosis)
+
+Looking at every level in the viewer after #194–#199 landed:
+
+- **Last Colour reads as big grey boxes with a grid on every face.** Its props are knee-high, grey on grey, so they disappear. Above head height there is nothing: walls are blank grid up to 14 m, then they stop, with no ceiling and nothing behind them. #197 now starts the sky drained, which makes the first frame greyer still.
+- **The Ascent reads as stacked terraces.** The scree and the R5 gantry help, but every face is the same flat grid.
+- **The Primer gets away with it.** It's a training course, and chalk lines and lamps are the right dressing for that.
+- **Outskirts works**, because the forest breaks up its silhouette. That is the thing the other three are missing.
+
+There are three causes, and the fixes below are aimed at each:
+
+1. **One texture is doing two jobs.** The paint grid is for readability: it says "you can paint this". On every surface at every height, it also says "unfinished". Splatoon keeps its paintable surfaces plain too, but frames them with set pieces you can't paint (railings, containers, signs, billboards) and a busy skyline. Against that frame, the plain surfaces read as *the floor*, not as unfinished.
+2. **The dressing rules push all the detail down to knee height.** Props must stay under 1.2 m on an arena floor (a Drainer must be visible at 20 m) and never collide. That rule is right, but it only covers the **arena floor**. Wall faces above 3 m, wall tops, the space overhead and everything outside the walls are all free, and all empty. Call of Duty maps put most of their density exactly there: in the out-of-bounds frame and above eye level, where it can't block a shot.
+3. **The story isn't on show.** This is Corrupt Corp's immortality-pill factory, built on drained colour and failed test subjects, and nothing in the levels says so.
+
+## The technique: dress in three layers, never on the floor
+
+| Layer | Where | What it does | Reference |
+|---|---|---|---|
+| **1 · Skyline** | Outside the walls and above the wall tops | Gives every room a silhouette and says where you are | CoD's out-of-bounds backdrops; the Ascent's base silhouette already does this |
+| **2 · Wall breakup** | Wall faces from 3 m up, wall tops, overhead | Kills the graph-paper read without touching the paintable band the player uses | Splatoon's unpaintable trims and railings framing paintable panels |
+| **3 · Story clusters** | One per room, at a rest spot, a doorway or a dead corner | Tells the fiction and gives each room a landmark you can name | Half-Life's environmental storytelling; *Gris*' rooms that each have one image |
+
+The arena floor itself is **not** dressed in this pass: the 1.2 m rule and the keep-outs stand.
+
+## Rules (all existing — this pass adds none)
+
+- **No collision**, except props that replace existing cover. Enemies path around walls, so a colliding crate changes the fight.
+- **Keep-outs stay tested:** off every paint strip, climb and route point; no prop across a beacon sightline from any room eye (the Last Colour, Ascent and Outskirts sightline tests); clear of the mission intro's camera path (`mission-intro.test.js`).
+- **Grey only.** Colour belongs to the player. **Amber means danger** (#126) and **marker white means "here"**: neither is decoration. The Primer's warm tungsten is the rebels' light. Corp **signage** may use the Corp grey-violet (`GATE.field`) as its one accent.
+- **Flat-shaded Corp machinery, smooth curves and paint** (#198's split; use `flat()` from `curves.js`).
+- **Built-in materials**, so nothing joins the `uLightDir` pass. A custom-shaded prop must be added to it (AGENTS rule 5).
+- **Instanced by kind**, so a hundred ribs cost one draw call. **Budget:** at most **+15 draw calls per level**, measured with `renderer.info.render.calls` in the viewer, before and after.
+- **Disposed with the level** (rule 6). The ten-reloads tests must pass with the new meshes counted.
+- **Every number and colour in `config.js`; positions in the layout files** (`src/levels/layouts/*.js`, or `L1` for Outskirts).
+- **Procedural first.** Use the existing prop kit, lathes and cables, plus the MegaKit (CC0, already shipped) for anything natural. **No new downloads in this pass**; see the open decisions.
+- **Frame time:** measure with the Last Colour viewer's `viewer.timeRender()` before and after. The pass may cost at most **+1 ms**.
+
+## Level by level
+
+### Last Colour — the Corp facility (biggest job)
+
+**Skyline.** The facility outside: three or four flat-shaded factory blocks and two chimney stacks past the Core's walls, built like the Ascent's base silhouette (dark, unfogged, sunk below the floor so they rise out of the dark). The Siphon's mast stays the tallest thing.
+
+**Wall breakup (all rooms):**
+- **Ribs:** vertical steel pilasters every 6 m, from 3 m up to the wall top, as one instanced kind.
+- **A cornice at the wall top**, so walls end in a lip instead of a cut edge.
+- **High pipe runs and cable trays** along the hangar and Core walls at 9–12 m. The kit's pipes, plus #198's cables.
+- **Hangar roof trusses.** A partial roof frame of beams across the hangar at 12 m: you see a ceiling's structure, but not a lid. It must stay clear of the beacon sightlines and the intro camera, which tests already check.
+
+**Story clusters:**
+- **R0 Lift Landing:** a stacked delivery of grey pill crates with Corp stencils, waiting at the lift.
+- **R1 The Hangar:** a dead **pill production line** along one wall at 4–6 m: a conveyor on legs, hoppers, a capping machine. Out of reach, and it says "factory" at a glance.
+- **R2 The Corridor:** a wall-mounted **specimen rack**, glass-fronted tubes with grey silhouettes (failed test subjects), above the walkway.
+- **R3 The Core:** the vats from #198, plus **gantry walkways** along the north wall-top between them, and hazard stripes in grey-violet.
+- **R4 Big Arm:** a **broken containment cage** with its bars bent out, on the wall above the arena. Big Arm got out of it.
+- **R5 The Siphon:** pipes from the Siphon's base into the floor drains, with grey "drain" puddles around them. Decals, not paint: they must never read as player paint.
+
+### The Ascent — a mountain the Corp mined
+
+**Skyline.** The mountain needs a range around it. Two or three distant peaks, flat-shaded lathes or icosahedra scaled huge, dark against the dawn, behind the summit and to the east.
+
+**Wall breakup:**
+- The **MegaKit pines and dead trees on the terrace edges and slope bases**. ASSETS.md already recommends this, and `Decor` places them, thinning with height.
+- **Rock strata bands** on the big faces: horizontal flat-shaded slabs set into the faces above the climbing line.
+
+**Story clusters:**
+- **R0 Trailhead:** a Corp checkpoint shed and a barrier arm, with the haul cables (#198) anchored beside it.
+- **R2 Terrace One:** abandoned drill rigs and core-sample crates at the edge.
+- **R4 Terrace Two:** a collapsed survey mast lying across the far corner.
+- **R7 Summit:** a wind-torn Corp flag, grey with a grey-violet stripe, by the lift tower.
+
+### Outskirts — already the best; finish the frame
+
+**Skyline.** The facility's chimneys on the horizon past the tower: the same silhouette blocks as Last Colour, so the campaign's goal is visible from its first outdoor level.
+
+**Story clusters:**
+- **Island A:** a rebel camp corner, with crates, a tarp and a lamp in warm tungsten, the Primer's colour.
+- **Island C:** a toppled Corp billboard advertising the immortality pill. It is the fiction's first image, so make it the one landmark you remember.
+
+### The Primer — leave it
+
+Its look is right for a training course. **One addition:** rebel graffiti stencils on the R0 desk wall, in chalk cream (`PRIMER.dressing.chalk`).
+
+## Done when
+
+- **Viewer shots:** every room-eye shot (`static SHOTS` / the layout `rooms`) of Last Colour and the Ascent, before and after, plus Outskirts' spawn and the island C eye. Agree each after-shot reads as a place, not a blockout.
+- **Tests:** all existing tests pass. Add one test per level that every new mesh is under `level.root`, instanced where repeated, non-colliding, and outside the keep-outs, and extend the sightline and ten-reloads tests to the new meshes.
+- **Budgets met:** +15 draw calls and +1 ms per level at most.
+- **Readability:** `tests/paint-readability.test.js` passes, and in the after-shots no prop reads as a paint colour or as amber.
+
+## Order (if time runs short, stop after any step)
+
+1. **Last Colour wall breakup and skyline:** the worst offender and the biggest win.
+2. **Last Colour story clusters**, hangar and Core first.
+3. **The Ascent: MegaKit trees and the distant range.**
+4. **Outskirts: the chimneys and the billboard.**
+5. **The Ascent's story clusters and the Primer's stencils.**
+
+## Open decisions for Renda (recommended defaults first)
+
+1. **Downloads.** *Default: none.* Everything above can be procedural, plus the MegaKit we already ship. Alternative: Quaternius' Sci-Fi Essentials or Kenney's Conveyor Kit for the pill line and gantries (both CC0 on their pack pages per ASSETS.md). That looks better, but costs a validation pass per model and needs your OK for each download.
+2. **The hangar roof.** *Default: trusses only* (structure, no lid), so the sky and its #197 warm-up stay visible. Alternative: a full roof with skylights, which reads more "indoors" but hides the dynamic sky in R1.
+3. **Signage text.** *Default: no words.* Use the Corp's pill icon and stripes only: no font asset, and it reads at any distance. Alternative: canvas-texture slogans ("LIVE FOREVER"), which are funnier but small.
