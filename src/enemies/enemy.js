@@ -2,12 +2,13 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_BODY, ENEMY_NAV, ENEMY_SHOT, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, STALKER } from "../config.js";
+import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_ATTACK, ENEMY_BODY, ENEMY_NAV, ENEMY_SHOT, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, STALKER } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { EnemyShots } from "./enemy-shots.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
 import { audio } from "../audio/audio-manager.js";
 import { createFrostMaterial } from "../shaders/frost/frost-material.js";
+import { DeathBurst } from "./death-burst.js";
 
 // Paint ids are indices into the grid (see PAINT_IDS in config.js).
 const ID_TO_NAME = ["grey", "blue", "red", "green"];
@@ -532,6 +533,14 @@ export class Enemy {
     // level's root, so an enemy can find them without being handed them — but a
     // level may pass its own list, and a test that wants one wall passes one.
     this._blockers = sightBlockers(blockers, parent);
+    // Attack tokens (polish audit, Enemies 2): ONE pool per level, kept on its
+    // root, so a ranged enemy must hold a token to wind up and at most
+    // ENEMY_ATTACK.tokens shoot at once. Doom (2016) and Halo do this: a crowd
+    // is dangerous without five shots landing on one frame.
+    const store = parent?.userData ?? {};
+    this._tokens = store.attackTokens ??= new Set();
+    this._lastPlayer = null;   // where the player was last frame: the telegraph's falloff
+    this._burst = null;        // the death burst, while it plays
     this._raycaster = new THREE.Raycaster();
     this._eye = new THREE.Vector3();
     this._look = new THREE.Vector3();
@@ -1957,6 +1966,7 @@ export class Enemy {
     }
 
     this.hp -= damage;
+    if (isCriticalHit) audio.play("shatter");   // the freeze-shatter crit, the best combo
 
     if (!isTurret && !isCriticalHit && !isFrozen){
       if (colourId === PAINT_IDS.blue){
@@ -1969,6 +1979,7 @@ export class Enemy {
         }
 
         if (this._blueHitCount >= BLUE_FREEZE.hitsToFreeze){
+          audio.play("freeze");   // polish audit P1-5: the combo is heard
           this._frozenTimer = BLUE_FREEZE.critWindow;
           this._frostShell.material.uniforms.uOpacity.value = BLUE_FREEZE.shellOpacity;
           this._frostShell.visible = true;
@@ -1979,6 +1990,7 @@ export class Enemy {
           this._pinnedTimer = 0;
 
           this._windupTimer = 0;
+          this._releaseToken();
           this.mesh.scale.setScalar(1);
           this._vel.set(0,0,0);
           this._knockback.set(0,0,0);
@@ -2006,6 +2018,7 @@ export class Enemy {
 
         this._knockback.normalize().multiplyScalar(6);
       } else if (colourId === PAINT_IDS.green){
+        if (this._pinnedTimer <= 0) audio.play("pin");   // the clamp, once per pin
         this._pinnedTimer = 1.5;
         this._vel.set(0,0,0);
       }
@@ -2086,6 +2099,13 @@ export class Enemy {
     // update(), which the level runs for every enemy, alive or not.
     this._deathTimer = GAIT.deathTime;
     this._deathY = this.position.y;
+    this._releaseToken();
+    // Polish audit P1-4: the colour given back. A paint kill bursts into drops
+    // of the killing colour (main.js paints where they land). A trap kill is
+    // colourless and gets none.
+    if (colour && PAINT[colour] && colour !== "grey" && this.mesh.parent) {
+      this._burst = new DeathBurst(this.mesh.parent, this.position, PAINT[colour].hex);
+    }
 
     this._cause.colour = colour;
     this._cause.effect = effect;
@@ -2106,6 +2126,7 @@ export class Enemy {
    * writes to objects that already exist.
    */
   _sinkDeath(dt) {
+    this._burst?.update(dt);
     if (this._deathTimer <= 0) return;
     this._deathTimer -= dt;
 
@@ -2165,6 +2186,7 @@ export class Enemy {
     this._stunTimer = Math.max(this._stunTimer, seconds);
     this._stunTotal = this._stunTimer;
     this._windupTimer = 0;
+    this._releaseToken();   // a cancelled attack hands its token back
     this.mesh.scale.setScalar(1);
     this._vel.set(0, 0, 0);
     return true;
@@ -2355,15 +2377,59 @@ export class Enemy {
     // START anything new. The burst's remaining shots are not windups; they are
     // already committed, and the reload is time it does not have.
     if (this._burstLeft > 0 || this._reloadTimer > 0) return false;
+    // A ranged enemy needs a token, and waits (still aiming, still visible)
+    // while two others hold theirs. Melee (a reach under meleeReach, or a
+    // lunge) never queues: it is already limited by having to reach you.
+    if (this._usesToken && !this._takeToken()) return false;
     this._windupTotal = this.config.windup ?? DEFAULT_WINDUP;
     this._windupTimer = this._windupTotal;
     this._vel.set(0, 0, 0);          // plant: the tell has to read
-    audio.play("telegraph");
+    // The whine is heard by distance (polish audit, Enemies 3): a wave of eight
+    // winding up together was a wall of sound. Silent past `far`.
+    const gain = this._telegraphGain();
+    if (gain > 0) audio.play("telegraph", { gain });
     return true;
+  }
+
+  /** True for a ranged attacker: it shoots from range rather than reaching you. */
+  get _usesToken() {
+    const range = this.config.attackRange ?? 0;
+    return range > ENEMY_ATTACK.meleeReach && !this.config.lunges;
+  }
+
+  _takeToken() {
+    if (this._tokens.has(this)) return true;
+    if (this._tokens.size >= ENEMY_ATTACK.tokens) return false;
+    this._tokens.add(this);
+    return true;
+  }
+
+  _releaseToken() {
+    this._tokens.delete(this);
+  }
+
+  /** Does this enemy hold an attack token right now? */
+  get holdsToken() {
+    return this._tokens.has(this);
+  }
+
+  /** 1 inside `near` of the player, 0 past `far`, linear between; 1 if unknown. */
+  _telegraphGain() {
+    const p = this._lastPlayer;
+    if (!p) return 1;
+    const { near, far } = ENEMY_ATTACK.telegraphHearing;
+    const d = Math.hypot(p.x - this.position.x, p.y - this.position.y, p.z - this.position.z);
+    if (d <= near) return 1;
+    if (d >= far) return 0;
+    return 1 - (d - near) / (far - near);
   }
 
   _updateAttack(dt, playerPos) {
     if (this._attackCooldown > 0) this._attackCooldown -= dt;
+    if (playerPos && Number.isFinite(playerPos.x)) (this._lastPlayer ??= new THREE.Vector3()).copy(playerPos);
+    // The attack is over (shot, burst done) or was cancelled (a freeze, a stun):
+    // hand the token back. One catch-all, so no cancel path can leak a token.
+    if (this._windupTimer <= 0 && this._burstLeft <= 0) this._releaseToken();
 
     // The reload (#118) is not a state awareness can cancel: it is the enemy's
     // gun being empty, and it counts down whether or not it can still see you.
@@ -2522,6 +2588,9 @@ export class Enemy {
     // Either way the second call must be a no-op.
     if (this._disposed) return;
     this._disposed = true;
+    this._releaseToken();
+    this._burst?.dispose();
+    this._burst = null;
     // Hand the pellet clock on; the last enemy out frees the pool (#185).
     this._shots?.release(this);
     this._shots = null;

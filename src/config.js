@@ -884,6 +884,24 @@ export const ENEMY = {
 // RATE: there is no separate timer. The enemy already has an attack cooldown
 // (2.5 s for the Sprayer), so one attack is one splat and nothing here can
 // outpace the thing that triggers it.
+// Enemy attack pacing and death (polish audit, Enemies 2-4).
+export const ENEMY_ATTACK = {
+  tokens: 2,            // ranged enemies winding up or firing at once, per level
+  meleeReach: 5,        // an attackRange at or under this is melee: no token needed
+  // The telegraph whine is heard by distance: full inside `near`, silent past `far`.
+  telegraphHearing: { near: 6, far: 15 },
+  // The death burst: drops of the killing colour (death-burst.js).
+  burst: {
+    count: 14,
+    size: 0.12,         // m, a drop's radius
+    speed: 3.2,         // m/s outward
+    lift: 3.5,          // m/s upward
+    gravity: 18,
+    height: 0.9,        // m above the feet the drops leave from
+    life: 0.45,         // s, the same as the corpse's sink
+  },
+};
+
 export const GREY_IMPACT = {
   muzzleHeight: 1.2, // metres above the enemy's feet the ray starts at
   reach: 2,          // metres past the target it keeps looking, so the target cell is tested
@@ -955,6 +973,23 @@ export const SUBMERGE = {
   cameraOffset: 0.9,         // metres the TPV camera drops, so you read as "in" the paint
   maxAngle: 1.1,             // radians — how far the camera tilts down while submerged
 };
+// Submerged form (polish audit, Q1; shaders/avatar.js). The body squashes into
+// the paint, a blob of its colour marks the spot, rings ripple in and out.
+export const SWIM = {
+  squash: 0.15,        // the body's height scale when under
+  spread: 1.3,         // and its width, so it reads as a puddle, not a short soldier
+  rate: 16,            // per second: how fast it sinks and rises (exponential ease)
+  blobRadius: 0.55,    // m, the paint blob where the body went in
+  blobHeight: 0.16,
+  blobOpacity: 0.85,
+  rings: 5,            // ripple rings in the pool
+  rippleMax: 1.6,      // m, the entry / exit ring's final radius
+  rippleLife: 0.5,     // s a ring lives
+  rippleOpacity: 0.7,
+  wakeEvery: 0.16,     // s between wake rings while moving under
+  wakeSize: 0.7,       // m, a wake ring's final radius
+};
+
 // Hit-stop (polish audit P1-1): seconds the simulation freezes, rendering on.
 export const HIT_STOP = {
   kill: 0.04,       // any kill
