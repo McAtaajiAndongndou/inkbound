@@ -153,7 +153,17 @@ export const HEALTH = {
   hurtCooldown: 0.8,  // seconds of invulnerability after a hit, so contact is not 60 hits/sec
   contactRange: 1.0,  // enemy centre within this (horizontal) distance of the player = touching
   contactHeight: 1.7, // ...and within this vertical distance
+  // #186 — enemies are solid, so a big body holds you at PLAYER.radius + its
+  // bodyRadius. The touch range per enemy is max(contactRange, that + this), so
+  // pressing against Big Arm (1.0 m apart) is not decided by float error.
+  contactSlack: 0.2,
 };
+
+// An enemy's body (#186, #187): a vertical cylinder. Solid to the player (the
+// player is pushed out, the enemy is not moved) and to other enemies. `chest`
+// is the height an enemy's wall test is made at. A config may override the
+// radius with `bodyRadius` (Big Arm). Was a local constant in enemy.js.
+export const ENEMY_BODY = { radius: 0.4, chest: 0.9 };
 
 // #126 — ONE danger colour for the whole game (DECISIONS.md): attack
 // telegraphs, trap warnings, incoming fire. Amber is chosen precisely because
@@ -707,6 +717,9 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: false,
     contactDamage: 20,
+    // #186 — its model is 1.5× the soldiers' (2.4 m vs 1.6 m): a boss you can
+    // clip into is not a boss.
+    bodyRadius: 0.6,
     attackDamage: 30,     // a slam that lands
     windup: 1.0,          // the slam's tell (algorithms.md: 1.0 s)
     attackRange: 4.0,     // it starts a slam with you inside this
