@@ -654,7 +654,10 @@ export const PAINT_GUN = {
   hitDrip: 0.6,          // m, the drip's radius (DEATH_SPLAT is 1.8)
   hitDripOffset: 1.2,    // m from the enemy's CENTRE along the shot (any model): twice the drip radius, so its edge clears the feet
   fireDelay: 0.14,
-  hipSpread: 0.025,
+  // Loop pass step 7 (quality plan §3.2): hip-fire was nearly as tight as
+  // aiming (0.025 vs 0.005), so the two modes felt the same. Wider hip-fire
+  // paints a broader road; aiming stays the precise, duelling mode.
+  hipSpread: 0.06,
   adsSpread: 0.005,
   refillRate: 8,
 
