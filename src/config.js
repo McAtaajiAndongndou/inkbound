@@ -543,6 +543,53 @@ export const CURVES = {
   vatColour: LAST_COLOUR.props.barrier,
 };
 
+// The dressing pass (docs/levels/dressing-pass.md, src/levels/dressing.js):
+// set pieces off the arena floor. GREY ONLY — colour belongs to the player,
+// amber means danger and marker white means "here", so neither is decoration.
+// The one accent is Corp signage in the gates' grey-violet (GATE.field).
+// Every kind is { colour, shape, look }: see dressing.js for the shapes and looks.
+const SILHOUETTE = 0x1a1b1d;   // darker than every drained horizon: a shape against the sky
+export const DRESSING = {
+  glassOpacity: 0.22,
+  // Wall breakup (Last Colour): a rib every `spacing` m, from `above` m over the
+  // top at its foot to the wall top, and a lip along every wall top.
+  walls: {
+    spacing: 6,
+    above: 3,
+    rib: { width: 0.6, depth: 0.3 },
+    cornice: { out: 0.35, depth: 0.3, rise: 0.35 },
+  },
+  kinds: {
+    // Wall breakup
+    rib:      { colour: 0x3e4145, shape: 'box', look: 'toon' },
+    cornice:  { colour: 0x6c6f73, shape: 'box', look: 'toon' },
+    truss:    { colour: 0x3a3d41, shape: 'box', look: 'toon' },
+    tray:     { colour: 0x55585c, shape: 'box', look: 'toon' },
+    pipe:     { colour: LAST_COLOUR.props.pipe, shape: 'round', look: 'toon' },
+    // Skyline: the facility outside, unlit and unfogged like the Ascent's base
+    block:    { colour: SILHOUETTE, shape: 'box', look: 'silhouette' },
+    stack:    { colour: SILHOUETTE, shape: 'round', look: 'silhouette' },
+    peak:     { colour: SILHOUETTE, shape: 'lump', look: 'silhouette' },
+    // Story clusters
+    crate:    { colour: LAST_COLOUR.props.crate, shape: 'box', look: 'toon' },
+    machine:  { colour: 0x4f5256, shape: 'box', look: 'toon' },
+    belt:     { colour: 0x2e3135, shape: 'box', look: 'toon' },
+    drum:     { colour: 0x5a5d61, shape: 'round', look: 'toon' },
+    pill:     { colour: 0x9a9c9e, shape: 'capsule', look: 'toon' },   // drained pills: grey, like everything the Corp makes
+    stencil:  { colour: GATE.field, shape: 'box', look: 'toon' },      // Corp signage: the one accent
+    sign:     { colour: GATE.field, shape: 'capsule', look: 'toon' },  // the pill icon, on a panel
+    panel:    { colour: 0x3a3d41, shape: 'box', look: 'toon' },
+    glass:    { colour: 0xaab4b8, shape: 'round', look: 'glass' },
+    specimen: { colour: 0x2b2d30, shape: 'capsule', look: 'toon' },    // a failed test subject, a shadow in the tube
+    deck:     { colour: 0x55585c, shape: 'box', look: 'toon' },
+    rail:     { colour: LAST_COLOUR.props.rail, shape: 'round', look: 'toon' },
+    bar:      { colour: LAST_COLOUR.props.pipe, shape: 'round', look: 'toon' },
+    grate:    { colour: 0x2a2c2e, shape: 'box', look: 'toon' },
+  },
+  // At most this many extra draw calls per level (the doc's budget).
+  maxDrawCalls: 15,
+};
+
 // #198 — lights the levels place in the point-light pool (#195). At most four
 // are lit at once (the nearest), so each one means something: amber is a live
 // trap (danger, #126), marker white is the goal, grey-violet is the Siphon,
