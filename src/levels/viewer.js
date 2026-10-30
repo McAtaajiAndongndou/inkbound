@@ -20,6 +20,7 @@ import { LEVELS, levelEntry, createLevel, DEFAULT_LEVEL_ID } from './index.js';
 import { levelShots, VIEWER_FOV, EYE_HEIGHT } from './level-shots.js';
 import { preloadEnemyModel } from '../enemies/enemy.js';
 import { pointLights } from '../shaders/point-lights.js';
+import { FrostPass } from '../shaders/frost/frost-pass.js';
 
 // --- the same renderer, scene defaults and lights as main.js -----------------
 // Copied, not imported: main.js builds them at module scope and starts the game
@@ -48,6 +49,7 @@ sun.shadow.camera.bottom = -30;
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x8899bb, 0x22222a, 0.5));
 pointLights.attach(scene);   // #195, as main.js
+const frostPass = new FrostPass();   // #196, as main.js
 
 const camera = new THREE.PerspectiveCamera(VIEWER_FOV, window.innerWidth / window.innerHeight, 0.1, 1000);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -186,6 +188,7 @@ async function doLoad(id, shotName) {
   if (level) {
     level.dispose();
     level = null;
+    frostPass.dispose();
   }
   if (helpers) {
     disposeGroup(helpers);
@@ -268,6 +271,7 @@ window.viewer = {
   controls,
   scene,
   renderer,
+  frostPass,
   /**
    * Mean ms per frame over `n` frames of a synchronous render, GPU included
    * (`gl.finish()`), for the PRs' before/after numbers (#194, #196).
@@ -346,6 +350,7 @@ function tick() {
   const p = camera.position;
   ui.cam.textContent = `cam ${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}${currentShot ? `  ·  ${currentShot}` : ''}`;
   pointLights.update(camera, dt);
+  frostPass.render(renderer, scene, camera);
   renderer.render(scene, camera);
 }
 

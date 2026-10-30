@@ -200,6 +200,19 @@ export const DANGER = {
   amber: 0xffe600,
 };
 
+// #196 — frost shell refraction (src/shaders/frost/). FrostPass renders the
+// scene without the shells at `sceneScale` of the screen while any shell is on
+// screen; the shell samples it offset by its own normal.
+export const FROST = {
+  refractStrength: 0.05, // screen-UV offset per unit of view-space normal, head-on
+  crackKink: 0.012,      // extra offset on a crack facet, so the facets break the image
+  sceneScale: 0.33,      // the scene copy's size as a fraction of the screen. 0.5 measured +2.1 ms in Last Colour, so the issue's fallback
+  tint: 0.25,            // how much ice blue is mixed into what the shell shows
+  fullCover: 0.55,       // uOpacity at which the shell fully takes over the view (BLUE_FREEZE.shellOpacity)
+  glowUnder: 0.5,        // how much the rim glow is dimmed where the refraction shows
+  bodyRadius: 0.9,       // m, an enemy's half-height: kept in the copy if this close behind ice on screen
+};
+
 // #195 — point lights the custom shaders can see (src/shaders/point-lights.js).
 // A FIXED pool: the nearest `slots` sources to the camera are lit, the rest
 // wait. The scene's light count never changes, so three.js never recompiles.
