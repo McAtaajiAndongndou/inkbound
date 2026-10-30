@@ -64,6 +64,7 @@ const skyFragment = /* glsl */ `
   uniform float uHillGround; // the band where the land under the hills reaches the void
   uniform vec2 uHillMid;    // x the middle layer's shade (0 = no middle layer), y its drop
   uniform vec3 uHillTint;   // far, middle, near: how far each layer is pulled toward the zenith
+  uniform float uHillJag;   // 0 rolling hills (Outskirts) .. 1 jagged mountain peaks (the Ascent)
   varying float vBand;
   varying float vAzimuth;
   // Ridged: 1 - |sin| turns each wave into a peak, so crests read as hilltops
@@ -79,17 +80,29 @@ const skyFragment = /* glsl */ `
   vec3 hillColour(float shade, float tint) {
     return mix(mix(uHorizon, uVoid, shade), uZenith, tint);
   }
+  // Mountains, not hills (Renda: the Ascent's must not look like Outskirts'):
+  // triangle waves, so flanks are straight rock faces with a point at the top
+  // and a notch at the bottom (ridge()'s curved flanks read as scallops). The
+  // big peaks dominate; the fine terms break the faces into crags.
+  // Whole numbers again: no seam.
+  float tri(float x) { return asin(sin(x)) * 0.63662; }  // 2/PI: -1..1
+  float crag(float a, float seed) {
+    return tri(a * 5.0 + seed) * 0.55
+         + tri(a * 13.0 + seed * 2.3) * 0.3
+         + tri(a * 31.0 + seed * 4.1) * 0.15;
+  }
+  float line(float a, float seed) { return mix(crest(a, seed), crag(a, seed), uHillJag); }
   void main() {
     vec3 c = mix(uHorizon, uZenith, smoothstep(0.5, 0.8, vBand));
     c = mix(c, uVoid, 1.0 - smoothstep(0.3, 0.5, vBand));
     if (uHills.x > 0.5) {
-      float far = 0.5 + uHills.y + uHills.z * crest(vAzimuth, 1.7);
-      float near = 0.5 + uHills.y - uHillShade.z + uHills.z * crest(vAzimuth, 5.3);
+      float far = 0.5 + uHills.y + uHills.z * line(vAzimuth, 1.7);
+      float near = 0.5 + uHills.y - uHillShade.z + uHills.z * line(vAzimuth, 5.3);
       float inFar = 1.0 - smoothstep(far - uHills.w, far + uHills.w, vBand);
       float inNear = 1.0 - smoothstep(near - uHills.w, near + uHills.w, vBand);
       c = mix(c, hillColour(uHillShade.x, uHillTint.x), inFar);
       if (uHillMid.x > 0.0) {
-        float mid = 0.5 + uHills.y - uHillMid.y + uHills.z * crest(vAzimuth, 3.1);
+        float mid = 0.5 + uHills.y - uHillMid.y + uHills.z * line(vAzimuth, 3.1);
         float inMid = 1.0 - smoothstep(mid - uHills.w, mid + uHills.w, vBand);
         c = mix(c, hillColour(uHillMid.x, uHillTint.y), inMid);
       }
@@ -134,6 +147,7 @@ export function skyDome(mood, radius = 200, colours = mood) {
       uHillMid: { value: new THREE.Vector2(mood.hills?.midShade ?? 0, mood.hills?.midDrop ?? 0) },
       uHillTint: { value: new THREE.Vector3(
         mood.hills?.farTint ?? 0, mood.hills?.midTint ?? 0, mood.hills?.nearTint ?? 0) },
+      uHillJag: { value: mood.hills?.jag ?? 0 },
     },
     side: THREE.BackSide,
     fog: false,

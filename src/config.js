@@ -524,8 +524,12 @@ export const ASCENT = {
     // farther one lighter and bluer (pulled toward the zenith), so distance
     // reads from colour alone. Land fills under the near crest, as in Outskirts.
     hills: {
-      height: 0.06,      // mean crest, band units above the horizon (0.5); ~7 degrees
-      swell: 0.03,       // crests rise and dip this much: peaks up to ~10 degrees
+      // Renda (30 Oct): "I don't want them to be too similar to the hills in L1".
+      // Outskirts rolls; the Ascent is jagged: pointed peaks, sharp notches,
+      // taller and with more rise and fall between them.
+      jag: 1,            // 0 = Outskirts' rolling crest, 1 = all-ridged mountain peaks
+      height: 0.062,     // mean crest, band units above the horizon (0.5); ~7 degrees
+      swell: 0.036,      // crests rise and dip this much: peaks up to ~11 degrees
       farShade: 0.1,     // the far range: barely off the horizon colour
       midShade: 0.28,    // the middle range
       nearShade: 0.5,    // the near range: darkest, it reads as closest
