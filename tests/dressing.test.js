@@ -9,12 +9,13 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { buildDressing } from '../src/levels/dressing.js';
+import { Level01 } from '../src/levels/level-01-mission.js';
 import { Level02 } from '../src/levels/level-02-ascent.js';
 import { Level03 } from '../src/levels/level-03-horde.js';
 import { ASCENT as AS } from '../src/levels/layouts/ascent.js';
 import { ASCENT_KINDS } from '../src/levels/decor.js';
 import { LAST_COLOUR as LC } from '../src/levels/layouts/last-colour.js';
-import { DRESSING, PAINT, DANGER, MARKER, GATE, LAST_COLOUR as LC_TUNING } from '../src/config.js';
+import { DRESSING, PAINT, DANGER, MARKER, GATE, OUTSKIRTS, LAST_COLOUR as LC_TUNING } from '../src/config.js';
 
 async function loaded(Level) {
   const level = new Level({ scene: new THREE.Scene() });
@@ -286,4 +287,57 @@ test('The Ascent: ten reloads free the trees and their palette', async () => {
   }
   assert.ok(made > 0);
   assert.ok(freed >= made, `${freed} of ${made} freed`);
+});
+
+// --- Outskirts -----------------------------------------------------------------
+
+test('Outskirts: the skyline and the billboard are instanced, off every walkable floor, and clear of the beacon', async () => {
+  const level = await loaded(Level01);
+  const { meshes, items } = level.dressing;
+  assert.ok(meshes.length <= DRESSING.maxDrawCalls);
+  for (const m of meshes) {
+    assert.ok(m.isInstancedMesh && m.parent === level.root);
+    assert.ok(!level.surfaces.some((s) => s.mesh === m), 'collides');
+  }
+  // Nothing in the air over a floor the player walks (the forest shelves,
+  // across 8 m of lethal lake, are backdrop and may be dressed).
+  const walk = level.surfaces.filter((s) => s.isFloor && !s.shoulder).map((s) => {
+    const b = new THREE.Box3().setFromObject(s.mesh);
+    b.max.y += 6;
+    return b;
+  });
+  const instance = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+  for (const m of meshes) {
+    for (let i = 0; i < m.count; i++) {
+      m.getMatrixAt(i, instance.matrix);
+      instance.matrix.decompose(instance.position, instance.quaternion, instance.scale);
+      instance.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(instance);
+      for (const w of walk) assert.ok(!b.intersectsBox(w), `${m.name} #${i} is over the walk`);
+    }
+  }
+  const b = OUTSKIRTS.beacon;
+  const beacon = [b.x, b.top + 1.2, b.z];
+  assert.equal(clearSight([level.spawn.x, level.spawn.y + 1.6, level.spawn.z], beacon, meshes), null);
+  for (const shot of Level01.SHOTS) assert.equal(clearSight(shot.position, beacon, meshes), null, shot.name);
+  // The billboard carries the pill, and the skyline is the Corp's silhouette.
+  assert.ok(items.some((i) => i.kind === 'sign') && items.some((i) => i.kind === 'board'));
+  assert.ok(items.filter((i) => i.kind === 'stack').length >= 2);
+  level.dispose();
+});
+
+test('Outskirts: ten reloads free the dressing', async () => {
+  let made = 0;
+  let freed = 0;
+  for (let i = 0; i < 10; i++) {
+    const level = await loaded(Level01);
+    for (const m of level.dressing.meshes) {
+      made += 2;
+      m.geometry.addEventListener('dispose', () => { freed++; });
+      m.material.addEventListener('dispose', () => { freed++; });
+    }
+    level.dispose();
+  }
+  assert.ok(made > 0);
+  assert.equal(freed, made);
 });
