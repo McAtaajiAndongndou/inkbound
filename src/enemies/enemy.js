@@ -527,6 +527,7 @@ export class Enemy {
     this._lastKnown = new THREE.Vector3();  // where it last SAW you
     this._forgetTimer = 0;                  // Search -> Dormant countdown
     this._fireTimer = 0;                    // Alert bought by your last shot
+    this._provoked = false;                 // #216: hit or level-woken; alert on the next update
     this._seenShots = PLAYER_SIGNAL.shots;  // the shot count this enemy knows of
 
     // Sight lines are tested against UPRIGHT surfaces only. A floor is a
@@ -831,8 +832,14 @@ export class Enemy {
     this._gait(dt);
   }
 
-  /** Stop being dormant. Idempotent: the level may call it every frame on a trigger. */
+  /**
+   * Stop being dormant. Idempotent: the level may call it every frame on a
+   * trigger. The first call — the moment it wakes — also turns it on the player
+   * (#216): a level wake used to clear `sleeping` and leave awareness dormant,
+   * so a woken Charger 20 m from the door stood still until you walked closer.
+   */
   wake() {
+    if (this.sleeping) this._provoked = true;
     this.sleeping = false;
   }
 
@@ -1950,8 +1957,10 @@ export class Enemy {
     const name = ID_TO_NAME[colourId];
     if (!name || colourId === PAINT_IDS.grey) return false;
 
-    // A hit wakes a dormant enemy: no free kills.
+    // A hit wakes a dormant enemy, and turns it on you at any range (#216):
+    // being hurt is the loudest signal there is. No free kills.
     this.sleeping = false;
+    this._provoked = true;
 
     // Feedback first, so a killing hit still reads as coloured.
     this._tintTarget.setHex(PAINT[name].hex);
@@ -2066,6 +2075,7 @@ export class Enemy {
   takeDamage(damage) {
     if (!this.alive || !(damage > 0)) return false;
     this.sleeping = false;   // a trap that hurts you also wakes you
+    this._provoked = true;   // ...and turns you on the player (#216)
     this.hp -= damage;
     if (this.hp <= 0) {
       // Still being thrown by red (#129): the knockback put it in the trap, so
@@ -2322,6 +2332,19 @@ export class Enemy {
     if (this.config.ignoresStealth) {
       this._awareness = "alert";
       this._lastKnown.copy(playerPos);
+      this._forgetTimer = AWARENESS.forget;
+      return;
+    }
+
+    // 0. Provoked (#216): hit, hurt, or woken by the level. Alert toward the
+    // player at ANY range and with no sight check, for as long as a shot buys
+    // (rule 3 below holds it), then Search and Dormant as usual. An enemy
+    // nobody touched keeps the stealth rules exactly as they were.
+    if (this._provoked) {
+      this._provoked = false;
+      this._awareness = "alert";
+      this._lastKnown.copy(playerPos);
+      this._fireTimer = AWARENESS.fireAlert;
       this._forgetTimer = AWARENESS.forget;
       return;
     }
