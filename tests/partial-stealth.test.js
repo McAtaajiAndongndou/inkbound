@@ -312,7 +312,10 @@ test('a sleeping enemy does not hear a shot fired while it was asleep', () => {
   PLAYER_SIGNAL.shots += 1;                // fired while it was dormant
   tick(enemy, [0, 0, 0], 10);              // it is asleep; the shots go by unheard
 
-  enemy.wake();
+  // Un-slept without a level wake: since #216 a wake() deliberately alerts
+  // (tests/hit-alerts.test.js). The rule here is only about the slept-through
+  // shot, which must not come back as a memory.
+  enemy.sleeping = false;
   tick(enemy, [0, 0, 0]);
 
   assert.equal(enemy.awareness, 'dormant',
