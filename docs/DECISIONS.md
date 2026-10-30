@@ -243,3 +243,8 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **A level may name what its first frame faces** (`spawnLook`; `spawnAim` gives yaw and clamped pitch). The Ascent faces its lift beacon, at the camera's pitch limit. main.js applies it (core lane).
 - **The Primer has a focal point per lesson and leading light**: warm tungsten lamps (`PRIMER.dressing.lamp`, not amber, not a paint colour) over the sergeant's crate desk, R1's boards and R2's wall, and on the far side of each exit. Floor grid squares are twice a wall's.
 - **The Ascent's foothills have rock scree** (prop kind `rock`, no collision, under 1.3 m, off the climbing line). **Outskirts' beacon ignores fog** so it pulls you forward from spawn. The waste was darkened away from the vent's amber.
+
+## 2026-10-30 — Dynamic sky thresholds (#197, Renda to approve)
+
+- **`SKY.from`/`SKY.to` are 0.02/0.2, not the issue's 0.05/0.5.** Coverage is the HUD's number: the mean of `surface.coverage()` over *every* surface, walls and sealed faces included. Measured on the built levels, painting every paintable floor reaches only 0.31–0.37, so a `to` of 0.5 could never be reached and the sky would never finish restoring. 0.02 starts the warm-up with the first island; 0.2 is most of a level's floor. The coverage definition is unchanged, so the sky, the HUD and the music (#199) read one number.
+- **"While the Siphon drains" is its exam** (phases intake → arms → core): the sky is pulled to drained while you work, and the finale restores it within `SKY.finale` for good.

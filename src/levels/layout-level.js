@@ -157,6 +157,8 @@ export class LayoutLevel extends LevelBase {
   update(dt, player) {
     this._clock = (this._clock ?? 0) + dt;
     this._since ??= new Map();
+    // #197: the sky warms with the territory (null on a static-sky level).
+    this.sky?.update(dt);
 
     for (let i = 0; i < this.roster.length; i++) {
       const { data, enemy } = this.roster[i];
