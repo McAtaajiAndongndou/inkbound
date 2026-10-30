@@ -165,6 +165,14 @@ export const HEALTH = {
 // radius with `bodyRadius` (Big Arm). Was a local constant in enemy.js.
 export const ENEMY_BODY = { radius: 0.4, chest: 0.9 };
 
+// Enemies push each other apart (#187), once a frame after they have all moved,
+// so a wave reads as a crowd you can count rather than one stacked silhouette.
+// Horizontal circles of each body's radius; each takes half the overlap unless
+// the other is immovable (frozen, pinned, sleeping, Big Arm).
+export const ENEMY_SEPARATION = {
+  heightTolerance: 1.2,   // m; pairs further apart vertically don't touch
+};
+
 // #126 — ONE danger colour for the whole game (DECISIONS.md): attack
 // telegraphs, trap warnings, incoming fire. Amber is chosen precisely because
 // it is not a paint colour, so nothing the player can paint is ever a warning

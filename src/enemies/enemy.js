@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_NAV, ENEMY_SHOT, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, STALKER } from "../config.js";
+import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_BODY, ENEMY_NAV, ENEMY_SHOT, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, STALKER } from "../config.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { EnemyShots } from "./enemy-shots.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
@@ -23,9 +23,8 @@ const TINT_FADE = 1.0;
 // DANGER in config.js) — not a paint colour, so it can never be mistaken for
 // a paint hit, and the same amber a trap or incoming fire would use.
 
-// Body size for wall collision. Enemies have no collider of their own — the probe
-// is a ray, not a capsule — so these are the two numbers the wall test needs.
-const ENEMY_BODY = { radius: 0.4, chest: 0.9 };
+// Body size (radius, chest height) is ENEMY_BODY in config.js since #186/#187:
+// the player and the other enemies collide with the same body.
 
 // The four foot probes used before committing to a fall. A centre-only probe
 // makes an enemy step off a ledge the moment its CENTRE passes the lip, even
@@ -906,6 +905,55 @@ export class Enemy {
   /** True between letting go of a face and touching floor again. */
   get falling() {
     return this._falling;
+  }
+
+  /** Horizontal radius of its body (#186, #187): Big Arm is bigger. */
+  get bodyRadius() {
+    return this.config.bodyRadius ?? ENEMY_BODY.radius;
+  }
+
+  /**
+   * True when another body cannot push it (#187): frozen (a block of ice),
+   * pinned (rooted), sleeping (a guard holds its post), and Big Arm (a boss
+   * is not jostled). The other enemy of the pair takes the whole overlap.
+   */
+  get immovable() {
+    return this.sleeping === true
+      || this._frozenTimer > 0
+      || this._pinnedTimer > 0
+      || this.type === "bigArm";
+  }
+
+  /**
+   * Be pushed by (dx, dz) by another body (#187). The push obeys the same
+   * rules as a step: refused into a wall panel, off a floor or down a drop,
+   * and retried one axis at a time as the chase does. Returns false if it was
+   * dropped entirely. Separation must never shove an enemy through cover or
+   * off its island — that is the rule that made cover real.
+   */
+  nudge(dx, dz) {
+    const x = this.position.x + dx;
+    const z = this.position.z + dz;
+    let ground = this._stepGround(x, z);
+    if (ground) {
+      this.position.x = x;
+      this.position.z = z;
+      this.position.y = ground.y;
+      return true;
+    }
+    ground = Math.abs(dx) > 1e-6 ? this._stepGround(x, this.position.z) : null;
+    if (ground) {
+      this.position.x = x;
+      this.position.y = ground.y;
+      return true;
+    }
+    ground = Math.abs(dz) > 1e-6 ? this._stepGround(this.position.x, z) : null;
+    if (ground) {
+      this.position.z = z;
+      this.position.y = ground.y;
+      return true;
+    }
+    return false;
   }
 
   /**

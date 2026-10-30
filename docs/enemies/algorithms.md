@@ -36,6 +36,19 @@ Search  : lost the player, walking to the last known position
 | Refuses a step down greater than | 1.0 m | A kerb is fine, a storey is not |
 | Knockback bypasses both rules | always | Flinging enemies off ledges is the point |
 
+### Bodies
+
+Every enemy is a vertical cylinder: radius `ENEMY_BODY.radius` 0.4 m (Big Arm `bodyRadius` 0.6 m), in `config.js`.
+
+| Rule | Value | Why |
+|---|---|---|
+| Solid to the player (#186) | the player is pushed out; the enemy never moves | A body you walk through reads as a ghost; pushing enemies would shove them through walls |
+| Solid to each other (#187) | once a frame after all enemies move, overlapping pairs split the overlap | A wave you can count; splash and freeze reward a *group* |
+| Vertical | pairs within 1.2 m (`ENEMY_SEPARATION.heightTolerance`) | A crawler on a ledge above is not touching |
+| Immovable | frozen, pinned, sleeping, Big Arm — the other takes the whole overlap | Ice is a block; a frozen enemy in a doorway becomes cover |
+| Ignored | the dead; a crawler on a face or falling off one | The climb owns its own spacing |
+| Walls and ledges | every push is a step (`nudge`): refused into a wall, off a floor or down a drop | Separation must never break cover or empty an island |
+
 ### Pellets (ranged shots)
 
 Since #185 (DECISIONS 2026-10-30, "Enemy shots are pellets") a ranged enemy's shot is a **pellet that flies**, the way Splatoon's enemy ink does. Who fires them: Sprayer, Wall-crawler, Turret — any enemy whose config has a `shotSpeed`. Melee (Charger, Stalker, Drainer, Big Arm's slam and grab) is unchanged.
