@@ -27,7 +27,7 @@ Ordered by Renda's sharpest complaint first, then by the quality plan's root cau
 | 5 | World grey slow 0.6 → 0.85 | §3.5 | config | Does the first minute still drag? Do you still want to paint ahead? | **Keep** (30 Oct); the slow isn't felt at all → #244 |
 | 6 | Death splat 1.8 m → 2.5 m | §3.1 | config | Do you swim into kills to refill? | **Keep** (30 Oct) |
 | 7 | Hip spread 0.025 → 0.06 (`PAINT_GUN.hipSpread`) | §3.2 | config | Does hip-fire feel like painting and aiming feel like shooting? | **Keep** (30 Oct) |
-| 7b | ADS spread 0.005 → 0.004: only if step 7 leaves aiming feeling loose (a 20% change to an already tight number) | §3.2 | config | | **Not needed**: aiming didn't feel loose |
+| 7b | ADS spread 0.005 → 0.004: only if step 7 leaves aiming feeling loose (a 20% change to an already tight number) | §3.2 | config | | **Not played**: no looseness raised; available if aiming feels loose later |
 | 7c | **Hip-fire splats bigger**, 1.4 → 1.8 m; aiming unchanged (Renda: "the paint from hipfire takes up wider surface area") | §3.2 | code (paint) | Does hip-fire cover ground fast, like a painter? | **Keep** (30 Oct) |
 | 7d | Aimed splats smaller, 1.4 → 0.7 m, played on its own | §3.2 | config | Does aiming still paint enough to be worth it? | **Dropped**: breaks the Siphon finale |
 | 8 | Field of view 70 → 78 | §5 | config | More of the fight on screen, or just fish-eye? | |
