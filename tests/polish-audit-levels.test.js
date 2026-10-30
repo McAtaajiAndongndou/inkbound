@@ -189,6 +189,7 @@ test("the Ascent's first frame faces its goal, as high as the camera may look", 
   const { yaw, pitch } = spawnAim(level.spawn, level.spawnLook);
   assert.ok(Math.abs(yaw) < 0.05, 'straight up the mountain, toward the lift tower');
   assert.equal(pitch, CAMERA.pitchMax, 'the beacon is past the limit, so the aim sits on it');
+  assert.deepEqual(level.spawnFacing, { yaw, pitch }, 'main.js reads it as spawnFacing');
   level.dispose();
 });
 

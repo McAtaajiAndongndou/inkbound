@@ -48,6 +48,14 @@ export class LevelBase {
     this.atmosphere = null;
   }
 
+  /**
+   * `{ yaw, pitch }` for the player's first frame, or null to keep the default
+   * (facing -z, level). main.js applies it when it builds the player.
+   */
+  get spawnFacing() {
+    return this.spawnLook ? spawnAim(this.spawn, this.spawnLook) : null;
+  }
+
   async load() { throw new Error('implement load()'); }
 
   update(dt, player) { /* subclasses override to tick enemies / check win */ }
