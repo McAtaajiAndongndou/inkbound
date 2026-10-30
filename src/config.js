@@ -59,7 +59,7 @@ export const PAINT = {
 //   restitution > 0 makes the surface a trampoline (see PLAYER.minBounce)
 //   climbable   walls of this colour can be climbed
 export const SURFACE = {
-  grey: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: false, standSlow: 0.6 }, // Corrupt Corp's territory — live penalty (#74)
+  grey: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: false, standSlow: 0.85 }, // Corrupt Corp's territory — live penalty (#74). Loop pass step 5: 0.6 -> 0.85 (5.95 m/s, not 4.2); the plan's two greys (#235) would keep 0.6 for fresh enemy grey
   blue: { friction: 0.4, traction: 0.5, speedScale: 1.6, restitution: 0.0, climbable: false, standSlow: 1.0 }, // ice: slide, hard to steer
   red: { friction: 10.0, traction: 1.0, speedScale: 1.0, restitution: 0.9, climbable: false, standSlow: 1.0 }, // bounce
   green: { friction: 14.0, traction: 1.0, speedScale: 1.0, restitution: 0.0, climbable: true, standSlow: 1.0 }, // grip + climb
