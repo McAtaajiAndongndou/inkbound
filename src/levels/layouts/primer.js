@@ -209,7 +209,9 @@ const traps = [
 ];
 
 const enemies = [
-  { id: 'r7-charger', type: 'charger', pos: [0, 8, -40], room: 'R7', wave: 1, wake: 'enter:R7' },
+  // B5: +3 s so the sergeant's line (asked past the pit, ~1 s from the door at
+  // a sprint) is up for its readable minimum before the Charger's wake clears it.
+  { id: 'r7-charger', type: 'charger', pos: [0, 8, -40], room: 'R7', wave: 1, wake: 'enter:R7+3' },
 ];
 
 const routes = {

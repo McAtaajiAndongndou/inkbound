@@ -129,7 +129,7 @@ A spike pit across the corridor that **damages and never kills**: a hit never ta
 
 ![R7](primer/frames/eye-r7-one-of-theirs.png)
 
-A 24 × 30 m hall and **one Charger**, dormant until you walk in. *"One of theirs. It won't stop. Make the ground stop it instead."* Blue slides it into the wall, red flings it, green stops it dead, and the tutorial never says which is right. **The gate at the far end opens when it's gone.**
+A 24 × 30 m hall and **one Charger**, dormant until 3 s after you walk in. The sergeant says *"One of theirs. It won't stop. Make the ground stop it instead."* once you are past R6's spike pit, so the line never plays at the trap, and the 3 s lets it be read before the fight clears it (quality plan B5). Blue slides it into the wall, red flings it, green stops it dead, and the tutorial never says which is right. **The gate at the far end opens when it's gone.**
 
 ### R8 — Free Play · *what can I do with this?*
 
