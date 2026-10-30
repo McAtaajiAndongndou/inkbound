@@ -16,8 +16,11 @@ test('#224: the dome is pinned to the far plane, so no radius can be clipped', (
   assert.equal(dome.material.depthWrite, false, 'whatever is drawn in front still wins');
 });
 
-test('#224: why it mattered — the Ascent dome is bigger than the camera reaches', () => {
+// The Ascent's dome is now 310 m, inside the camera's reach on its own
+// (tests/ascent-polish.test.js), so the pin is belt-and-braces there. It still
+// has to hold for any dome bigger than the far plane, which is what this checks.
+test('#224: the pin holds for a dome bigger than the camera reaches', () => {
   const far = new CameraRig(16 / 9).camera.far;
-  assert.ok(ASCENT.mood.skyRadius > far,
-    'if this ever fails, the dome fits inside the far plane and the pin is belt-and-braces');
+  const dome = skyDome(ASCENT.mood, far + 50);
+  assert.match(dome.material.vertexShader, /gl_Position\s*=\s*\w+\.xyww/);
 });
