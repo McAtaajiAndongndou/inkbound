@@ -528,6 +528,32 @@ export const ASCENT = {
   base: { silhouette: 0x262b35 },
 };
 
+// #198 — curves and surfaces of revolution (src/levels/curves.js). Colours are
+// the Corp's existing pipe greys: a cable is machinery, not a new colour.
+export const CURVES = {
+  radius: 0.08,          // m, a cable's default thickness
+  sag: 1.5,              // m, how far a cable dips at the middle of each span
+  sagSamples: 8,         // parabola samples per span (even: the midpoint is one)
+  segmentsPerMetre: 1.5, // tube segments along the curve
+  radialSegments: 6,
+  latheSegments: 16,     // around a vat or tank: few, and flat-shaded on purpose
+  colour: LAST_COLOUR.props.pipe,
+  hoseRadius: 0.22,      // the Siphon's hoses are fatter than a power line
+  hoseColour: LAST_COLOUR.props.rail,
+  vatColour: LAST_COLOUR.props.barrier,
+};
+
+// #198 — lights the levels place in the point-light pool (#195). At most four
+// are lit at once (the nearest), so each one means something: amber is a live
+// trap (danger, #126), marker white is the goal, grey-violet is the Siphon,
+// warm tungsten is the Primer's way on.
+export const PLACED_LIGHTS = {
+  trap: { colour: DANGER.amber, intensity: 1.2, range: 6, rest: 0.35 },   // rest: share while armed but idle
+  beacon: { colour: MARKER.white, intensity: 1.0, range: 12 },
+  siphon: { colour: GATE.field, intensity: 1.4, range: 16, pulseRate: 2.5, drainRate: 6 },
+  lamp: { colour: PRIMER.dressing.lamp, intensity: 0.9, range: 7 },
+};
+
 export const PAINT_GUN = {
   range: 30,
   radius: 1.4,

@@ -187,3 +187,7 @@ The pad beyond free play. *"You're ready. Outskirts — go."* The win needs R7's
 ## Deliberately undecided
 
 The sergeant's exact lines and timings (UI lane), the pit's creak (audio), and the tank size (#155).
+
+## Flat versus smooth, and its lights (#198)
+
+Corp hardware is flat-shaded and the paint is smooth: hard facets read as manufactured, colour reads as alive. The lead lamps are real lights in the point-light pool, so their warm tungsten falls on the doorway they mark.

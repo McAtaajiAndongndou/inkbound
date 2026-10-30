@@ -321,3 +321,7 @@ Pass question: *does the climb feel like rationing, and is the goal always in vi
 ## Deliberately undecided
 
 Turret facing and fire rates, every combat paint number, the sergeant's line, and what the lift ride looks like. Those are the campaign-wide passes.
+
+## Curves, flat versus smooth (#198)
+
+The supply lift's two haul cables sag from the lift tower down to the trailhead, so from the first frame they lead the eye up to the goal. The rock scree and the gantry are flat-shaded, as rough rock and Corp steel; the cables and the paint are smooth.

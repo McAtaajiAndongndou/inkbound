@@ -193,3 +193,7 @@ Each is in `BACKLOG.md`'s Parked list with the reason.
 1. **The vent** — did you paint it, or walk around it? If nobody spends paint on it, the paint answer is too expensive.
 2. **The waste** — once knockback falls: did anyone knock a Charger in without being told?
 3. **The Ledge** — did anyone turn round and look?
+
+## Curves, flat versus smooth (#198)
+
+A sagging power line, a `TubeGeometry` along a `CatmullRomCurve3`, runs from a pole off island C to the extraction mast. The pole is flat-shaded, because it's Corp hardware; the cable and the paint are smooth, because curves and colour are alive. The vent lights its own floor amber while it is armed, and the beacon is a marker-white light.

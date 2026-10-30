@@ -335,7 +335,34 @@ const prepaint = [
   { id: 'spawn-pad', room: 'R0', colour: SPAWN_PAD.colour, y: 3, rect: [0 - SPAWN_PAD.half, 0 + SPAWN_PAD.half, 86 - SPAWN_PAD.half, 86 + SPAWN_PAD.half], note: 'First steps at full speed' },
 ];
 
+/**
+ * Curves (#198, src/levels/curves.js). No collision, like the props.
+ *
+ *   tank   the Siphon's tank: a lathe on its roof, round the mast. Low and
+ *          domed so the beacon still clears it from every room's eye (tested)
+ *   vats   two lathe vats on the Core's north wall-tops, outside the arena
+ *   hoses  from the tank down to each vat, sagging over the Core at 17 m+
+ *   cables runs across the hangar's roof line. Their z avoids 44-56, where
+ *          the R0/R1 eyes' line to the beacon passes at cable height, and
+ *          68+, where the mission intro's camera flies in (both tested)
+ *
+ * Profiles are [radius, height] from the bottom up.
+ */
+const curves = {
+  tank: { at: [0, 22, -36], profile: [[0.9, 0], [2.6, 0.2], [2.6, 1.1], [2.0, 1.7], [0.9, 2.1]] },
+  vats: {
+    at: [[-27, 14, -63], [27, 14, -63]],
+    profile: [[0.4, 0], [2.0, 0.3], [2.2, 1.0], [2.2, 4.0], [1.6, 4.8], [0.6, 5.2]],
+  },
+  hoses: [
+    { points: [[-2.0, 23, -37.5], [-26, 19.4, -62]], sag: 3 },
+    { points: [[2.0, 23, -37.5], [26, 19.4, -62]], sag: 3 },
+  ],
+  cables: [58, 62, 66].map((z) => ({ points: [[-23.6, 11.6, z], [23.6, 11.6, z]], sag: 1.2 })),
+};
+
 export const LAST_COLOUR = {
   id: 'last-colour', name: 'Last Colour', cells: PAINT_GRID.level3Cells, prepaint,
   solids, slabs: [], strips, kerbs: [], landmarks, gates, traps, props, targets, spill, enemies, routes, rooms, win, doc,
+  curves,
 };

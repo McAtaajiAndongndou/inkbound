@@ -284,3 +284,7 @@ And one my own test got wrong: the breath counts from the tick that **sees** wav
 ## Deliberately undecided
 
 Turret facing, every combat paint number, Big Arm's combo, and the Siphon's phase timings.
+
+## Curves, flat versus smooth (#198)
+
+The Siphon's tank and the two vats on the Core's north wall-tops are `LatheGeometry` (one profile spun round, not stacked cylinders), joined by sagging hoses. Cables run across the hangar's roof line. All the Corp machinery is flat-shaded, the hoses and the paint are smooth. The crushers glow amber while armed, the Siphon pulses grey-violet (faster while its exam drains), and the mast beacon is marker white until the Siphon dies.
