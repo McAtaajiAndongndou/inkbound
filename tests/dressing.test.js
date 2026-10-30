@@ -24,6 +24,18 @@ async function loaded(Level) {
   return level;
 }
 const box3 = ([x0, x1, y0, y1, z0, z1]) => new THREE.Box3(new THREE.Vector3(x0, y0, z0), new THREE.Vector3(x1, y1, z1));
+/** An item's box in the world: its `tilt` turns it about its centre (dressing.js). */
+function worldBox(item) {
+  const b = box3(item.box);
+  if (!item.tilt) return b;
+  const c = b.getCenter(new THREE.Vector3());
+  const m = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z)
+    .multiply(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(...item.tilt)))
+    .multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
+  return b.applyMatrix4(m);
+}
+/** A post, a leg, a rail or an arm: two of its three sizes 0.3 m or less. It cannot hide anything. */
+const thin = ([x0, x1, y0, y1, z0, z1]) => [x1 - x0, y1 - y0, z1 - z0].filter((d) => d <= 0.3 + 1e-6).length >= 2;
 const stripBox = (s) => box3(s.face.endsWith('x')
   ? [s.at - 0.5, s.at + 0.5, s.y[0], s.y[1], s.span[0], s.span[1]]
   : [s.span[0], s.span[1], s.y[0], s.y[1], s.at - 0.5, s.at + 0.5]);
@@ -120,7 +132,8 @@ for (const { name, Level, layout, beacon } of LEVELS) {
     const points = Object.values(layout.routes).flat().map((p) => new THREE.Vector3(...p));
     const tops = layout.solids.filter((s) => s.top);
     for (const item of level.dressing.items) {
-      const b = box3(item.box);
+      const b = worldBox(item);
+      const wb = [b.min.x, b.max.x, b.min.y, b.max.y, b.min.z, b.max.z];
       const label = `${item.kind} ${JSON.stringify(item.box)}`;
       for (const s of strips) assert.ok(!b.intersectsBox(s.b), `${label} overlaps strip ${s.id}`);
       for (const q of points) assert.ok(b.distanceToPoint(q) >= 1, `${label} is within 1 m of a route point`);
@@ -132,19 +145,20 @@ for (const { name, Level, layout, beacon } of LEVELS) {
         assert.ok(host && box3(host.box).expandByScalar(0.6).containsBox(b), `${label} strays from ${item.mount}`);
         continue;
       }
+      if (thin(item.box)) continue;
       for (const t of tops) {
         const [x0, x1, , y1, z0, z1] = t.box;
-        const over = item.box[0] < x1 && item.box[1] > x0 && item.box[4] < z1 && item.box[5] > z0;
-        if (!over || Math.abs(item.box[2] - y1) > 0.05) continue;
-        assert.ok(item.box[3] - y1 <= LC_TUNING.props.maxFloorHeight + 1e-6, `${label} stands ${(item.box[3] - y1).toFixed(1)} m tall on ${t.id}`);
+        const over = wb[0] < x1 && wb[1] > x0 && wb[4] < z1 && wb[5] > z0;
+        if (!over || Math.abs(wb[2] - y1) > 0.05) continue;
+        assert.ok(wb[3] - y1 <= LC_TUNING.props.maxFloorHeight + 1e-6, `${label} stands ${(wb[3] - y1).toFixed(1)} m tall on ${t.id}`);
       }
       // ...and nothing inside a walkable space below head height plus a bounce:
       // a non-colliding prop the player walks through is a bug, not dressing.
       for (const t of tops) {
         const [x0, x1, , y1, z0, z1] = t.box;
-        const inside = item.box[0] < x1 - 0.01 && item.box[1] > x0 + 0.01 && item.box[4] < z1 - 0.01 && item.box[5] > z0 + 0.01;
-        if (!inside || item.box[2] < y1 - 0.05 || item.box[2] >= y1 + 3 - 1e-6) continue;
-        assert.ok(item.box[3] - y1 <= LC_TUNING.props.maxFloorHeight + 1e-6, `${label} hangs into ${t.id}'s head room`);
+        const inside = wb[0] < x1 - 0.01 && wb[1] > x0 + 0.01 && wb[4] < z1 - 0.01 && wb[5] > z0 + 0.01;
+        if (!inside || wb[2] < y1 - 0.05 || wb[2] >= y1 + 3 - 1e-6) continue;
+        assert.ok(wb[3] - y1 <= LC_TUNING.props.maxFloorHeight + 1e-6, `${label} hangs into ${t.id}'s head room`);
       }
     }
     level.dispose();
@@ -341,3 +355,17 @@ test('Outskirts: ten reloads free the dressing', async () => {
   assert.ok(made > 0);
   assert.equal(freed, made);
 });
+
+test('The Ascent: a story cluster in the trailhead, both terraces and the summit', async () => {
+  const level = await loaded(Level02);
+  for (const room of ['R0', 'R2', 'R4', 'R7']) {
+    assert.ok(level.dressing.items.some((i) => i.room === room), `${room} has no cluster`);
+  }
+  // The haul cables end in their anchors.
+  for (const c of AS.curves.cables) {
+    const foot = new THREE.Vector3(...c.points.at(-1));
+    assert.ok(level.dressing.items.some((i) => i.kind === 'concrete' && box3(i.box).expandByScalar(0.1).containsPoint(foot)));
+  }
+  level.dispose();
+});
+

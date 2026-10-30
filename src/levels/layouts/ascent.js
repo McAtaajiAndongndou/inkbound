@@ -345,12 +345,84 @@ const band = (face, at, from, to, y, h = 1.0) => {
   const out = face[0] === '+' ? [at, at + STRATA_DEPTH] : [at - STRATA_DEPTH, at];
   return { kind: 'strata', box: face[1] === 'z' ? [from, to, y, y + h, ...out] : [...out, y, y + h, from, to] };
 };
+/**
+ * Story clusters (step 5): the Corp mined this mountain.
+ *   R0  a checkpoint shed off the trailhead's south lip on stilts, a barrier
+ *       arm left up, and the haul cables' concrete anchors
+ *   R2  an abandoned drill rig on the scree below Terrace One's east edge, and
+ *       core-sample crates in Terrace One's corner (under 1.2 m)
+ *   R4  a collapsed survey mast lying across Terrace Two's high deck
+ *   R7  a wind-torn Corp flag by the lift tower
+ * Thin things (posts, legs, a flagpole: 0.3 m or less across) may stand taller
+ * than 1.2 m on a floor: they cannot hide a Crawler (tested).
+ */
+const RIG = { x: [20.5, 23.5], z: [25.5, 28.5], foot: 5, top: 15, lean: 0.12 };
+const rigRing = (y, inset) => [
+  [RIG.x[0] + inset, RIG.x[1] - inset, y, y + 0.15, RIG.z[0] + inset - 0.08, RIG.z[0] + inset + 0.08],
+  [RIG.x[0] + inset, RIG.x[1] - inset, y, y + 0.15, RIG.z[1] - inset - 0.08, RIG.z[1] - inset + 0.08],
+  [RIG.x[0] + inset - 0.08, RIG.x[0] + inset + 0.08, y, y + 0.15, RIG.z[0] + inset, RIG.z[1] - inset],
+  [RIG.x[1] - inset - 0.08, RIG.x[1] - inset + 0.08, y, y + 0.15, RIG.z[0] + inset, RIG.z[1] - inset],
+].map((box) => ({ kind: 'truss', room: 'R2', box }));
+const ARM = { pivot: [7.8, 1.1], length: 4, angle: 1.1 };
+const clusters = [
+  // --- R0: the checkpoint -------------------------------------------------------
+  ...[-1, 1].map((side) => ({ kind: 'concrete', room: 'R0', box: [side * 9 - 0.8, side * 9 + 0.8, 0, 0.9, 78.8, 80] })),
+  { kind: 'deck', room: 'R0', box: [10.8, 16.2, -0.45, -0.25, 80.3, 84.2] },
+  { kind: 'machine', room: 'R0', box: [11.2, 15.8, -0.25, 2.5, 81, 83.8] },
+  { kind: 'panel', room: 'R0', box: [10.9, 16.1, 2.5, 2.7, 80.7, 84.1] },
+  { kind: 'panel', room: 'R0', box: [12, 14, 0.9, 1.9, 80.95, 81.02] },   // the window, shuttered
+  ...stripesZ(11.2, 15.8, 2.15, 2.45, 80.93, 80.99, 0.6),
+  ...[[11.3, 80.5], [15.7, 80.5], [11.3, 83.9], [15.7, 83.9]].map(([x, z]) => (
+    { kind: 'rail', room: 'R0', box: [x - 0.1, x + 0.1, -8, -0.45, z - 0.1, z + 0.1] })),
+  { kind: 'machine', room: 'R0', box: [ARM.pivot[0] - 0.2, ARM.pivot[0] + 0.2, 0, ARM.pivot[1], 79, 79.4] },
+  (() => {
+    const cx = ARM.pivot[0] + (ARM.length / 2) * Math.cos(ARM.angle);
+    const cy = ARM.pivot[1] + (ARM.length / 2) * Math.sin(ARM.angle);
+    return { kind: 'stencil', room: 'R0', box: [cx - ARM.length / 2, cx + ARM.length / 2, cy - 0.06, cy + 0.06, 79.15, 79.25], tilt: [0, 0, ARM.angle] };
+  })(),
+
+  // --- R2: the drill rig and the samples ---------------------------------------
+  { kind: 'machine', room: 'R2', box: [RIG.x[0] - 0.5, RIG.x[1] + 0.5, 4, RIG.foot, RIG.z[0] - 0.5, RIG.z[1] + 0.5] },
+  ...RIG.x.flatMap((x, i) => RIG.z.map((z, j) => ({
+    kind: 'truss', room: 'R2', box: [x - 0.1, x + 0.1, RIG.foot, RIG.top, z - 0.1, z + 0.1],
+    tilt: [(j ? -1 : 1) * RIG.lean, 0, (i ? 1 : -1) * RIG.lean],
+  }))),
+  ...rigRing(8.5, 0.4), ...rigRing(12, 0.85),
+  { kind: 'machine', room: 'R2', box: [21.3, 22.7, RIG.top - 0.4, RIG.top + 0.4, 26.3, 27.7] },
+  { kind: 'drum', room: 'R2', box: [21.85, 22.15, RIG.foot, RIG.top - 0.4, 26.85, 27.15] },
+  { kind: 'machine', room: 'R2', box: [20.2, 21.6, 4, 5.1, 29.1, 29.9] },   // the engine, on the scree beside the base
+  ...[[14.4, 42.6], [14.4, 44.6]].flatMap(([x, z]) => [
+    { kind: 'crate', room: 'R2', box: [x, x + 2.6, 12, 12.8, z, z + 1.6] },
+    ...[0.35, 0.8, 1.25].map((dz) => ({ kind: 'drum', room: 'R2', box: [x + 0.2, x + 2.4, 12.8, 13.1, z + dz - 0.15, z + dz + 0.15] })),
+  ]),
+
+  // --- R4: the survey mast, down across the high deck -------------------------
+  ...[-31.25, -30.25].map((z) => ({ kind: 'truss', room: 'R4', box: [54, 65, 24, 24.3, z - 0.15, z + 0.15] })),
+  ...Array.from({ length: 8 }, (_, i) => 54.6 + i * 1.4).map((x) => (
+    { kind: 'truss', room: 'R4', box: [x - 0.06, x + 0.06, 24.05, 24.25, -31.4, -30.1] })),
+  { kind: 'panel', room: 'R4', box: [64.8, 65, 24, 25.2, -31.6, -30] },
+
+  // --- R7: the flag ---------------------------------------------------------------
+  { kind: 'rail', room: 'R7', box: [4.85, 5.15, 40, 46.5, 13.85, 14.15] },
+  { kind: 'flag', room: 'R7', box: [5.15, 7.6, 45.2, 46.3, 13.97, 14.03] },
+  { kind: 'flag', room: 'R7', box: [5.15, 6.5, 44.6, 45.2, 13.97, 14.03], tilt: [0, 0, -0.12] },
+  { kind: 'stencil', room: 'R7', box: [5.15, 7.6, 45.6, 45.85, 13.95, 14.05] },
+];
+
+/** Hazard stripes along a z-facing face, x0..x1. */
+function stripesZ(x0, x1, y0, y1, z0, z1, step) {
+  return Array.from({ length: Math.floor((x1 - x0) / step) }, (_, i) => {
+    const x = x0 + (i + 0.5) * step;
+    return { kind: 'stencil', room: 'R0', box: [x - step / 5, x + step / 5, y0, y1, z0, z1], tilt: [0, 0, 0.6] };
+  });
+}
+
 const dressing = {
   trees: {
     pine: [
       [-18, 0, 53, 1.1], [-17.5, 0, 57.5, 0.9], [18, 0, 54, 1.0], [17.6, 0, 58.5, 1.2],
       [-17.6, 0, 69, 1.0], [17.6, 0, 71.5, 0.9], [-18, 0, 76, 1.2], [18, 0, 77, 1.0],
-      [24, 4, 41.5, 1.1], [35, 4, 42, 1.0], [22, 4, 26, 0.9], [36, 4, 26, 1.2],
+      [24, 4, 41.5, 1.1], [35, 4, 42, 1.0], [26, 4, 38, 0.9], [36, 4, 26, 1.2],
     ],
     deadTree: [
       [26, 4, 14, 1.0], [36.5, 4, 18, 1.1],
@@ -358,6 +430,7 @@ const dressing = {
     ],
   },
   items: [
+    ...clusters,
     // Ridges of overlapping peaks, taller than wide, inside the sky dome (450 m).
     // A lump overshoots its box by about a quarter, so the tops are ~100-150 m.
     ...[[-50, -390, 70, 80], [30, -405, 90, 110], [105, -375, 60, 70], [170, -340, 50, 55]]
