@@ -16,7 +16,15 @@
 //
 // AXES. x east, y up, z SOUTH; the player starts in the south and walks north.
 // BOXES are [x0, x1, y0, y1, z0, z1], metres, axis-aligned.
-import { PAINT_GRID, SPAWN_PAD } from '../../config.js';
+import { PAINT_GRID, SPAWN_PAD, CAMERA } from '../../config.js';
+
+// Where the player starts (quality plan B4). The third-person camera sits
+// CAMERA.tpvDistance behind them, so the spawn keeps that much room, plus a
+// little, in front of the start wall (inner face z = 92). At z = 90 the first
+// frame was the back of that wall. Any further forward and the spawn pad would
+// cross into R1's floor (z < 84), where paintRect only paints one side.
+const START_WALL_Z = 92;
+const SPAWN_Z = START_WALL_Z - CAMERA.tpvDistance - 0.5;
 
 /** Floors, walls, steps and blocks. */
 const solids = [
@@ -175,7 +183,7 @@ const markings = [
  */
 const prepaint = [
   // Polish audit: the spawn pad (SPAWN_PAD in config).
-  { id: 'spawn-pad', room: 'R0', colour: SPAWN_PAD.colour, y: 0, rect: [0 - SPAWN_PAD.half, 0 + SPAWN_PAD.half, 89.5 - SPAWN_PAD.half, 89.5 + SPAWN_PAD.half], note: 'First steps at full speed' },
+  { id: 'spawn-pad', room: 'R0', colour: SPAWN_PAD.colour, y: 0, rect: [0 - SPAWN_PAD.half, 0 + SPAWN_PAD.half, SPAWN_Z - SPAWN_PAD.half, SPAWN_Z + SPAWN_PAD.half], note: 'First steps at full speed' },
   // Polish audit: the game's refill verb was in none of the nine rooms. A pool
   // on R2's way round the wall, and the sergeant says "hold Shift" in it. Green,
   // because it grips: a blue pool would slide you out before you sank.
@@ -206,7 +214,7 @@ const enemies = [
 
 const routes = {
   main: [
-    [0, 0, 90], [0, 0, 78], [0, 0, 75], [0, 0, 62], [5.5, 0, 60], [5.5, 0, 57], [0, 0, 50],
+    [0, 0, SPAWN_Z], [0, 0, 78], [0, 0, 75], [0, 0, 62], [5.5, 0, 60], [5.5, 0, 57], [0, 0, 50],
     [0, 0, 44.1], [0, 0, 37], [0, 0, 20], [0, 3, 14], [0, 3, 5], [0, 8, 3.8], [0, 8, -21],
     [0, 8, -49], [0, 8, -60], [0, 8, -83], [0, 8, -88],
   ],
