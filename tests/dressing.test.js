@@ -15,7 +15,9 @@ import { Level03 } from '../src/levels/level-03-horde.js';
 import { ASCENT as AS } from '../src/levels/layouts/ascent.js';
 import { ASCENT_KINDS } from '../src/levels/decor.js';
 import { LAST_COLOUR as LC } from '../src/levels/layouts/last-colour.js';
-import { DRESSING, PAINT, DANGER, MARKER, GATE, OUTSKIRTS, LAST_COLOUR as LC_TUNING } from '../src/config.js';
+import { DRESSING, PAINT, DANGER, MARKER, GATE, OUTSKIRTS, PRIMER as PRIMER_TUNING, LAST_COLOUR as LC_TUNING } from '../src/config.js';
+import { Level00 } from '../src/levels/level-00-the-primer.js';
+import { PRIMER } from '../src/levels/layouts/primer.js';
 
 async function loaded(Level) {
   const level = new Level({ scene: new THREE.Scene() });
@@ -94,8 +96,9 @@ test('grey only: no dressing colour reads as a paint colour, as amber or as mark
       const d = Math.hypot(c.r - f.r, c.g - f.g, c.b - f.b);
       assert.ok(d > 0.35, `${kind} is too close to ${f.getHexString()}`);
     }
-    // Low saturation: grey. The one exception is the Corp's signage accent.
-    if (spec.colour === GATE.field) continue;
+    // Low saturation: grey. The exceptions are the two sides' marks: the Corp's
+    // signage grey-violet and the rebels' chalk.
+    if (spec.colour === GATE.field || spec.colour === PRIMER_TUNING.dressing.chalk) continue;
     c.getHSL(hsl);
     assert.ok(hsl.s < 0.3, `${kind} is saturated (${hsl.s.toFixed(2)})`);
   }
@@ -369,3 +372,22 @@ test('The Ascent: a story cluster in the trailhead, both terraces and the summit
   level.dispose();
 });
 
+test("The Primer: chalk stencils on R0's wall, flat to it, out of the lamp, freed on dispose", async () => {
+  const level = await loaded(Level00);
+  const { meshes, items } = level.dressing;
+  assert.ok(items.length >= 5);
+  assert.ok(meshes.length <= 2, 'one draw call per shape');
+  const lamp = new THREE.Vector3(...PRIMER.lamps.find((l) => l.id === 'r0-desk-lamp').at);
+  const route = PRIMER.routes.main.map((q) => new THREE.Vector3(...q));
+  for (const i of items) {
+    assert.ok(DRESSING.kinds[i.kind].colour === PRIMER_TUNING.dressing.chalk, 'chalk');
+    assert.ok(i.box[0] >= -7 && i.box[1] <= -6.9, 'on the wall face');
+    assert.ok(box3(i.box).distanceToPoint(lamp) > 0.5, 'clear of the lamp');
+    for (const q of route) assert.ok(box3(i.box).distanceToPoint(q) >= 1);
+  }
+  for (const m of meshes) assert.ok(!level.surfaces.some((s) => s.mesh === m));
+  let freed = 0;
+  for (const m of meshes) { m.geometry.addEventListener('dispose', () => { freed++; }); m.material.addEventListener('dispose', () => { freed++; }); }
+  level.dispose();
+  assert.equal(freed, meshes.length * 2);
+});

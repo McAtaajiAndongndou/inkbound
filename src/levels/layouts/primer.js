@@ -259,8 +259,34 @@ const doc = {
   ],
 };
 
+/**
+ * The dressing pass (docs/levels/dressing-pass.md): rebel graffiti in chalk on
+ * R0's west wall, round the sergeant's desk. The doc's one addition here: the
+ * course is the rebels' own, so this is the first sign of whose side you are on.
+ * No words: a crossed-out pill (the Corp's product), a tally of days, and an
+ * arrow on toward R1. Stencils lie 3 cm proud of the wall face (x −7), clear of
+ * the desk lamp's bulb. Built by dressing.js; no collision.
+ */
+const WALL = -7;
+const onWall = (y0, y1, z0, z1, tilt) => ({ room: 'R0', box: [WALL, WALL + 0.03, y0, y1, z0, z1], ...(tilt ? { tilt } : {}) });
+const dressing = {
+  items: [
+    // The crossed-out pill.
+    { kind: 'chalkPill', ...onWall(3.1, 3.9, 84.8, 87.2) },
+    { kind: 'chalk', ...onWall(3.44, 3.56, 84.6, 87.4, [0.45, 0, 0]) },
+    // A tally of days: four strokes and the fifth across them, over the desk.
+    ...[89.9, 90.25, 90.6, 90.95].map((z) => ({ kind: 'chalk', ...onWall(2.1, 2.9, z - 0.05, z + 0.05) })),
+    { kind: 'chalk', ...onWall(2.45, 2.55, 89.65, 91.2, [-0.5, 0, 0]) },
+    // The arrow on: along the wall toward R1 (−z), head first.
+    { kind: 'chalk', ...onWall(4.9, 5.05, 85.3, 90.5) },
+    // The head: two strokes back from the tip (z 85.3), one up, one down.
+    { kind: 'chalk', ...onWall(5.27, 5.37, 85.2, 86.4, [-0.6, 0, 0]) },
+    { kind: 'chalk', ...onWall(4.59, 4.69, 85.2, 86.4, [0.6, 0, 0]) },
+  ],
+};
+
 export const PRIMER = {
   id: 'primer', name: 'The Primer', cells: PAINT_GRID.level0Cells,
   solids, slabs: [], strips, kerbs: [], landmarks: [], gates, traps, targets: [], prepaint, markings, lamps,
-  enemies, routes, rooms, win, doc,
+  enemies, routes, rooms, win, doc, dressing,
 };
