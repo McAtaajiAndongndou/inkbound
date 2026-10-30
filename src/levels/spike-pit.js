@@ -30,11 +30,12 @@ export class SpikePit {
    * @param {number[]} spec.box            the layout trap box [x0,x1,y0,y1,z0,z1]
    */
   constructor({ parent, floor, box }) {
-    const [x0, x1, y0, y1, z0, z1] = box;
+    const [x0, x1, y0, , z0, z1] = box;
     const cfg = TRAP.pit;
     this.floor = floor;
     this.trap = new TrapVolume({
-      region: new THREE.Box3(new THREE.Vector3(x0, y0 - 0.5, z0), new THREE.Vector3(x1, y1, z1)),
+      // Only the spikes hurt (B3): a jump over the pit clears it.
+      region: new THREE.Box3(new THREE.Vector3(x0, y0 - 0.5, z0), new THREE.Vector3(x1, y0 + cfg.hurtHeight, z1)),
       damage: TRAP.spike.damage,
       cooldown: TRAP.spike.cooldown,
       spare: cfg.spare,
