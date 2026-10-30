@@ -123,3 +123,22 @@ test('TrapVolume `spare`: a target with no health field still takes full damage'
   trap.update(0, [{ position: new THREE.Vector3(), takeDamage: (n) => hits.push(n) }]);
   assert.deepEqual(hits, [15]);
 });
+
+// On a seam between two floor pieces (x = ±2) both pieces claim the point.
+// Blue painted on either one must count, whichever the pit asks first.
+test('blue counts on a seam between floor pieces, whichever piece holds it', async () => {
+  for (const seam of [-2, 2]) {
+    const here = new THREE.Vector3(seam, PIT_Y, (PIT_Z0 + PIT_Z1) / 2);
+    for (const i of [0, 1]) {
+      const level = await loaded();
+      const pit = level.pits[0];
+      const owners = pit.floors.filter((f) => f.worldToCell(here));
+      assert.equal(owners.length, 2, `x=${seam} should sit on a seam`);
+      for (let z = PIT_Z1 + 1; z >= PIT_Z0 - 1; z -= 0.5) owners[i].splat(new THREE.Vector3(seam, PIT_Y, z), 'blue', 0.3);
+      const who = runner(seam, PIT_Y, 0);
+      cross(pit, who, 4);
+      assert.equal(who.taken, 0, `blue on seam piece ${i} at x=${seam} should slide over the spikes`);
+      level.dispose();
+    }
+  }
+});

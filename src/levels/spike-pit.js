@@ -86,9 +86,9 @@ export class SpikePit {
 
   /** Is the floor under `position` blue? Blue slides over the spikes. */
   onBlue(position) {
-    // Ask the floor piece under the feet: any other piece answers grey there.
-    const floor = this.floors.find((f) => f.worldToCell(position));
-    return floor ? floor.paintIdAtWorld(position) === PAINT_IDS.blue : false;
+    // Any piece under the feet will do: off a piece reads grey, and on a seam
+    // two pieces both claim the point, so either one being blue counts.
+    return this.floors.some((f) => f.paintIdAtWorld(position) === PAINT_IDS.blue);
   }
 
   update(dt, targets) {
