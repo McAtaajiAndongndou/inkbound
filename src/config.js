@@ -325,6 +325,10 @@ export const TRAP = {
   pit: {
     spare: 1,          // health a pit hit always leaves behind
     spikeHeight: 0.3,  // how far a spike pokes through the floor
+    // How high above the floor the pit hurts (quality plan B3). It was the
+    // layout box's full 1 m, so a jump (apex ~1.4 m) still clipped it on take-off
+    // and landing. Only the spikes hurt: the tips, plus a little for the feet.
+    hurtHeight: 0.4,
     spikeRows: 4,      // across the pit's depth (z), a spike every ~1 m
     sag: 0.07,         // radians the edge boards tilt toward the pit: the tell
     bedOpacity: 0.45,  // the dark recess; see-through so blue paint still reads

@@ -89,6 +89,32 @@ test('blue slides over it: a blue-painted pit is crossed untouched; red is not a
   level.dispose();
 });
 
+// Quality plan B3: the pit hurt anything within 1 m of the floor, so a jump over
+// it (apex ~1.4 m) still clipped it. Only the spikes hurt now.
+test('B3: a player in the air above the spikes is not hurt; one on them is', async () => {
+  const level = await loaded();
+  const pit = level.pits[0];
+  const midZ = (PIT_Z0 + PIT_Z1) / 2;
+
+  for (const h of [TRAP.pit.hurtHeight + 0.05, 0.6, 1.0, 1.39]) {
+    const flying = runner(0, PIT_Y + h, midZ);
+    pit.update(1 / 60, [flying]);
+    assert.equal(flying.taken, 0, `feet ${h} m above the floor were hurt`);
+  }
+
+  const onSpikes = runner(0, PIT_Y + TRAP.pit.spikeHeight, midZ);
+  pit.update(1 / 60, [onSpikes]);
+  assert.ok(onSpikes.taken > 0, 'feet at the spike tips should be hurt');
+  level.dispose();
+});
+
+test('B3: the hurt height covers the spikes and stays below a jump', async () => {
+  const { PLAYER } = await import('../src/config.js');
+  const apex = PLAYER.jumpSpeed ** 2 / (2 * -PLAYER.gravity);
+  assert.ok(TRAP.pit.hurtHeight >= TRAP.pit.spikeHeight, 'the spike tips must still hurt');
+  assert.ok(TRAP.pit.hurtHeight < apex / 2, 'a jump should spend most of its arc clear of the spikes');
+});
+
 test('TrapVolume `spare`: a target with no health field still takes full damage', () => {
   const trap = new TrapVolume({ region: new THREE.Box3(new THREE.Vector3(-1, -1, -1), new THREE.Vector3(1, 1, 1)), damage: 15, spare: 1 });
   const hits = [];
