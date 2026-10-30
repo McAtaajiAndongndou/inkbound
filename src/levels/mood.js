@@ -36,7 +36,13 @@ const skyVertex = /* glsl */ `
   void main() {
     vBand = aBand;
     vAzimuth = atan(position.z, position.x);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    // #224: ON the far plane (depth 1), so the camera's far clip can never cut
+    // it. The Ascent's dome (radius 450) is bigger than the camera's far (400):
+    // the part straight ahead was clipped away, leaving a dark disc of
+    // background that followed the crosshair. Behind everything at any radius;
+    // depthWrite is off, so whatever is drawn still wins.
+    gl_Position = clip.xyww;
   }
 `;
 
