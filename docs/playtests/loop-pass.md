@@ -27,11 +27,11 @@ Ordered by Renda's sharpest complaint first, then by the quality plan's root cau
 | 5 | World grey slow 0.6 → 0.85 | §3.5 | config | Does the first minute still drag? Do you still want to paint ahead? | **Keep** (30 Oct); the slow isn't felt at all → #244 |
 | 6 | Death splat 1.8 m → 2.5 m | §3.1 | config | Do you swim into kills to refill? | **Keep** (30 Oct) |
 | 7 | Hip spread 0.025 → 0.06 (`PAINT_GUN.hipSpread`) | §3.2 | config | Does hip-fire feel like painting and aiming feel like shooting? | **Keep** (30 Oct) |
-| 7b | ADS spread 0.005 → 0.004: only if step 7 leaves aiming feeling loose (a 20% change to an already tight number) | §3.2 | config | | |
+| 7b | ADS spread 0.005 → 0.004: only if step 7 leaves aiming feeling loose (a 20% change to an already tight number) | §3.2 | config | | **Not played**: no looseness raised; available if aiming feels loose later |
 | 7c | **Hip-fire splats bigger**, 1.4 → 1.8 m; aiming unchanged (Renda: "the paint from hipfire takes up wider surface area") | §3.2 | code (paint) | Does hip-fire cover ground fast, like a painter? | **Keep** (30 Oct) |
-| 7d | Aimed splats smaller, 1.4 → 0.7 m, played on its own | §3.2 | config | Does aiming still paint enough to be worth it? | |
-| 8 | Field of view 70 → 78 | §5 | config | More of the fight on screen, or just fish-eye? | |
-| 9 | Whole-camera position damping | §5 | code (core) | Does the camera still feel stiff? | |
+| 7d | Aimed splats smaller, 1.4 → 0.7 m, played on its own | §3.2 | config | Does aiming still paint enough to be worth it? | **Dropped**: breaks the Siphon finale |
+| 8 | Field of view 70 → 78 | §5 | config | More of the fight on screen, or just fish-eye? | **Keep** (30 Oct) |
+| 9 | Whole-camera position damping | §5 | code (core) | Does the camera still feel stiff? | Ozuko's #225 |
 
 **The Ascent's tank (60)** waits for step 3's verdict. If cheaper shots stay, the Ascent may not need more ink at all, and raising it to 80 would break the rule that the Ascent is the starved level (`tests/config.test.js`, DECISIONS #155).
 
@@ -100,3 +100,21 @@ Step 7 changed two numbers. Hip spread is the real change (×2.4); the ADS tweak
 
 - **Branch:** `proto/hip-splat-1-8` (587d5ba). One shot paints 132 cells hip against 96 aimed (about 1.4×).
 - **Verdict: keep.**
+
+### Step 7d — aimed splats 1.4 → 0.7 m: dropped
+
+- Built, then reverted before commit: `tests/siphon.test.js` failed. Last Colour's Siphon targets solve at half their plate painted (`need` 0.5 of a 4 × 4 sample grid), and one aimed shot only does that at an aimed splat of 1.2 m or more. At 0.7 m the finale's "one shot per target" would quietly become several.
+- **Verdict: drop** (Renda). Steps 7 and 7c already split the modes: hip sprays wide and paints 1.8 m; aiming is ten times tighter and paints 1.4 m.
+
+### Step 8 — field of view 70 → 78
+
+- **Branch:** `proto/fov-78` (a0e6806). Aiming still zooms to 45.
+- **Verdict: keep.**
+
+## Result (30 Oct)
+
+Every config and prototype step was played one at a time against the last kept build. Kept: **1** submerge glide (#231), **3** shot cost 2, **3b** hit drips (#240), **4a** submerged refill 40/s, **4b** swim 1.9×, **5** grey slow 0.85 (decision recorded), **6** death splat 2.5 m, **7** hip spread 0.06, **7c** hip splats 1.8 m, **8** FOV 78. Skipped: 2. Dropped: 7d. Not played: 7b. Step 9 is #225.
+
+**Findings that became issues:** the submerge body animation (#239), and grey's slow not being felt at all (#244).
+
+The whole kept stack is one branch, `proto/fov-78` (each step's branch is an ancestor). The code crosses lanes (core, paint), so it goes to `main` through Ozuko's and Dikeledi's review.
