@@ -30,6 +30,7 @@ import { LevelBase } from './level-base.js';
 import { PAINT } from '../config.js';
 import * as kit from './level-kit.js';
 import { buildLayout, roomTest } from './layout-builder.js';
+import { separateEnemies } from '../enemies/separation.js';
 
 // Same sun as main.js's DirectionalLight (18, 30, 12), so custom-shaded
 // surfaces are lit from the side the shadows say. Each level's mood pass
@@ -176,6 +177,7 @@ export class LayoutLevel extends LevelBase {
     for (let i = 0; i < this.enemies.length; i++) {
       this.enemies[i].update(dt, player.position);
     }
+    separateEnemies(this.enemies);   // #187: bodies push apart once everyone has moved
     for (const gate of this.gates) {
       if (gate.open) continue;
       const state = this._rule(gate.data.opens, player);

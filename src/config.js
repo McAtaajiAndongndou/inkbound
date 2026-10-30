@@ -153,6 +153,24 @@ export const HEALTH = {
   hurtCooldown: 0.8,  // seconds of invulnerability after a hit, so contact is not 60 hits/sec
   contactRange: 1.0,  // enemy centre within this (horizontal) distance of the player = touching
   contactHeight: 1.7, // ...and within this vertical distance
+  // #186 — enemies are solid, so a big body holds you at PLAYER.radius + its
+  // bodyRadius. The touch range per enemy is max(contactRange, that + this), so
+  // pressing against Big Arm (1.0 m apart) is not decided by float error.
+  contactSlack: 0.2,
+};
+
+// An enemy's body (#186, #187): a vertical cylinder. Solid to the player (the
+// player is pushed out, the enemy is not moved) and to other enemies. `chest`
+// is the height an enemy's wall test is made at. A config may override the
+// radius with `bodyRadius` (Big Arm). Was a local constant in enemy.js.
+export const ENEMY_BODY = { radius: 0.4, chest: 0.9 };
+
+// Enemies push each other apart (#187), once a frame after they have all moved,
+// so a wave reads as a crowd you can count rather than one stacked silhouette.
+// Horizontal circles of each body's radius; each takes half the overlap unless
+// the other is immovable (frozen, pinned, sleeping, Big Arm).
+export const ENEMY_SEPARATION = {
+  heightTolerance: 1.2,   // m; pairs further apart vertically don't touch
 };
 
 // #126 — ONE danger colour for the whole game (DECISIONS.md): attack
@@ -563,6 +581,9 @@ export const ENEMY = {
     burst: 3,           // shots per burst
     burstGap: 0.12,     // s between shots INSIDE a burst (a burst, not a trickle)
     reload: 1.2,        // s of opening after the burst — THE window to repaint
+    // #185 — m/s of its pellet. 12 m / 22 m/s = 0.55 s of flight: a sidestep on
+    // paint clears it, on grey only if you moved on the wind-up. See ENEMY_SHOT.
+    shotSpeed: 22,
     stopDistance: HEALTH.contactRange + 0.2,
   },
 
@@ -619,6 +640,7 @@ export const ENEMY = {
     windup: 0.6,
     attackRange: 12,
     attackCooldown: 2.5,
+    shotSpeed: 22,      // #185 — the Sprayer's pellet
     stopDistance: HEALTH.contactRange + 0.2,
   },
   turret: {
@@ -638,6 +660,9 @@ export const ENEMY = {
     windup: 0.8,
     attackRange: 15,
     attackCooldown: 3,
+    // #185 — faster than the Sprayer's: 15 m in 0.5 s, after a 0.8 s lock. Strafe
+    // or break line of sight, as its spec says.
+    shotSpeed: 30,
     // #77 — THE MATRIX GAP (ENEMIES.md). The turret is the one enemy that paint
     // does not solve: freeze, pin and knockback do nothing to it and the three
     // colours are just damage. The answer is line of sight and flanking, and
@@ -700,6 +725,9 @@ export const ENEMY = {
     climbsGreen: false,
     drainsPaint: false,
     contactDamage: 20,
+    // #186 — its model is 1.5× the soldiers' (2.4 m vs 1.6 m): a boss you can
+    // clip into is not a boss.
+    bodyRadius: 0.6,
     attackDamage: 30,     // a slam that lands
     windup: 1.0,          // the slam's tell (algorithms.md: 1.0 s)
     attackRange: 4.0,     // it starts a slam with you inside this
@@ -779,6 +807,30 @@ export const ENEMY = {
 export const GREY_IMPACT = {
   muzzleHeight: 1.2, // metres above the enemy's feet the ray starts at
   reach: 2,          // metres past the target it keeps looking, so the target cell is tested
+};
+
+// Enemy pellets (#185, DECISIONS 2026-10-30 "Enemy shots are pellets").
+//
+// A ranged enemy (one whose ENEMY entry has a `shotSpeed`) no longer lands its
+// shot when the wind-up ends: it FIRES a pellet that flies, can be dodged, is
+// stopped by the first surface it reaches and greys where it lands. Melee is
+// unchanged. Built in src/enemies/enemy-shots.js — one pool per level.
+//
+// The dodge maths, at the Sprayer's 12 m range and 22 m/s: 0.55 s of flight. On
+// paint (7 m/s) a sidestep covers 3.8 m; on grey (4.2 m/s) 2.3 m, enough only if
+// you react on the wind-up. Grey makes you easier to hit — painting is defence.
+export const ENEMY_SHOT = {
+  radius: 0.15,        // m; visible at 12 m without hiding the player
+  gravity: 4,          // m/s² of drop, so it reads as ink, not a bullet. The aim compensates.
+  rangeFactor: 1.5,    // it expires after flying attackRange × this
+  spentDrop: 4,        // m; a spent pellet greys the surface this far below it (none over a pit)
+  spreadDeg: 1.5,      // random cone, half-angle, per pellet
+  aimHeight: 1.0,      // m above the player's feet: the chest, where they stand AT THE SHOT
+  trailLength: 0.7,    // m of amber streak behind it
+  trailOpacity: 0.55,
+  rimScale: 1.3,       // the amber rim shell, as a multiple of `radius`
+  colour: 0x3b3b42,    // dark Corp grey; the amber (DANGER.amber) carries the "this hurts"
+  poolSize: 48,        // pellets alive at once, per level; the oldest is reused past this
 };
 
 // Difficulty = new rules, not bigger health bars.

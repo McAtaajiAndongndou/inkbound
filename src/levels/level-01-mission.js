@@ -11,6 +11,7 @@ import { audio } from '../audio/audio-manager.js';
 import { Decor, KINDS, createDecorPalette } from './decor.js';
 import * as kit from './level-kit.js';
 import { PaintVent } from './paint-vent.js';
+import { separateEnemies } from '../enemies/separation.js';
 
 /**
  * Layout numbers, named so the blockout is iterable — tune here, re-test.
@@ -1039,6 +1040,7 @@ export class Level01 extends LevelBase {
     for (let i = 0; i < this.enemies.length; i++) {
       this.enemies[i].update(dt, player.position);
     }
+    separateEnemies(this.enemies);   // #187: bodies push apart once everyone has moved
 
     // Drift the ground mist. This moves the texture OFFSET, not the mesh, so it
     // is one matrix update per layer and allocates nothing — the same
