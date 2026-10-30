@@ -36,6 +36,25 @@ Search  : lost the player, walking to the last known position
 | Refuses a step down greater than | 1.0 m | A kerb is fine, a storey is not |
 | Knockback bypasses both rules | always | Flinging enemies off ledges is the point |
 
+### Pellets (ranged shots)
+
+Since #185 (DECISIONS 2026-10-30, "Enemy shots are pellets") a ranged enemy's shot is a **pellet that flies**, the way Splatoon's enemy ink does. Who fires them: Sprayer, Wall-crawler, Turret — any enemy whose config has a `shotSpeed`. Melee (Charger, Stalker, Drainer, Big Arm's slam and grab) is unchanged.
+
+| Rule | Value | Why |
+|---|---|---|
+| Look | dark Corp grey ball, amber rim, short amber trail | Grey alone vanishes against a grey world; amber is the "this hurts" colour |
+| Size | radius 0.15 m | Visible at 12 m without hiding the player |
+| Speed | 22 m/s (Sprayer, Wall-crawler); 30 m/s (Turret) | See the dodge maths |
+| Path | straight, light drop (4 m/s²); the aim compensates | Reads as ink, not a bullet; a standing player is still hit |
+| Aim | the player's chest **where they are when it fires** — no leading | Moving is how you dodge |
+| Spread | ±1.5° | A burst is three shots, not one |
+| Hits the player | touches the capsule (radius `PLAYER.radius` + 0.15, height `PLAYER.height`) → `onAttack` | `onAttack` keeps its meaning: "this attack hit you" |
+| Hits a surface | stops; greys `greyRadius` at the impact point | Cover is real |
+| Range | expires after `attackRange × 1.5`; a spent pellet greys the floor within 4 m below it, or nothing over a pit | A miss still costs ground |
+| Dead shooter | its pellets in the air keep flying | Fair, and what Splatoon does |
+
+**The dodge maths.** A Sprayer at 12 m with a 22 m/s pellet gives **0.55 s** of flight. On your paint (7 m/s) a sidestep covers 3.8 m — an easy dodge. On **grey** (4.2 m/s) it covers 2.3 m, still enough, but only if you react on the wind-up, not on the pellet. At 6 m flight is 0.27 s: close range is where you get hit. **Grey makes you easier to hit**, so painting your ground is also defence, and the Sprayer's 8–12 m band is where dodging is possible but earned. A Turret at 15 m with a 30 m/s pellet gives 0.5 s, after a 0.8 s lock: strafe, or break line of sight.
+
 ### Status effects
 
 | Effect | Source | Duration | Does it stop attacks? |
@@ -88,7 +107,7 @@ STRAFE   -- distance < 8  --> RETREAT
 STRAFE   -- distance > 12 --> ADVANCE
 STRAFE   -- LOS and cooldown ready --> AIM
 AIM      : plant, 0.6s telegraph
-AIM      -- complete --> FIRE (burst of 3)
+AIM      -- complete --> FIRE (burst of 3 pellets, 22 m/s)
 FIRE     -- burst done --> RELOAD 1.2s       <-- THE OPENING
 PINNED   : can be rooted and STILL FIRES (rule 1 of ENEMIES.md)
 ```
@@ -99,7 +118,9 @@ PINNED   : can be rooted and STILL FIRES (rule 1 of ENEMIES.md)
 | Grey splat radius per shot | 1.5 m |
 | Reload (Opening) | **1.2 s** |
 
-**Grey paint:** each shot converts floor from your colour to grey — the same operation as your gun, in reverse. This is the tug-of-war (`ADR-0002`). The Sprayer is therefore a **territory enemy** disguised as a ranged enemy: killing it is how you stop losing ground.
+**Fires pellets** (see *Pellets* above): each one can be sidestepped or blocked by cover, and a burst at 12 m is dodgeable on paint, barely on grey.
+
+**Grey paint:** each pellet converts floor from your colour to grey where it lands — on a hit, under your feet; on a miss, wherever it comes down — — the same operation as your gun, in reverse. This is the tug-of-war (`ADR-0002`). The Sprayer is therefore a **territory enemy** disguised as a ranged enemy: killing it is how you stop losing ground.
 
 **Green pin does not defuse it.** That's deliberate — pinning a shooter that can still shoot teaches the player that control is not the same as safety.
 
@@ -116,6 +137,7 @@ CLIMB    -- within drop range of player AND above them --> DROP
 DROP     : falls onto player position, contact damage 10
 DROP     -- landed --> PATROL
 CLIMB    : CANNOT shoot while climbing      <-- THE OPENING
+GROUND   : in range, fires one wound-up pellet (22 m/s), like the Sprayer's
 ```
 
 | Property | Value |
@@ -145,7 +167,7 @@ IDLE     -- player within 15m --> TRACK
 TRACK    : rotates toward player at max 60 deg/s
 TRACK    -- aim within 3 deg and cooldown ready --> LOCK
 LOCK     : 0.8s telegraph (barrel settles)
-LOCK     -- complete --> FIRE (burst of 4)
+LOCK     -- complete --> FIRE (burst of 4 pellets, 30 m/s)
 FIRE     -- complete --> COOLDOWN 1.5s      <-- THE OPENING
 ```
 
@@ -153,6 +175,7 @@ FIRE     -- complete --> COOLDOWN 1.5s      <-- THE OPENING
 |---|---|
 | Movement | none |
 | Track rate | 60 deg/s — slow enough that strafing beats it |
+| Pellets | 30 m/s; ignore stealth; **grey nothing** |
 | Cooldown (Opening) | **1.5 s** |
 | Status procs | **none. No freeze, no pin, no knockback.** |
 
