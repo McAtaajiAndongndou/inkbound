@@ -258,3 +258,7 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **`SURFACE.grey.standSlow` is 0.85, not 0.6** (#74, ADR-0002's number). On grey the player walks at 5.95 m/s, not 4.2, and now outpaces a Charger (5). Grey is still a live penalty and still refills nothing.
 - **Why:** in the loop-pass playtest Renda never noticed the 40% slow at all ("it felt the same"), so the harsher number only cost pace. The real gap is feedback: #244 makes the grey/paint contrast felt (camera, sound, footfalls). Once it lands, the number can be retuned.
 - **Not yet:** the plan's two greys (fresh enemy grey staying at 0.6) is #235.
+
+## 2026-10-30 — background music removed (Moses, as captain)
+
+- **The game has no background music.** #199's adaptive synthesised score (drone, colour arpeggio, combat drums, win/death stingers) and its Music slider are removed. Sound effects are unchanged. The code is in git history (`src/audio/music.js`, PR #199) if it comes back.
