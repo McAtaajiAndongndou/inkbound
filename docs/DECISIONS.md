@@ -187,3 +187,11 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **The sergeant speaks: six lines.** The Primer's three are its level doc's own. R7's warning is asked on climbing into R6, not in R7: walking into R7 wakes its Charger, and a fight clears the comms bar. Outskirts, Ascent and Last Colour lines are a first draft for Renda + Moses.
 - **Every mission intro pins an objective marker on its goal** ("Extraction", "Supply lift", "The Siphon"), off-white, never amber. **Outskirts' extraction gets a mast and beacon** like the other two levels' goals (levels lane: Renda to keep or move).
 - **No sergeant art yet, so none is requested:** the briefing shows its plain panel and the deployment check has no 404.
+
+## 2026-10-30 — Enemy shots are pellets (draft 066)
+
+- **Renda: ranged enemies fire visible pellets, the Splatoon way.** This replaces "the shot lands when the wind-up ends", under which `onAttack` damaged the player unconditionally (noted under Big Arm above). A shot that could not be dodged or blocked made the telegraph a warning without a choice, and made the Turret's spec ("strafe, or break line of sight") false.
+- **A pellet is dark Corp grey with an amber rim and trail**, flies at 22 m/s (Sprayer, Wall-crawler) or 30 m/s (Turret), is aimed where the player stands when it fires (no leading), stops at the first surface, and greys the ground where it lands. A miss still costs ground.
+- **Grey makes you easier to hit.** On grey (4.2 m/s) a sidestep only just clears a 12 m shot; on paint (7 m/s) it clears it easily. Painting is defence.
+- **`onAttack` keeps its meaning:** "this enemy's attack hit the player". For a ranged enemy it now fires on pellet contact. `main.js` does not change.
+- **Melee is unchanged:** Charger, Stalker, Drainer, Big Arm.
