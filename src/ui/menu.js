@@ -43,9 +43,8 @@ import { LEVELS } from '../levels/index.js';
 import { Briefing } from './briefing.js';
 import { MissionIntro } from './mission-intro.js';
 import { INTROS } from './intro-lines.js';
+import { MissionOpening, BRIEFING_LEVEL } from './mission-opening.js';
 
-// The level that opens on the sergeant's briefing still (#111).
-const BRIEFING_LEVEL = 'primer';
 
 const STORAGE_KEY = 'inkbound.options';
 
@@ -162,7 +161,6 @@ export class Menu {
     // from a fresh load or from level select, not again on restart.
     this.briefing = new Briefing(parent, { isBlocked: () => this.menuShowing });
     this.briefing.setCard(INTROS[BRIEFING_LEVEL]?.card);
-    this._briefingPending = currentLevel === BRIEFING_LEVEL;
 
     // Mission intro (G4): plays the first time the pointer locks into a new
     // mission — not on a restart. The Primer opens on the briefing instead.
@@ -170,7 +168,12 @@ export class Menu {
       isBlocked: () => this.menuShowing,
       onLine: () => audio.play('blip'),
     });
-    this._introPending = currentLevel !== BRIEFING_LEVEL;
+    // What opens each mission, and what leaving one takes down (#221).
+    this.opening = new MissionOpening({
+      briefing: this.briefing,
+      intro: this.intro,
+      introFor: (id) => INTROS[id] ?? null,
+    }, currentLevel);
 
     const $ = (sel) => el.querySelector(sel);
     this.title = $('#menu-sub');
@@ -258,10 +261,6 @@ export class Menu {
     return this.menuShowing || this.briefing.open || this.intro.open;
   }
 
-  /** The intro to play for the current level (null: none written for it). */
-  get introData() {
-    return INTROS[this.currentLevel] ?? null;
-  }
 
   /** The menu card itself, not counting the briefing. */
   get menuShowing() {
@@ -294,17 +293,9 @@ export class Menu {
 
   /** Mark which level is loaded — main.js calls this if it swaps levels itself. */
   setCurrentLevel(id) {
-    // A restart reloads the same id and keeps the still skipped; arriving in
-    // the Primer from another level is the tutorial opening again.
-    if (id === BRIEFING_LEVEL && id !== this.currentLevel) this._briefingPending = true;
-    if (id !== BRIEFING_LEVEL) this._briefingPending = false;
-    // A new mission gets its intro; a restart goes straight to play. Leaving a
-    // level mid-intro (level select under it) drops that intro.
-    if (id !== this.currentLevel) {
-      this.intro.hide();
-      this._introPending = id !== BRIEFING_LEVEL;
-    }
-    const changed = id !== this.currentLevel;
+    // A restart keeps everything skipped; a new mission reopens, and leaving a
+    // level takes down its intro AND its briefing (#221).
+    const changed = this.opening.levelLoaded(id);
     this.currentLevel = id;
     this._syncLevels();
     // Next mission from the win screen: the pointer never unlocked, so start
@@ -314,14 +305,7 @@ export class Menu {
 
   /** Play whatever opens the mission: the intro, then (Primer only) the briefing. */
   _startPending() {
-    if (this._introPending) {
-      this._introPending = false;
-      if (this.introData) this.intro.play(this.introData);
-    }
-    if (this._briefingPending) {
-      this._briefingPending = false;
-      this.briefing.show();
-    }
+    this.opening.start();
   }
 
   /** @param {'main' | 'levels' | 'credits'} view */
