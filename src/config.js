@@ -200,6 +200,20 @@ export const DANGER = {
   amber: 0xffe600,
 };
 
+// #195 — point lights the custom shaders can see (src/shaders/point-lights.js).
+// A FIXED pool: the nearest `slots` sources to the camera are lit, the rest
+// wait. The scene's light count never changes, so three.js never recompiles.
+export const POINT_LIGHTS = {
+  slots: 4,
+  falloff: 2,             // (1 - (d/range)^2)^falloff: 1 at the source, 0 at range, smooth both ends
+  defaultRange: 6,        // m, when a source names none
+  decay: 1,               // the real THREE.PointLights' own decay, for built-in materials
+  builtinIntensity: 1.5,  // candela per unit of source intensity on the real lights (6 blew the GLB bodies out to flat amber)
+  flickerRate: 9,         // rad/s of a flickering source's wobble
+  telegraphIntensity: 1.6, // an enemy's wind-up at the END of its tell (it swells up to this)
+  telegraphRange: 5,      // m
+};
+
 // "Here", never "this hurts" (DECISIONS, the Ascent 30 Oct; polish audit P0-5):
 // the cold-white Corp work light. Goal beacons, floodlights and an opened
 // gate's light all wear it, so nothing that only marks a place borrows amber

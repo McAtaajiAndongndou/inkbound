@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 // ^ if your #48 spike imports these differently (e.g. "three/addons/..."), match that.
-import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_ATTACK, ENEMY_BODY, ENEMY_NAV, ENEMY_SHOT, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, STALKER } from "../config.js";
+import { AWARENESS, BLUE_FREEZE, CLIMB, DANGER, ENEMY, ENEMY_ATTACK, ENEMY_BODY, ENEMY_NAV, ENEMY_SHOT, GREY_IMPACT, HEALTH, PAINT, PAINT_IDS, PAINTSTREAK, POINT_LIGHTS, STALKER } from "../config.js";
+import { pointLights } from "../shaders/point-lights.js";
 import { SurfaceProbe } from "../paint/surface-probe.js";
 import { EnemyShots } from "./enemy-shots.js";
 import { createToonMaterial, addOutline, GREY_TOON } from "../shaders/toon/toon-material.js";
@@ -459,6 +460,7 @@ export class Enemy {
 
     // Attack telegraph (#40)
     this._windupTimer = 0;                 // > 0 while telegraphing an attack
+    this._tellLight = null;                // the pool handle while telegraphing (#195)
     this._windupTotal = 0;
     this._attackCooldown = 0;
     // #118 — the burst and the reload behind it. `_burstLeft` counts shots still
@@ -817,6 +819,7 @@ export class Enemy {
       return;
     }
     this._tick(dt, playerPos);
+    this._syncTellLight();
     if (this.alive) this._animate(dt);
     // The gait is NOT part of `_animate`, because `_animate` returns immediately
     // when there is no clip mixer — which is the case in every test (no GLB
@@ -2076,6 +2079,7 @@ export class Enemy {
    */
   _die(colour = null, effect = null) {
     this.alive = false;
+    this._releaseTellLight();
     // A dead enemy never lands its attack: cancel the windup. The colour is
     // left alone so the killing hit still reads as coloured.
     this._windupTimer = 0;
@@ -2167,6 +2171,48 @@ export class Enemy {
   /** True while the enemy is winding up an attack. */
   get telegraphing() {
     return this._windupTimer > 0;
+  }
+
+  /**
+   * How far through its tell this enemy is, 0..1, or -1 when it is not
+   * telegraphing: the attack windup, or the Charger's coil while alert.
+   */
+  get tellProgress() {
+    if (!this.alive) return -1;
+    if (this._windupTimer > 0) return 1 - this._windupTimer / Math.max(this._windupTotal, 1e-6);
+    if (this._chargeWindup > 0 && this._awareness === "alert") return 1 - this._chargeWindup / GAIT.chargeWindup;
+    return -1;
+  }
+
+  /**
+   * Telegraph light (#195): an amber point light at the chest for the length of
+   * the tell, swelling with it, so the floor around a winding-up enemy glows.
+   * Amber is danger and only danger (#126). Registered with the game's pool on
+   * the tell's first frame and handed back the frame it ends — no allocation
+   * per frame (the pool reuses its handles).
+   */
+  _syncTellLight() {
+    const t = this.tellProgress;
+    if (t < 0) {
+      this._releaseTellLight();
+      return;
+    }
+    if (!this._tellLight) {
+      this._tellLight = pointLights.add({
+        position: this.position, colour: DANGER.amber, intensity: 0,
+        range: POINT_LIGHTS.telegraphRange, owner: this,
+      });
+    }
+    this._tellLight.position.copy(this.position);
+    this._tellLight.position.y += ENEMY_BODY.chest;
+    // Starts faint, peaks as the attack lands: the light IS the countdown.
+    this._tellLight.intensity = POINT_LIGHTS.telegraphIntensity * (0.25 + 0.75 * t);
+  }
+
+  _releaseTellLight() {
+    if (!this._tellLight) return;
+    pointLights.remove(this._tellLight);
+    this._tellLight = null;
   }
 
   /** True while a paintstreak zone has it stunned (#131). */
@@ -2589,6 +2635,7 @@ export class Enemy {
     if (this._disposed) return;
     this._disposed = true;
     this._releaseToken();
+    this._releaseTellLight();
     this._burst?.dispose();
     this._burst = null;
     // Hand the pellet clock on; the last enemy out frees the pool (#185).

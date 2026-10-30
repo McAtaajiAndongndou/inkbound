@@ -3,6 +3,8 @@ import { PAINT, SEALED, PAINT_WET } from '../config.js';
 // Height fog lives in shaders/fog-height.js, shared with the toon and outline
 // materials so the maths is not written out three times.
 import { createFogHeightUniforms, FOG_HEIGHT_PARS, FOG_HEIGHT_FRAGMENT } from './fog-height.js';
+// The point-light pool's uniforms and pointLighting() (#195), shared with toon.
+import { POINT_LIGHTS_PARS, addPointLightUniforms } from './point-lights.js';
 
 /**
  * ONE custom ShaderMaterial for every paintable surface.
@@ -149,6 +151,8 @@ const fragmentShader = /* glsl */ `
   varying vec3 vTangent;
   varying vec3 vBitangent;
 
+  ${POINT_LIGHTS_PARS}
+
   // declares the fog uniforms + vFogDepth behind #ifdef USE_FOG
   #include <fog_pars_fragment>
   // adds uFogFloor / uFogCeil for the height term
@@ -266,7 +270,9 @@ const fragmentShader = /* glsl */ `
     float diffuse = max(dot(n, L), 0.0);
     float light   = 0.35 + 0.65 * diffuse;
 
-    vec3 colour = base * (light + pulse);
+    // The pool's point lights (#195): an amber wind-up lights the floor
+    // around the enemy, through the bent normal like the sun.
+    vec3 colour = base * (light + pulse) + base * pointLighting(n, vWorldPos);
     // 0.75 rather than 0.55: a guide, not a cage. The old value was tuned when
     // there was nothing else on the floor for the lines to compete with.
     colour = mix(colour * 0.75, colour, grid);
@@ -368,6 +374,8 @@ export function createPaintMaterial(paintMap, gridCells = 4, unpaintable = false
   uniforms.uEnvMap = PAINT_ENV.uEnvMap;
   uniforms.uEnvOn  = PAINT_ENV.uEnvOn;
   uniforms.uWet    = { value: unpaintable ? 0 : 1 };
+  // #195 — the point-light pool's arrays, shared by reference like uEnvMap.
+  addPointLightUniforms(uniforms);
 
   // Height fog uniforms. These are OURS, so they are not in UniformsLib.fog and
   // have to be added by hand like the others above -- the same rule, for the

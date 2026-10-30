@@ -19,6 +19,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { LEVELS, levelEntry, createLevel, DEFAULT_LEVEL_ID } from './index.js';
 import { levelShots, VIEWER_FOV, EYE_HEIGHT } from './level-shots.js';
 import { preloadEnemyModel } from '../enemies/enemy.js';
+import { pointLights } from '../shaders/point-lights.js';
 
 // --- the same renderer, scene defaults and lights as main.js -----------------
 // Copied, not imported: main.js builds them at module scope and starts the game
@@ -46,6 +47,7 @@ sun.shadow.camera.top = 30;
 sun.shadow.camera.bottom = -30;
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x8899bb, 0x22222a, 0.5));
+pointLights.attach(scene);   // #195, as main.js
 
 const camera = new THREE.PerspectiveCamera(VIEWER_FOV, window.innerWidth / window.innerHeight, 0.1, 1000);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -343,6 +345,7 @@ function tick() {
   }
   const p = camera.position;
   ui.cam.textContent = `cam ${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}${currentShot ? `  ·  ${currentShot}` : ''}`;
+  pointLights.update(camera, dt);
   renderer.render(scene, camera);
 }
 
