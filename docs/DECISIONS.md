@@ -195,3 +195,10 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Grey makes you easier to hit.** On grey (4.2 m/s) a sidestep only just clears a 12 m shot; on paint (7 m/s) it clears it easily. Painting is defence.
 - **`onAttack` keeps its meaning:** "this enemy's attack hit the player". For a ranged enemy it now fires on pellet contact. `main.js` does not change.
 - **Melee is unchanged:** Charger, Stalker, Drainer, Big Arm.
+
+## 2026-10-30 — Closing the 3D Effects gap (drafts 073–078)
+
+- **Renda: the rubric's named techniques go where the theme already is,** not into new set pieces. Height-mapped, reflective paint (073), a sky that warms with territory (076), and ice that refracts (075).
+- **Grey stays matte; only paint is wet.** Gloss and reflection are applied to painted cells only, so dead and alive differ in sheen as well as colour. Reflection is capped so a paint colour never reads as sky.
+- **Point lights go through a fixed pool of four** that the custom shaders read as uniforms (074). The scene light count never changes, so built-in materials never recompile mid-fight. Amber light keeps meaning danger.
+- **Music is synthesised in-game, not downloaded** (078): a Corp drone, a colour layer that follows territory, and a combat layer. No licence, all team-made.

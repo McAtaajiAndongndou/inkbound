@@ -109,6 +109,22 @@ The mission intro (`docs/mission-intro.md`, DECISIONS 30 Oct). Drafted as two is
 | 065 | — | Mission intro | ui | SHOULD | S | Figma frame; 066 (placeholder shot until then) |
 | 066 | — | Mission intro shots | levels | SHOULD | S | — |
 
+
+## Batch 4 — 30 Oct 2026: the rubric gap (not published)
+
+A check of the game against the brief's rubric (`CGV Project Brief`, section 11) found the 3D Effects band (15%) missing most of its own named list (bump/height maps, reflections, refractions, curves, point lights, a dynamic skybox), and no music for Gameplay & Experience (25%). Each issue ends with "what to say in the demo", because the brief says every member must be able to explain it.
+
+| Draft | Tracker | Issue | Lane | Pri | Cost | Depends on |
+|---|---|---|---|---|---|---|
+| 073 | — | Wet paint: height map, gloss and sky reflection | shaders | MUST | M | — |
+| 074 | — | Point lights reach the custom shaders | shaders | SHOULD | M | — |
+| 075 | — | Frost shell refraction | shaders | SHOULD | M | — |
+| 076 | — | Dynamic sky driven by territory | levels | SHOULD | S | — (refreshes 073's probe if in) |
+| 077 | — | Curves, flat vs smooth shading, placed lights | levels | SHOULD | S–M | 074 (lights part only) |
+| 078 | — | Adaptive synthesised music | ui | MUST | M | — |
+
+Not drafted here, but on the brief's final checklist and still open: **play the published URL** (PRD L1), **measure frame rate on lab hardware**, **trailer and devlog**.
+
 ---
 
 ## The four chains that matter
