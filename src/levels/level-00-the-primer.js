@@ -166,7 +166,12 @@ export class Level00 extends LayoutLevel {
     };
     ask('primer-splat', this.inRoom('R2', p));
     ask('primer-submerge', this._said.has('primer-splat') && this._inPool(p));
-    ask('primer-theirs', this.inRoom('R6', p) && this._pastPits(p));
+    ask('primer-trap', this.inRoom('R6', p) && !this._pastPits(p));   // #217: before the pit
+    // Past the pit, and still asked in R7 until the Charger wakes: the trap
+    // warning holds the bar ~6 s, so at a walk the player is through R7's door
+    // before the bar is free (#217).
+    const charger = this.enemies[0];
+    ask('primer-theirs', this._pastPits(p) && (this.inRoom('R6', p) || this.inRoom('R7', p)) && charger?.sleeping !== false);
     ask('primer-ready', this.inRoom('R9', p));
   }
 }

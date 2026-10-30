@@ -74,15 +74,19 @@ test('no two surfaces share a plane, and no wall faces into a solid', async () =
   level.dispose();
 });
 
-test("R7: the Charger wakes 3 s after you walk in, and the gate opens when it's gone", async () => {
+test("R7: the Charger wakes a beat after you walk in, and the gate opens when it's gone", async () => {
   const level = await loaded();
+  // The beat is the layout's (`enter:R7+N`): B5 and #217, so R6's lines are read first.
+  const delay = Number(level.layout.enemies.find((e) => e.room === 'R7').wake.split('+')[1]);
+  assert.ok(delay >= 3, 'the sergeant needs time to finish');
   for (const e of level.enemies) e.update = () => {};
   const charger = level.roster[0].enemy;
   level.update(0.016, { position: new THREE.Vector3(0, 8, -10) });   // R6
   assert.equal(charger.sleeping, true);
   level.update(0.016, { position: new THREE.Vector3(0, 8, -30) });   // R7
-  assert.equal(charger.sleeping, true, 'B5: the sergeant gets 3 s to finish his line first');
-  level.update(3, { position: new THREE.Vector3(0, 8, -30) });
+  level.update(delay - 0.1, { position: new THREE.Vector3(0, 8, -30) });
+  assert.equal(charger.sleeping, true, 'B5/#217: the sergeant finishes his lines first');
+  level.update(0.2, { position: new THREE.Vector3(0, 8, -30) });
   assert.equal(charger.sleeping, false);
   assert.equal(level.gates[0].open, false);
   charger.alive = false;

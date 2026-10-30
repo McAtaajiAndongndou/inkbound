@@ -122,6 +122,7 @@ A check of the game against the brief's rubric (`CGV Project Brief`, section 11)
 | 076 | #197 | Dynamic sky driven by territory | levels | SHOULD | S | — (refreshes #194's probe if in) |
 | 077 | #198 | Curves, flat vs smooth shading, placed lights | levels | SHOULD | S–M | #195 (lights part only) |
 | 078 | #199 | Adaptive synthesised music | ui | MUST | M | — |
+| 079 | #231 | Submerge camera eases in and out | core | MUST | S | prototype: `proto/submerge-camera-glide` |
 | 080 | #215 | Trap sounds you can hear (spike pit, crusher) | ui | SHOULD | S | — |
 | 081 | #216 | A hit, or a level wake, alerts the enemy at any range (also fixes B6) | shaders (enemies) | MUST | S | — |
 | 082 | #217 | Primer: the sergeant warns before the spike pit | ui (+ levels trigger) | SHOULD | S | B5 branch |
@@ -136,6 +137,14 @@ A check of the game against the brief's rubric (`CGV Project Brief`, section 11)
 | 091 | #227 | UK/SA spelling pass, and the rule in AGENTS.md (B14) | ui (+ everyone) | COULD | S | — |
 | 092 | #228 | Controls screen: check Shift and Q are taught | ui | SHOULD | S | — |
 | 093 | #229 | Remove grey from the player's colours (§3.6) | paint | SHOULD | S | — |
+| 094 | #232 | Hip-fire paints, ADS kills: two firing modes (§3.2) | paint | SHOULD | M | loop pass verdict |
+| 095 | #233 | Floor colours on demand for the player (§3.3) | core (+ paint, levels re-measure) | SHOULD | M | loop pass verdict |
+| 096 | #234 | Pop-out jump and wall-submerge (§3.4) | core | SHOULD | S–M | #231 |
+| 097 | #235 | Two greys: world 0.85, fresh Corp 0.6 (§3.5) | paint + core | SHOULD | M | loop pass verdict |
+| 098 | #236 | Dry out stops being a death (§3.7) | core | SHOULD | S–M | #226 |
+| 099 | #239 | Submerge: the body dives into the paint instead of squashing (§6.3 A7) | shaders | SHOULD | S | — |
+| 100 | #240 | Hits drip ink: a shot that hits an enemy paints the floor near it | paint | SHOULD | S | loop pass step 3b |
+| 101 | #244 | Make the grey slow felt: camera, sound and footfalls | core + ui + shaders | MUST | S–M | — |
 
 Not drafted here, but on the brief's final checklist and still open: **play the published URL** (PRD L1), **measure frame rate on lab hardware**, **trailer and devlog**.
 

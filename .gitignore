@@ -8,3 +8,5 @@ dist/
 
 # Local-only working plans (not shipped, not shared)
 plans/
+
+.claude/settings.local.json
