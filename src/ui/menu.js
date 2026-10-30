@@ -23,15 +23,18 @@ import { OPTIONS } from '../config.js';
  * (polish audit P0-3): it advertised F = Refill, a key that does not exist and
  * a button the design forbids, and hid Shift (submerge) and Q (paintstreak).
  */
+// #228: the loop's verbs come first — paint, submerge to refill, spend the
+// streak — straight after moving and looking. The list reads row by row, two
+// to a row, so Shift and Q sit in the first three rows.
 export const CONTROLS = [
   ['WASD', 'Move'],
-  ['Space', 'Jump'],
   ['Mouse', 'Look'],
   ['Click', 'Paint'],
+  ['Shift', 'Submerge in your paint (refill fast)'],
+  ['Q', 'Paintstreak (only when the gauge is full)'],
+  ['Space', 'Jump'],
   ['Right-click', 'Aim'],
   ['1–4', 'Colour'],
-  ['Shift', 'Submerge in your paint (refill fast)'],
-  ['Q', 'Paintstreak (when full)'],
   ['V', 'Switch view'],
   ['R', 'Restart'],
   ['M', 'Mute'],
