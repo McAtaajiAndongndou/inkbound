@@ -162,7 +162,7 @@ export const CAMERA = {
   minHeightAboveFeet: 1.1, // camera never dips below player.position.y + this
 
   adsFov: 45,
-  normalFov: 70,
+  normalFov: 78,           // loop pass step 8 (quality plan §5): was 70; more of the fight on screen in third person
   adsTransitionSpeed: 10,
 };
 
