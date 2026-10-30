@@ -226,6 +226,11 @@ export const TRAP = {
 // overcast with low contrast, so the grey reads as colour taken away rather than
 // as a night scene. The level file explains what each band does.
 export const OUTSKIRTS = {
+  // The goal you can see (campaign flow, 30 Oct): a mast and beacon just past
+  // the back of the extraction ledge (y 12, z −45), the same landmark the
+  // Ascent's lift tower and Last Colour's Siphon carry. Behind the ledge, so it
+  // is never in the walk; it has no collider.
+  beacon: { x: 0, z: -46.5, mastFrom: 0, top: 19.5, mastColour: 0x4a5058, colour: 0xffd23f },
   mood: {
     horizon: 0x9ba1a6,   // the haze; matches the sky's horizon band and the mist
     zenith:  0x4d5560,   // overhead: washed out, not navy
@@ -866,4 +871,17 @@ export const PAINTSTREAK = {
   zoneHeight: 2.5,           // m above/below your feet a floor or enemy must be to count
   stunTime: 2.5,             // s an enemy in the zone stands still and cannot attack
   stunColour: DANGER.amber,  // the one danger amber (#126), not a second value
+};
+
+// ---------------------------------------------------------------------------
+// Mission intro (docs/mission-intro.md, PRD G4). One eased camera move from the
+// level's goal back to the player's own view while the title card types out.
+// The camera lands ON the play camera, so handover has no cut.
+export const MISSION_INTRO = {
+  moveTime: 5,       // s, goal → player
+  fadeOut: 0.4,      // s, the card fades as control lands (matches style.css)
+  cap: 6,            // s, never longer than this from load to control
+  typeSpeed: 40,     // characters per second
+  linePause: 0.15,   // s between title-card lines
+  frameClamp: 0.1,   // s, the longest frame the intro counts in full (real time, not the game's 0.05)
 };

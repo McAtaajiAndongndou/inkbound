@@ -166,6 +166,28 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Its two Drainers exist from load**, dormant at the back of the bay, because the paint gun takes its target list once. A `summon` wake rule nothing satisfies keeps them asleep until phase 2 (or a hit).
 - **Big Arm and its Drainers are the Core's waves 4 and 5** (room R3), so "the Core is clear", which the Siphon waits for, includes them without a new rule.
 
+## 2026-10-30 — mission intros (Renda + Moses)
+
+- **Each mission opens with a mission intro** (`docs/mission-intro.md`): at most 6 s of camera over the still-grey level, one eased move from the goal to the player's spawn view, while a title card types out level, location, day and time, and objective. Any fresh key or click skips. This **narrows** the out-of-scope "cutscenes or exposition walls": the intro has no characters, no dialogue and no controls text, so the reasons for that cut still hold.
+- **Why:** the campaign had no sense of place or goal before the first step, and the marking bands reward the grey-to-colour transition. Showing the level grey before the player paints it is that transition's "before" picture.
+- **The Primer has no camera move.** Its briefing still (#111) carries the same title card instead, so the tutorial still starts moving inside 8 s.
+- **It plays on a new mission, not on a restart.** R after a loss, and restart from the pause menu, go straight to play (CoD does not replay an intro on a retry).
+- **The intro is not play time:** the scorecard clock and dry time start when control is handed over. The simulation is paused under it exactly as under the menu.
+- **Parked:** a mission outro over the level as painted, voice, and multi-shot cameras. The outro needs its own entry.
+
+## 2026-10-30 — the UI wears the game's colour rule (Moses)
+
+- **Menus and panels are Corp grey; paint appears where the player acts.** Panels are dark cuts of `PAINT.grey`, not navy. A button is grey until hovered, then paint sweeps in from the left (blue, red, green in turn), the grey-to-colour transition in miniature. The selected thing (Play, the level you're in) is already painted. Tokens live at the top of `src/ui/style.css`.
+- **Amber and telegraph yellow never appear in menus.** They mean danger (#126).
+
+## 2026-10-30 — campaign flow (Moses; levels-lane parts flagged for Renda)
+
+- **A new player starts in the Primer.** `DEFAULT_LEVEL_ID` is `primer`: its reasons for waiting (the sergeant #111/#112, the trap #101) are both in. A returning player skips it with **Continue** on the title, which loads the furthest mission they have reached (kept in their browser; `ui/campaign.js`).
+- **The campaign runs in the ONE list's order.** A win offers the next mission on **Enter**, which plays its intro; R and Esc still restart and pause. Last Colour's win is the campaign's end: "THE COLOUR'S BACK", the campaign's totals, and Enter opens the credits.
+- **The sergeant speaks: six lines.** The Primer's three are its level doc's own. R7's warning is asked on climbing into R6, not in R7: walking into R7 wakes its Charger, and a fight clears the comms bar. Outskirts, Ascent and Last Colour lines are a first draft for Renda + Moses.
+- **Every mission intro pins an objective marker on its goal** ("Extraction", "Supply lift", "The Siphon"), off-white, never amber. **Outskirts' extraction gets a mast and beacon** like the other two levels' goals (levels lane: Renda to keep or move).
+- **No sergeant art yet, so none is requested:** the briefing shows its plain panel and the deployment check has no 404.
+
 ## 2026-10-30 — Enemy shots are pellets (draft 066)
 
 - **Renda: ranged enemies fire visible pellets, the Splatoon way.** This replaces "the shot lands when the wind-up ends", under which `onAttack` damaged the player unconditionally (noted under Big Arm above). A shot that could not be dodged or blocked made the telegraph a warning without a choice, and made the Turret's spec ("strafe, or break line of sight") false.

@@ -181,6 +181,10 @@ export const SFX = {
   charge: (a, t) => {
     a._tone(t, { type: 'sawtooth', f0: 140, f1: 420, dur: 0.24, gain: 0.07 });
   },
+  // A mission intro's title card line typing in: a soft radio blip (G4).
+  blip: (a, t) => {
+    a._tone(t, { type: 'sine', f0: 1400, f1: 1250, dur: 0.05, gain: 0.05 });
+  },
   // An encounter gate opening: a low clunk, then the field lifting.
   gate: (a, t) => {
     a._burst(t, { filter: 'lowpass', f0: 500, f1: 90, q: 1, dur: 0.3, gain: 0.16 });

@@ -1511,5 +1511,24 @@ export class Level01 extends LevelBase {
       new THREE.Vector3(-L1.corridorHalf, y - 1, zMin),
       new THREE.Vector3(L1.corridorHalf, y + 2, zMax),
     );
+    this._beacon();
+  }
+
+  /**
+   * The goal you can see from the start: a mast behind the extraction ledge
+   * with a beacon on top, the Ascent's and Last Colour's landmark (the layout
+   * builder's), so every mission's goal reads the same way. No collider: it is
+   * behind the ledge, out of every walk. Under `root`, so disposed.
+   */
+  _beacon() {
+    const b = OUTSKIRTS.beacon;
+    const height = b.top - b.mastFrom;
+    const mast = new THREE.Mesh(new THREE.BoxGeometry(0.6, height, 0.6), new THREE.MeshToonMaterial({ color: b.mastColour }));
+    mast.position.set(b.x, b.mastFrom + height / 2, b.z);
+    mast.name = 'extraction-mast';
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: b.colour }));
+    beacon.position.set(b.x, b.top + 1.2, b.z);
+    beacon.name = 'extraction-beacon';
+    this.root.add(mast, beacon);
   }
 }

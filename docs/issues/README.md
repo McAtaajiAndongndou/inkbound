@@ -100,6 +100,15 @@ Three cross-lane gaps found while blocking out the Ascent (`docs/levels/02-the-a
 
 **#155 is the one that matters most:** until it lands, every level gets Outskirts' 100-ink tank, so the Ascent's rationing — its whole identity — is not in the game. One line in `main.js`.
 
+## Batch 3 — 30 Oct 2026 (not published: built directly)
+
+The mission intro (`docs/mission-intro.md`, DECISIONS 30 Oct). Drafted as two issues, then built straight from the design doc at the team's call, so neither went to the tracker. The start shots ended up in `src/ui/intro-lines.js` rather than the level data, so 066 shrank to tuning them.
+
+| Draft | Tracker | Issue | Lane | Pri | Cost | Depends on |
+|---|---|---|---|---|---|---|
+| 065 | — | Mission intro | ui | SHOULD | S | Figma frame; 066 (placeholder shot until then) |
+| 066 | — | Mission intro shots | levels | SHOULD | S | — |
+
 ---
 
 ## The four chains that matter

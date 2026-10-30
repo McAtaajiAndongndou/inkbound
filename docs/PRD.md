@@ -135,9 +135,10 @@ The game is submittable when **all of these are true**:
 
 | ID  | Requirement                                       | Pri             | Cost | Lane | Status       |
 | --- | ------------------------------------------------- | --------------- | ---- | ---- | ------------ |
-| G1  | **Sergeant briefing** — one still in the tutorial | SHOULD          | S    | ui   | ⚠️ Partial (#111) — overlay built (`ui/briefing.js`): shows on entering the Primer, fresh click/key skips, pauses the game, under the pause menu; the still itself (`public/assets/sergeant-briefing.png`) is not drawn yet, so the line shows on the plain fallback panel |
-| G2  | **One line per level** in a comms bar             | SHOULD          | S    | ui   | ⚠️ Partial (#112) — bar built (`ui/comms.js`), levels ask by id via `game.say`; Outskirts ledge, Ascent summit and Last Colour arrival triggers placed; line text not written yet (`ui/comms-lines.js`) |
+| G1  | **Sergeant briefing** — one still in the tutorial | SHOULD          | S    | ui   | ⚠️ Partial (#111) — overlay built (`ui/briefing.js`): shows on entering the Primer, fresh click/key skips, pauses the game, under the pause menu; the still itself is not drawn yet, so the line shows on the plain panel and no image is requested (`BRIEFING_IMAGE = null`, no 404); the panel also carries the Primer's title card |
+| G2  | **One line per level** in a comms bar             | SHOULD          | S    | ui   | ✅ Built (#112) — bar built (`ui/comms.js`), levels ask by id via `game.say`; six lines placed and written (`ui/comms-lines.js`): the Primer's three from its level doc, plus Outskirts ledge, Ascent summit, Last Colour arrival as a first draft for Renda + Moses to rewrite |
 | G3  | Dialogue skippable and never during combat        | MUST (if G1/G2) | S    | ui   | ✅ Built (#111, #112) — briefing skips on a fresh click/key and pauses play; comms bar skips on Enter, waits out combat (alerted enemy or just hit) and clears when a fight starts |
+| G4  | **Mission intro** — ≤6 s camera from goal to spawn over the grey level, with a title card; skippable; not on restart | SHOULD | S | ui | ✅ Built — `ui/mission-intro.js` (timeline, skip, reduced motion), card text and start shots in `ui/intro-lines.js`, camera in `main.js`; the Primer's briefing still carries its card. Card text is a draft for Renda + Moses |
 
 ---
 
@@ -147,9 +148,10 @@ The game is submittable when **all of these are true**:
 | --- | --------------------------------------------------------------------------------- | ------ | ---- | ---- | --------------------- |
 | H1  | HUD — ammo, colour, standing-on, coverage, health, hitmarker                      | MUST   | —    | ui   | ✅ Built              |
 | H2  | Pause, options, restart, credits                                                  | MUST   | —    | ui   | ✅ Built              |
-| H3  | Per-level win and lose screens                                                    | MUST   | S    | ui   | ⚠️ Generic text today |
+| H3  | Per-level win and lose screens                                                    | MUST   | S    | ui   | ✅ Built — win names the level ("OUTSKIRTS CLEARED"), lose says why (down / run dry); Last Colour's win is the campaign's end (H7) |
 | H4  | Minimap                                                                           | MUST   | —    | ui   | ✅ Built              |
 | H5  | Loading screen                                                                    | MUST   | —    | ui   | ✅ Built              |
+| H7  | **Campaign flow** — the Primer first, next mission on Enter, a campaign-complete screen, Continue on the title | SHOULD | S | ui | ✅ Built (`ui/campaign.js`) — a win offers the next level in the ONE list; the finale shows "THE COLOUR'S BACK" with campaign totals and Enter opens credits; progress (furthest mission reached) is kept in the browser for "Continue" |
 | H6  | **Killfeed** — a line when an enemy dies, naming it and the colour that killed it | SHOULD | S    | ui   | ✅ Built (#129) — "SPRAYER — FLUNG", tinted with the killing colour; verb from what the colour did (enemy `onDeath` cause); repeats coalesce (×N), max 3 lines, fades on its own; right edge under the minimap |
 
 ---
@@ -264,7 +266,7 @@ Not shipping, regardless of how good the idea is. If someone proposes one, point
 - A second playable character — cut; one character ships
 - Two-of-three loadout as the default
 - Health bars on enemies
-- Cutscenes or exposition walls
+- Cutscenes with characters, or exposition walls. The ≤6 s mission intro (G4) is the one exception, agreed 30 Oct (`docs/mission-intro.md`)
 - Paint combining / a fourth colour
 - Mocap, IK, or facial animation — the rigs do not support it and nothing needs it
 - Realistic humanoid retargeting between asset families

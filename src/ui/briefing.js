@@ -14,7 +14,11 @@
 // after it skips at once. The dismissing input is swallowed, so it does not
 // also fire paint or jump.
 
-export const BRIEFING_IMAGE = './assets/sergeant-briefing.png';
+// The still. NOT DRAWN YET, so null: asking for a missing file 404s on every
+// load (the deployment check, #130), and the plain panel already carries the
+// line. When the art exists, put it in public/assets/ and set this to
+// './assets/sergeant-briefing.png'.
+export const BRIEFING_IMAGE = null;
 export const BRIEFING_LINE = 'The world ran out of colour. We kept what was left. Prove you can carry it.';
 
 /**
@@ -59,8 +63,14 @@ export class Briefing {
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', 'Briefing');
     el.innerHTML = `
+      <div class="intro-card briefing-card hidden">
+        <h1 class="intro-name"></h1>
+        <p class="intro-location"></p>
+        <p class="intro-when"></p>
+        <p class="intro-objective"></p>
+      </div>
       <figure class="briefing-frame">
-        <img class="briefing-still" src="${BRIEFING_IMAGE}" alt="The sergeant briefs you before the course.">
+        ${BRIEFING_IMAGE ? `<img class="briefing-still" src="${BRIEFING_IMAGE}" alt="The sergeant briefs you before the course.">` : ''}
         <figcaption class="briefing-comms">
           <span class="briefing-who">Sergeant</span>
           <p class="briefing-line"></p>
@@ -70,7 +80,9 @@ export class Briefing {
     `;
     el.querySelector('.briefing-line').textContent = BRIEFING_LINE;
     // No art (missing file, failed request): the line stands on a plain panel.
-    el.querySelector('.briefing-still').addEventListener('error', () => el.classList.add('no-still'));
+    const still = el.querySelector('.briefing-still');
+    if (still) still.addEventListener('error', () => el.classList.add('no-still'));
+    else el.classList.add('no-still');
     parent.appendChild(el);
     this.el = el;
 
@@ -93,6 +105,20 @@ export class Briefing {
 
   get open() {
     return !this.el.classList.contains('hidden');
+  }
+
+  /**
+   * The Primer's title card (G4). The tutorial has no mission intro, so its
+   * still carries the card every other level gets from the intro.
+   */
+  setCard(card) {
+    const el = this.el.querySelector('.briefing-card');
+    el.classList.toggle('hidden', !card);
+    if (!card) return;
+    el.querySelector('.intro-name').textContent = card.name;
+    el.querySelector('.intro-location').textContent = card.location;
+    el.querySelector('.intro-when').textContent = card.when;
+    el.querySelector('.intro-objective').textContent = card.objective;
   }
 
   show() {
