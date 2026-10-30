@@ -22,6 +22,9 @@ test('step 7c: a hip-fire splat is bigger than an aimed one', async () => {
   camera.lookAt(0, 0, 9);
   camera.updateMatrixWorld(true);
   const gun = new PaintGun(level.surfaces, 'outskirts', []);   // no scene: shots land at once
+  // Spread is random; centre every shot so both land on the same floor.
+  const random = Math.random;
+  Math.random = () => 0.5;
 
   assert.ok(gun.tryFire(camera, null, false), 'hip shot fired');
   const hip = radii.at(-1);
@@ -29,6 +32,7 @@ test('step 7c: a hip-fire splat is bigger than an aimed one', async () => {
   assert.ok(gun.tryFire(camera, null, true), 'aimed shot fired');
   const aimed = radii.at(-1);
 
+  Math.random = random;
   assert.equal(hip, PAINT_GUN.hipRadius);
   assert.equal(aimed, PAINT_GUN.radius);
   assert.ok(hip > aimed, `hip ${hip} m should out-paint aimed ${aimed} m`);
