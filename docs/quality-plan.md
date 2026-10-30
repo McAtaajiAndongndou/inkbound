@@ -161,6 +161,13 @@ And the body: replace the pancake squash with a quick dive (0.12 s) into a paint
 
 **Lane:** Core (camera, movement), Shaders (`avatar.js` for the body). **Decision needed:** pop-out jump and wall-submerge are new verbs, so yes.
 
+**Playtest note (Renda, 30 Oct, after the feel branch):** *"Submerging should be about changing the camera, because right now it happens too jarringly. I do like the indicator letting me know that I am swimming or not."*
+
+- **Diagnosis: feedback, not tuning.** `camera-rig.js` applies the submerge drop and aim dip as a hard cut on the frame Shift goes down, and cuts back on release. There is no easing, so it is the same root cause as §5's "no position smoothing". Shrinking the numbers (as the feel branch did) only makes a smaller snap.
+- **Correction to the table above:** `SUBMERGE.maxAngle` is not radians. The rig subtracts it from the eye height of an aim point 12 m ahead, so 1.1 is a 1.1 m dip, about 5°, not 63°. The floor-staring comes from the camera itself dropping 0.9 m *after* the height clamp, to ~0.2 m above the feet.
+- **Keep:** the swimming indicator. Let it, the body and the ripples say "you are in the paint", so the camera can stay calm.
+- **Change:** the camera *glides* into and out of the submerged position (step 1 of the loop pass, `docs/playtests/loop-pass.md`). Only once that is played do we decide whether the drop itself should shrink.
+
 ### 3.5 Grey
 
 **Now:** `SURFACE.grey.standSlow: 0.6`, so 7 → 4.2 m/s, which is slower than a Charger. Grey is the whole level at load.
@@ -544,6 +551,8 @@ Most of §3 is numbers in config. Before anyone writes a decision entry, **put t
 - §3.5 world grey 0.85 (if it's a single number in config; if it needs two greys, that waits)
 
 Play Outskirts and the Ascent on `main`, then on the branch, back to back. If the branch is clearly better, the code changes (§3.2 full split, §3.3 floor colours, §3.4 pop-out) are worth building.
+
+**Result (30 Oct):** built as `claude/feel-loop-v2-91f58a` with all eleven numbers at once. Renda: *"this doesn't feel like an improvement."* With eleven changes in one build, nobody can tell which one helped and which one hurt, so the bundle is parked. **Replaced by the loop pass:** one change at a time off `main`, each played against `main` and kept or dropped before the next. The order and the verdicts live in `docs/playtests/loop-pass.md`.
 
 ### 12.2 Playtests with fresh eyes
 
