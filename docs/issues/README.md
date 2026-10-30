@@ -144,6 +144,7 @@ A check of the game against the brief's rubric (`CGV Project Brief`, section 11)
 | 098 | #236 | Dry out stops being a death (§3.7) | core | SHOULD | S–M | #226 |
 | 099 | #239 | Submerge: the body dives into the paint instead of squashing (§6.3 A7) | shaders | SHOULD | S | — |
 | 100 | #240 | Hits drip ink: a shot that hits an enemy paints the floor near it | paint | SHOULD | S | loop pass step 3b |
+| 101 | #244 | Make the grey slow felt: camera, sound and footfalls | core + ui + shaders | MUST | S–M | — |
 
 Not drafted here, but on the brief's final checklist and still open: **play the published URL** (PRD L1), **measure frame rate on lab hardware**, **trailer and devlog**.
 

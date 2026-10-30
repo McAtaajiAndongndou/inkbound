@@ -71,3 +71,10 @@ Step 4 changed two numbers (refill and swim speed). One change at a time, so it'
 
 - **Branch:** `proto/swim-speed-1-9` (50ef5bb), stacked on 1, 3, 3b and 4a. 13.3 m/s swimming against a 7 m/s walk.
 - **Verdict: keep.** Core lane: through Ozuko's review.
+
+### Step 5 — grey slow 0.6 → 0.85: finding
+
+- **Branch:** `proto/grey-slow-0-85` (7c9b6d7).
+- **Renda's line:** "I don't feel the difference. This entire time I didn't notice that I was slower on grey compared to on green. It felt the same."
+- **Diagnosis: feedback, not tuning.** The slow is applied (4.2 m/s on grey before this step, 7 on paint), but nothing tells you: the only cue is a tiny `sludge` footstep. A speed change you can't perceive does no design work. Filed as #244 (camera, sound, footfalls across core, ui and shaders).
+- **Verdict:** pending Renda's call (see below).
