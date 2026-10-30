@@ -60,6 +60,7 @@ Creative direction sits with Renda + Moses; the mechanics trio build the systems
 7. **No new enemy types** without an entry in `docs/DECISIONS.md`. Add enemy *questions*, not enemy types.
 8. **Do not silently change settled behaviour.** If a rule in `docs/DECISIONS.md` or an ADR is wrong, say so — do not route around it.
 9. **Tests are the interface between lanes.** A change that alters behaviour ships with a test.
+10. **Player-facing text and docs use UK/SA English** (colour, grey, centre, behaviour). Code identifiers may stay as they are: `Color` in three.js and `color` in CSS are not ours to rename. `tests/uk-spelling.test.js` guards the UI's strings.
 
 ## Definition of done
 
