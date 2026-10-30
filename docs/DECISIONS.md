@@ -188,7 +188,7 @@ Consequences: enemy walk cycles, melee attacks and death reactions **cannot come
 - **Every mission intro pins an objective marker on its goal** ("Extraction", "Supply lift", "The Siphon"), off-white, never amber. **Outskirts' extraction gets a mast and beacon** like the other two levels' goals (levels lane: Renda to keep or move).
 - **No sergeant art yet, so none is requested:** the briefing shows its plain panel and the deployment check has no 404.
 
-## 2026-10-30 — Enemy shots are pellets (draft 066)
+## 2026-10-30 — Enemy shots are pellets (draft 070, #185)
 
 - **Renda: ranged enemies fire visible pellets, the Splatoon way.** This replaces "the shot lands when the wind-up ends", under which `onAttack` damaged the player unconditionally (noted under Big Arm above). A shot that could not be dodged or blocked made the telegraph a warning without a choice, and made the Turret's spec ("strafe, or break line of sight") false.
 - **A pellet is dark Corp grey with an amber rim and trail**, flies at 22 m/s (Sprayer, Wall-crawler) or 30 m/s (Turret), is aimed where the player stands when it fires (no leading), stops at the first surface, and greys the ground where it lands. A miss still costs ground.
