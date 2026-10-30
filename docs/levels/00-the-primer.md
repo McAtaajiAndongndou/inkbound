@@ -175,7 +175,7 @@ The pad beyond free play. *"You're ready. Outskirts — go."* The win needs R7's
 
 **Paint already on the floor at load** is new in the shared level code (`LayoutLevel._prepaint`). The built-level test reads the floor's physics at every pre-painted rectangle's corners and centre: the blue strip is blue (friction 0.4, speed ×1.6), the red pad bounces, and the run-up beside the strip is still grey. **It caught a real bug:** a fixed 1 m paint grid left the far edge of the 2.5 m red pad bare. The grid is now fitted to each rectangle.
 
-**The stub level is gone.** With the Primer built, nothing used `stub-level.js`, and its own comment said to delete it when that happened. The registry's default level is still Outskirts: the Primer doesn't teach until its sergeant and trap exist, and switching the start is a campaign call.
+**The stub level is gone.** With the Primer built, nothing used `stub-level.js`, and its own comment said to delete it when that happened. The registry's default level was Outskirts until the sergeant and trap existed; **since 30 Oct a new player starts here** (campaign flow, DECISIONS).
 
 ## Polish pass 1 (29 Oct)
 

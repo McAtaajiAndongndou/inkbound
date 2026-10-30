@@ -8,6 +8,7 @@ import { PaintGun } from "./paint/paint-gun.js";
 import { createLevel, levelEntry, LEVELS, DEFAULT_LEVEL_ID } from "./levels/index.js";
 import { Hud } from "./ui/hud.js";
 import { CommsBar } from "./ui/comms.js";
+import { Campaign } from "./ui/campaign.js";
 import { PaintGunModel } from "./paint/paint-gun-model.js";
 
 
@@ -111,12 +112,23 @@ const gltfLoader = new GLTFLoader();
 // closed (simulate() does not run behind the menu) — and reset on restart.
 const run = { time: 0, dryTime: 0, over: false };
 
+// The campaign: Primer → Outskirts → the Ascent → Last Colour. A win offers the
+// next mission on Enter; Last Colour's win is the campaign's end.
+const campaign = new Campaign(LEVELS);
+
 const game = {
   scene,
   loadGLB: (url) => gltfLoader.loadAsync(url),
   onWin: () => {
     run.over = true;
-    hud.showEnd("win", { stats: { time: run.time, dryTime: run.dryTime } });
+    campaign.recordWin(currentLevelId, run.time);
+    const next = campaign.next(currentLevelId);
+    hud.showEnd("win", {
+      level: currentLevelId,
+      stats: { time: run.time, dryTime: run.dryTime },
+      next: next && campaign.name(next),
+      campaign: campaign.isFinale(currentLevelId) ? campaign.totals() : undefined,
+    });
     audio.play("win");
   },
   // #112 — a level asks for a comms line by id at a calm, scripted beat. The
@@ -299,6 +311,16 @@ const menu = new Menu(document.body, {
   onSelectLevel: (id) => loadLevel(id),
   levels: game.levels,
   currentLevel: currentLevelId,
+  campaign,
+});
+
+// Enter on the win screen: the next mission, or the credits after the finale.
+// Not while the menu (or an intro) is up — Enter there belongs to them.
+window.addEventListener("keydown", (e) => {
+  if (e.code !== "Enter" || e.repeat || menu.open || hud.endShowing !== "win") return;
+  const next = campaign.next(currentLevelId);
+  if (next) game.loadLevel(next);
+  else menu.showCredits();
 });
 
 const clock = new THREE.Clock();
@@ -311,10 +333,11 @@ const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 const introPos = new THREE.Vector3();
 const introTarget = new THREE.Vector3();
 const introEnd = new THREE.Vector3();
+const introGoal = new THREE.Vector3();
 
 function applyIntroCamera() {
   const from = menu.intro.from;
-  if (!from || reducedMotion?.matches) return;
+  if (!from || reducedMotion?.matches) return placeIntroMarker();
   const t = menu.intro.progress;
   const cam = rig.camera;
   // Where the play camera looks: 12 m ahead, the rig's own look distance.
@@ -323,6 +346,21 @@ function applyIntroCamera() {
   introPos.fromArray(from.pos).lerp(cam.position, t);
   cam.position.copy(introPos);
   cam.lookAt(introTarget);
+  placeIntroMarker();
+}
+
+/** The objective marker: the goal projected through this frame's camera. */
+function placeIntroMarker() {
+  const goal = menu.intro.goal;
+  if (!goal) return menu.intro.placeMarker(null);
+  const cam = rig.camera;
+  cam.updateMatrixWorld();
+  introGoal.fromArray(goal.point).project(cam);
+  const onScreen = introGoal.z < 1 && Math.abs(introGoal.x) < 0.95 && Math.abs(introGoal.y) < 0.95;
+  menu.intro.placeMarker(onScreen ? {
+    x: (introGoal.x + 1) / 2 * window.innerWidth,
+    y: (1 - introGoal.y) / 2 * window.innerHeight,
+  } : null);
 }
 
 // #113 jump and land, read off the player's own state rather than hooked into

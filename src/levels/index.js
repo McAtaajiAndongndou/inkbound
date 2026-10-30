@@ -19,11 +19,10 @@ export const LEVELS = [
   { id: 'last-colour', name: 'Last Colour', create: (game) => new Level03(game) },
 ];
 
-// The level a new player lands in. Still `outskirts`, not `primer`: the Primer
-// is a blockout now (29 Oct), but without its sergeant (#111/#112) or its trap
-// (#101) it does not teach yet. Switching the start is a campaign decision for
-// when it does -- and main.js has always started here.
-export const DEFAULT_LEVEL_ID = 'outskirts';
+// The level a new player lands in: the tutorial (campaign flow, 30 Oct). The
+// Primer waited on its sergeant (#111/#112) and its trap (#101); both are in.
+// A returning player skips it with the title's "Continue" (ui/campaign.js).
+export const DEFAULT_LEVEL_ID = 'primer';
 
 /** The registry entry for `id`, falling back to the default rather than throwing. */
 export function levelEntry(id) {

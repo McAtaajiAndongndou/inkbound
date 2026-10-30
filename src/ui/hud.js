@@ -24,6 +24,22 @@ const END_LOSE = {
 
 const RESTART_HINT = '<b>R</b> restart level · <b>Esc</b> menu';
 
+// The campaign's end: Last Colour's win (campaign.js). The Siphon is down and
+// the colour comes back — the one screen that says the story is over.
+const FINALE = {
+  title: "THE COLOUR'S BACK",
+  detail: 'The Siphon is down. Corrupt Corp is out of colour.',
+};
+
+const esc = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+/** The win screen's key line: next mission, or credits after the finale (#flow). */
+export function winHint({ next, finale } = {}) {
+  if (finale) return '<b>Enter</b> credits · <b>R</b> replay · <b>Esc</b> menu';
+  if (next) return `<b>Enter</b> next: ${esc(next)} · ${RESTART_HINT}`;
+  return RESTART_HINT;
+}
+
 // Scorecard (#110): three numbers, written for a player. No rank, nothing saved.
 const pct = (x) => `${Math.round(Math.max(0, Math.min(1, x)) * 100)}%`;
 const clock = (seconds) => {
@@ -175,6 +191,7 @@ export class Hud {
           <div><dt>Time</dt><dd data-stat="time"></dd><span>start to finish</span></div>
           <div><dt>Dry time</dt><dd data-stat="dry"></dd><span>of the run on grey</span></div>
         </dl>
+        <p class="end-campaign hidden"></p>
         <p class="end-restart">${RESTART_HINT}</p>
       </div>
       <div id="end-lose" class="end hidden" role="status">
@@ -267,25 +284,42 @@ export class Hud {
    * @param {'dead' | 'dry'} [opts.reason]   why the player lost (default dead)
    * @param {{ time: number, dryTime: number }} [opts.stats]
    *   the run, in seconds, for the win scorecard (main.js accumulates it)
+   * @param {string} [opts.next]   the next mission's name: the win offers it on Enter
+   * @param {{ cleared: number, of: number, time: number }} [opts.campaign]
+   *   set on the finale's win: the campaign-complete screen's totals
    */
-  showEnd(kind, { level, reason = 'dead', stats } = {}) {
+  showEnd(kind, { level, reason = 'dead', stats, next, campaign } = {}) {
     const info = END_LEVELS[level];
     const name = info?.name ?? 'this level';
     const el = kind === 'win' ? this.endWin : this.endLose;
 
     if (kind === 'win') {
-      el.querySelector('h1').textContent = info?.win ?? 'EXTRACTED';
-      el.querySelector('.end-detail').textContent = info ? `${info.name} complete.` : '';
+      el.querySelector('h1').textContent = campaign ? FINALE.title : info?.win ?? 'EXTRACTED';
+      el.querySelector('.end-detail').textContent = campaign ? FINALE.detail : info ? `${info.name} complete.` : '';
       this._showScorecard(stats);
+      const totals = el.querySelector('.end-campaign');
+      totals.classList.toggle('hidden', !campaign);
+      if (campaign) {
+        totals.textContent = `Campaign: ${campaign.cleared} of ${campaign.of} missions cleared · ${clock(campaign.time)} total`;
+      }
+      el.querySelector('.end-restart').innerHTML = winHint({ next, finale: !!campaign });
     } else {
       const lose = END_LOSE[reason] ?? END_LOSE.dead;
       el.querySelector('h1').textContent = lose.title;
       el.querySelector('.end-detail').textContent = lose.detail(name);
     }
     el.classList.toggle('dry', kind === 'lose' && reason === 'dry');
+    el.classList.toggle('finale', !!campaign);
 
     this.endWin.classList.toggle('hidden', kind !== 'win');
     this.endLose.classList.toggle('hidden', kind !== 'lose');
+  }
+
+  /** Which end screen is up: 'win', 'lose' or null. */
+  get endShowing() {
+    if (!this.endWin.classList.contains('hidden')) return 'win';
+    if (!this.endLose.classList.contains('hidden')) return 'lose';
+    return null;
   }
 
   hideEnd() {

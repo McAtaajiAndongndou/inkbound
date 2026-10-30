@@ -40,8 +40,12 @@ export class Menu {
    * @param {{id: string, name: string}[]} [deps.levels]
    *   the list to render — `game.levels` from main.js, the registry default here
    * @param {string} [deps.currentLevel]       id of the level loaded at start
+   * @param {import('./campaign.js').Campaign} [deps.campaign]
+   *   the player's progress: the title offers "Continue" to the furthest
+   *   mission they have reached
    */
-  constructor(parent, { audio, canvas, onRestart, onSelectLevel, levels = LEVELS, currentLevel = LEVELS[0].id }) {
+  constructor(parent, { audio, canvas, onRestart, onSelectLevel, levels = LEVELS, currentLevel = LEVELS[0].id, campaign = null }) {
+    this.campaign = campaign;
     this.audio = audio;
     this.canvas = canvas;
     this.onRestart = onRestart;
@@ -63,6 +67,7 @@ export class Menu {
         <div id="menu-main">
         <div class="menu-actions">
           <button id="menu-resume" class="primary" type="button">Play</button>
+          <button id="menu-continue" class="hidden" type="button"></button>
           <button id="menu-restart" type="button">Restart level</button>
           <button id="menu-levels-btn" type="button">Level select</button>
           <button id="menu-credits-btn" type="button">Credits</button>
@@ -155,6 +160,8 @@ export class Menu {
     const $ = (sel) => el.querySelector(sel);
     this.title = $('#menu-sub');
     this.resumeBtn = $('#menu-resume');
+    this.continueBtn = $('#menu-continue');
+    this.continueBtn.addEventListener('click', () => this._selectLevel(this._continueId));
     this.restartBtn = $('#menu-restart');
     this.volume = $('#opt-volume');
     this.volumeOut = $('#opt-volume-out');
@@ -246,6 +253,22 @@ export class Menu {
     if (p && typeof p.catch === 'function') p.catch(() => {});
   }
 
+  /**
+   * Open on the credits (the campaign's end, Enter on the finale). Unlocking
+   * the pointer is what opens the menu; the view is chosen first.
+   */
+  showCredits() {
+    this._showView('credits');
+    if (document.pointerLockElement === this.canvas) document.exitPointerLock?.();
+    else this._setOpen(true);
+  }
+
+  /** The mission "Continue" would load, or null: none saved, or it is the one loaded. */
+  get _continueId() {
+    const id = this.campaign?.reached;
+    return id && id !== this.currentLevel ? id : null;
+  }
+
   /** Mark which level is loaded — main.js calls this if it swaps levels itself. */
   setCurrentLevel(id) {
     // A restart reloads the same id and keeps the still skipped; arriving in
@@ -258,8 +281,24 @@ export class Menu {
       this.intro.hide();
       this._introPending = id !== BRIEFING_LEVEL;
     }
+    const changed = id !== this.currentLevel;
     this.currentLevel = id;
     this._syncLevels();
+    // Next mission from the win screen: the pointer never unlocked, so start
+    // the new mission's intro (or the Primer's briefing) now, not on a re-lock.
+    if (changed && this.started && !this.menuShowing) this._startPending();
+  }
+
+  /** Play whatever opens the mission: the intro, then (Primer only) the briefing. */
+  _startPending() {
+    if (this._introPending) {
+      this._introPending = false;
+      if (this.introData) this.intro.play(this.introData);
+    }
+    if (this._briefingPending) {
+      this._briefingPending = false;
+      this.briefing.show();
+    }
   }
 
   /** @param {'main' | 'levels' | 'credits'} view */
@@ -310,20 +349,18 @@ export class Menu {
     if (!open) {
       this.started = true;
       this._showView('main'); // next pause opens on the main view; closes the level list
-      if (this._introPending) {
-        this._introPending = false;
-        if (this.introData) this.intro.play(this.introData);
-      }
-      if (this._briefingPending) {
-        this._briefingPending = false;
-        this.briefing.show();
-      }
+      this._startPending();
     }
     this.el.classList.toggle('hidden', !open);
     // first load reads as a title screen; afterwards it is a pause menu
     this.title.textContent = this.started ? 'Paused' : 'The world is grey. Colour changes physics.';
     this.resumeBtn.textContent = this.started ? 'Resume' : 'Play';
     this.restartBtn.classList.toggle('hidden', !this.started);
+    // "Continue" is the title's: a returning player picks up at the furthest
+    // mission they reached instead of replaying the Primer.
+    const cont = !this.started ? this._continueId : null;
+    this.continueBtn.classList.toggle('hidden', !cont);
+    if (cont) this.continueBtn.textContent = `Continue — ${this.campaign.name(cont)}`;
   }
 
   _sync() {

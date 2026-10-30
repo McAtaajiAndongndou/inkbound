@@ -77,5 +77,24 @@ export class Level00 extends LayoutLevel {
   update(dt, player) {
     super.update(dt, player);
     for (const pit of this.pits) pit.update(dt, [player, ...this.enemies]);
+    this._sergeant(player.position);
+  }
+
+  /**
+   * #112 — the sergeant's three lines (docs/levels/00-the-primer.md): the first
+   * splat (R2), the Charger (on climbing into R6 — R7's doorway wakes it, and a
+   * fight clears a line, so it needs R6's 24 m to be read), extraction (R9).
+   * Each asked once; the comms bar holds the text and the timing.
+   */
+  _sergeant(p) {
+    this._said ??= new Set();
+    const ask = (id, when) => {
+      if (this._said.has(id) || !when) return;
+      this._said.add(id);
+      this.game.say?.(id);
+    };
+    ask('primer-splat', this.inRoom('R2', p));
+    ask('primer-theirs', this.inRoom('R6', p));
+    ask('primer-ready', this.inRoom('R9', p));
   }
 }
